@@ -21,6 +21,7 @@ if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY missing")
 
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI(docs_url="/swagger", redoc_url=None)
@@ -34,9 +35,13 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# ----------------------------
+# PDF storage (Render disk if available, otherwise fallback)
+# ----------------------------
+
 def choose_pdf_dir() -> Path:
-    preferred = Path("/var/data/pdfs")
-    fallback = BASE_DIR / "pdfs"
+    preferred = Path("/var/data/pdfs")      # persistent if Render Disk mounted at /var/data
+    fallback = BASE_DIR / "pdfs"            # always works, not persistent on Render
 
     if os.getenv("RENDER"):
         try:
@@ -50,6 +55,10 @@ def choose_pdf_dir() -> Path:
     return fallback
 
 PDF_DIR = choose_pdf_dir()
+
+# ----------------------------
+# In-memory page text index
+# ----------------------------
 
 PDF_TEXT_INDEX: Dict[str, List[str]] = {}
 
@@ -80,6 +89,10 @@ def index_all_pdfs() -> None:
 
 index_all_pdfs()
 
+# ----------------------------
+# Root + Health + Docs
+# ----------------------------
+
 @app.get("/")
 def root():
     return {
@@ -97,6 +110,10 @@ def health():
 @app.get("/docs")
 def docs_compat():
     return {"ok": True}
+
+# ----------------------------
+# Page selection (auto)
+# ----------------------------
 
 STOPWORDS = {
     "the","and","or","of","to","in","a","an","for","on","with","is","are","be","as","at",
@@ -126,7 +143,12 @@ def score_page(page_text: str, tokens: List[str], full_q: str) -> int:
                 score += 25
     return score
 
-def auto_select_pages(pdf_name: str, question: str, top_k: int = 4, window: int = 1) -> List[int]:
+def auto_select_pages(
+    pdf_name: str,
+    question: str,
+    top_k: int = 4,
+    window: int = 1
+) -> List[int]:
     page_texts = PDF_TEXT_INDEX.get(pdf_name)
     if not page_texts:
         pdf_path = PDF_DIR / pdf_name
@@ -162,6 +184,10 @@ def auto_select_pages(pdf_name: str, question: str, top_k: int = 4, window: int 
 
     return sorted(selected)
 
+# ----------------------------
+# TEXT extraction (cheap mode)
+# ----------------------------
+
 def extract_pages_text(pdf_path: Path, page_indexes: List[int], max_chars_per_page: int = 4500) -> str:
     doc = fitz.open(pdf_path)
     try:
@@ -177,6 +203,10 @@ def extract_pages_text(pdf_path: Path, page_indexes: List[int], max_chars_per_pa
     finally:
         doc.close()
 
+# ----------------------------
+# VISION images (use sparingly)
+# ----------------------------
+
 def pdf_pages_to_images(pdf_path: Path, page_indexes: List[int], dpi: int = 120):
     images = []
     doc = fitz.open(pdf_path)
@@ -186,10 +216,17 @@ def pdf_pages_to_images(pdf_path: Path, page_indexes: List[int], dpi: int = 120)
             pix = page.get_pixmap(dpi=dpi)
             img_bytes = pix.tobytes("png")
             img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-            images.append({"type": "input_image", "image_url": f"data:image/png;base64,{img_b64}"})
+            images.append({
+                "type": "input_image",
+                "image_url": f"data:image/png;base64,{img_b64}",
+            })
     finally:
         doc.close()
     return images
+
+# ----------------------------
+# Smart Vision decision
+# ----------------------------
 
 def needs_vision_from_question(q: str) -> bool:
     ql = q.lower()
@@ -220,6 +257,7 @@ def needs_vision_from_text_excerpt(excerpt: str) -> bool:
         return True
     if len(excerpt) < 900:
         return True
+
     return False
 
 def requires_exact_numeric_answer(q: str) -> bool:
@@ -231,6 +269,10 @@ def requires_exact_numeric_answer(q: str) -> bool:
         "travel distance"
     ]
     return any(w in ql for w in numeric_words)
+
+# ----------------------------
+# Upload PDF
+# ----------------------------
 
 @app.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -248,33 +290,40 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     return {"ok": True, "pdf": file.filename, "stored_in": str(PDF_DIR)}
 
+# ----------------------------
+# Natural prompt (less constrained, but no * or #)
+# ----------------------------
+
 SYSTEM_RULES = """
-You are Raheem AI, a capable assistant for Irish building regulation guidance.
+You are Raheem AI, a capable assistant for Irish Building Regulations guidance.
 
-Core behaviour:
-Understand the user’s question first. Decide what the question is really about. Then choose the most relevant guidance and look for the answer. If the first document does not support the answer, move logically to the next most relevant document until you find supporting material.
-
-Important:
-Do not greet by naming a Technical Guidance Document. Do not assume the user wants a specific document. Only mention a document if it genuinely helps the user understand why the answer is correct.
+How you should work:
+First, understand what the user is really asking. Then use the most relevant Technical Guidance Document and the provided excerpt to answer. If the excerpt does not support an exact answer, explain what you can confirm and what you would check next, in a calm and practical way.
 
 Style:
-Be natural, confident, and helpful. Use short paragraphs. Avoid heavy formatting. Do not use asterisks or hash symbols. Do not say you are thinking or analyzing.
+Speak naturally and confidently like a helpful professional. Use short paragraphs. Do not use asterisks or hash symbols in your output. Avoid heavy formatting and avoid long lists. Do not say that you are thinking or analyzing. Do not describe internal tool steps.
 
 Accuracy:
-Do not invent numbers or clauses. If an exact value is not supported by what you can see, say so plainly and tell the user what to verify.
+Do not invent numbers or clauses. If an exact value is not supported by what you can see, say so plainly and keep the guidance practical.
 """
 
 def build_user_header(question: str, pdf_name: str, pages_used: List[int], mode: str) -> str:
     shown = [p + 1 for p in pages_used]
     return (
-        f"Context excerpts are provided from one guidance document.\n"
-        f"Document file: {pdf_name}\n"
-        f"Pages provided: {shown}\n"
+        f"PDF filename: {pdf_name}\n"
+        f"Pages provided (1-based): {shown}\n"
         f"Mode: {mode}\n\n"
         f"User question:\n{question}\n"
     )
 
-def build_openai_input(question: str, pdf_name: str, pdf_path: Path, page_indexes: List[int], dpi: int, force_vision: bool):
+def build_openai_input(
+    question: str,
+    pdf_name: str,
+    pdf_path: Path,
+    page_indexes: List[int],
+    dpi: int,
+    force_vision: bool
+):
     excerpt = extract_pages_text(pdf_path, page_indexes, max_chars_per_page=4500)
 
     q_triggers_vision = needs_vision_from_question(question)
@@ -324,6 +373,10 @@ def resolve_page_indexes(pdf_name: str, question: str, pages: Optional[str], top
         page_indexes = auto_select_pages(pdf_name, question, top_k=top_k, window=window)
 
     return page_indexes
+
+# ----------------------------
+# Auto TGD selection and multi-doc search
+# ----------------------------
 
 TGD_HINTS = [
     ("Technical Guidance Document K.pdf", ["stair", "stairs", "handrail", "guard", "guarding", "balustrade", "ramp", "step", "nosing", "landing", "fall"]),
@@ -380,9 +433,11 @@ def choose_best_pdf_by_evidence(question: str, candidates: List[str], max_check:
     for name in subset:
         evidence.append((name, best_pages_score(name, question)))
     evidence.sort(key=lambda x: x[1], reverse=True)
+    ranked = [n for n, _ in evidence]
+    # If evidence is flat (all zero), keep original order
     if evidence and evidence[0][1] == 0:
         return subset
-    return [n for n, _ in evidence] if evidence else subset
+    return ranked if ranked else subset
 
 def looks_like_no_support(answer_text: str) -> bool:
     t = (answer_text or "").lower()
@@ -399,31 +454,56 @@ def looks_like_no_support(answer_text: str) -> bool:
     ]
     return any(s in t for s in signals) or len(t.strip()) < 40
 
-def answer_using_pdf(q: str, pdf_name: str, pages: Optional[str], top_k: int, window: int, dpi: int, force_vision: bool):
+# ----------------------------
+# Core answering logic (used by /ask and /ask_stream)
+# ----------------------------
+
+def answer_using_pdf(
+    q: str,
+    pdf_name: str,
+    pages: Optional[str],
+    top_k: int,
+    window: int,
+    dpi: int,
+    force_vision: bool
+):
     pdf_path = PDF_DIR / pdf_name
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF not found: {pdf_name}")
 
     page_indexes = resolve_page_indexes(pdf_name, q, pages, top_k, window, pdf_path)
-    user_blocks, vision_used = build_openai_input(q, pdf_name, pdf_path, page_indexes, dpi, force_vision)
+
+    user_blocks, vision_used = build_openai_input(
+        question=q,
+        pdf_name=pdf_name,
+        pdf_path=pdf_path,
+        page_indexes=page_indexes,
+        dpi=dpi,
+        force_vision=force_vision
+    )
 
     resp = client.responses.create(
         model=MODEL_NAME,
         max_output_tokens=700,
         input=[{"role": "user", "content": user_blocks}],
     )
+
     return resp.output_text, [p + 1 for p in page_indexes], vision_used
+
+# ----------------------------
+# Non-stream endpoint
+# ----------------------------
 
 @app.get("/ask")
 def ask(
     q: str = Query(..., description="User question"),
     pdf: Optional[str] = Query(None, description="PDF filename (optional). If omitted, Raheem AI chooses."),
-    pages: Optional[str] = Query(None),
-    top_k: int = Query(4),
-    window: int = Query(1),
-    dpi: int = Query(120),
-    vision: bool = Query(False),
-    max_docs: int = Query(3),
+    pages: Optional[str] = Query(None, description="Optional: comma-separated 1-based pages e.g. 340,341"),
+    top_k: int = Query(4, description="Auto: number of strongest pages"),
+    window: int = Query(1, description="Auto: neighbour pages around each match"),
+    dpi: int = Query(120, description="Render DPI for vision pages (lower = cheaper/faster)"),
+    vision: bool = Query(False, description="Force vision pages"),
+    max_docs: int = Query(3, description="If pdf is not provided, how many TGDs to try before stopping"),
 ):
     try:
         available = list_available_pdfs()
@@ -440,15 +520,23 @@ def ask(
 
         best_payload = None
 
-        for candidate in chosen_list:
+        for i, candidate in enumerate(chosen_list):
             if candidate not in available:
                 continue
             try:
-                answer, pages_used, vision_used = answer_using_pdf(q, candidate, pages, top_k, window, dpi, vision)
+                answer, pages_used, vision_used = answer_using_pdf(
+                    q=q,
+                    pdf_name=candidate,
+                    pages=pages,
+                    top_k=top_k,
+                    window=window,
+                    dpi=dpi,
+                    force_vision=vision
+                )
             except Exception:
                 continue
 
-            best_payload = {
+            payload = {
                 "ok": True,
                 "answer": answer,
                 "pdf_used": candidate,
@@ -456,7 +544,9 @@ def ask(
                 "vision_used": vision_used,
                 "searched": chosen_list
             }
+            best_payload = payload
 
+            # If it seems supported, stop early. Otherwise try next TGD.
             if not looks_like_no_support(answer):
                 break
 
@@ -468,11 +558,15 @@ def ask(
     except Exception as e:
         return {"ok": False, "error": str(e), "trace": traceback.format_exc().splitlines()[-12:]}
 
+# ----------------------------
+# Streaming endpoint (typing UI)
+# ----------------------------
+
 @app.get("/ask_stream")
 def ask_stream(
-    q: str = Query(...),
-    pdf: Optional[str] = Query(None),
-    pages: Optional[str] = Query(None),
+    q: str = Query(..., description="User question"),
+    pdf: Optional[str] = Query(None, description="PDF filename (optional). If omitted, Raheem AI chooses."),
+    pages: Optional[str] = Query(None, description="Optional: comma-separated 1-based pages e.g. 340,341"),
     top_k: int = Query(4),
     window: int = Query(1),
     dpi: int = Query(120),
@@ -497,6 +591,9 @@ def ask_stream(
         chosen_list = choose_best_pdf_by_evidence(q, hint_ranked, max_check=6)
         chosen_list = chosen_list[:max(1, min(max_docs, 6))]
 
+    # We stream only the final chosen attempt. To keep the experience smooth and not confusing,
+    # we pick the best candidate first by evidence, and only fall back if it clearly fails.
+    # If the first answer comes back as "no support", we then stream the second attempt.
     def sse():
         tried = []
         last_error = None
@@ -504,6 +601,7 @@ def ask_stream(
         for candidate in chosen_list:
             if candidate not in available:
                 continue
+
             tried.append(candidate)
 
             try:
@@ -512,7 +610,16 @@ def ask_stream(
                     continue
 
                 page_indexes = resolve_page_indexes(candidate, q, pages, top_k, window, pdf_path)
-                user_blocks, vision_used = build_openai_input(q, candidate, pdf_path, page_indexes, dpi, vision)
+                user_blocks, vision_used = build_openai_input(
+                    question=q,
+                    pdf_name=candidate,
+                    pdf_path=pdf_path,
+                    page_indexes=page_indexes,
+                    dpi=dpi,
+                    force_vision=vision
+                )
+
+                yield f"event: meta\ndata: pdf_used={candidate};pages_used={','.join(str(p+1) for p in page_indexes)};vision_used={vision_used}\n\n"
 
                 stream = client.responses.create(
                     model=MODEL_NAME,
@@ -522,6 +629,7 @@ def ask_stream(
                 )
 
                 buffer = ""
+
                 for event in stream:
                     if getattr(event, "type", None) == "response.output_text.delta":
                         delta = getattr(event, "delta", "")
@@ -533,9 +641,12 @@ def ask_stream(
                     if getattr(event, "type", None) == "response.completed":
                         break
 
+                # If the result looks unsupported and we have more docs to try, continue.
                 if not forced_pdf and looks_like_no_support(buffer) and len(tried) < len(chosen_list):
+                    yield "event: meta\ndata: continuing=true\n\n"
                     continue
 
+                yield f"event: meta\ndata: searched={','.join(tried)}\n\n"
                 yield "event: done\ndata: ok\n\n"
                 return
 
@@ -552,6 +663,10 @@ def ask_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
     )
+
+# ----------------------------
+# List PDFs
+# ----------------------------
 
 @app.get("/pdfs")
 def list_pdfs():
