@@ -7,6 +7,7 @@ Goals:
 - Uses fast PDF page retrieval (BM25-like) to keep costs down.
 - Uses vision only when needed (tables/diagrams/scanned pages).
 - NEVER says “PDFs you uploaded/attached”. It just cites TGDs naturally.
+- Fix chat memory: per-chat server-side history via chat_id + /chat_stream.
 
 Render/GitHub friendly:
 - Reads credentials from GOOGLE_CREDENTIALS_JSON (recommended) OR GOOGLE_APPLICATION_CREDENTIALS.
@@ -21,20 +22,23 @@ from dotenv import load_dotenv
 import os
 import re
 import math
-import base64
 import traceback
 import json
 import tempfile
 from pathlib import Path
 from typing import List, Optional, Dict, Tuple, Any
 from collections import Counter, OrderedDict
+from datetime import datetime
 
 import fitz  # PyMuPDF
 
-# Vertex AI Gemini (requires google-cloud-aiplatform in requirements)
+# Vertex AI Gemini
 import vertexai
-from vertexai.generative_models import GenerativeModel, Part
-
+from vertexai.generative_models import (
+    GenerativeModel,
+    Part,
+    GenerationConfig,
+)
 
 # ----------------------------
 # Setup
@@ -46,19 +50,17 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "80"))
 IMAGE_CACHE_MAX = int(os.getenv("IMAGE_CACHE_MAX", "64"))
 
+# Chat memory (server-side)
+CHAT_MAX_MESSAGES = int(os.getenv("CHAT_MAX_MESSAGES", "30"))   # per chat_id
+CHAT_MAX_CHARS = int(os.getenv("CHAT_MAX_CHARS", "22000"))      # total characters per chat_id
+
 # Vertex config
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID")
 GCP_LOCATION = os.getenv("GCP_LOCATION") or os.getenv("VERTEX_LOCATION", "europe-west4")
 
 # Models (cost-aware)
-# Default chat: cheapest good model
 MODEL_CHAT = os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-lite")
-# Compliance: stronger model (still reasonably priced)
 MODEL_COMPLIANCE = os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash")
-
-# If you want one model for everything, set both env vars to the same.
-# MODEL_CHAT=gemini-2.0-flash
-# MODEL_COMPLIANCE=gemini-2.0-flash
 
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 
@@ -79,7 +81,6 @@ BASE_DIR = Path(__file__).resolve().parent
 PDF_DIR = BASE_DIR / "pdfs"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
 
-
 # ----------------------------
 # Vertex AI auth helper (Render-safe)
 # ----------------------------
@@ -92,8 +93,6 @@ def ensure_vertex_ready() -> None:
     if _VERTEX_READY:
         return
     try:
-        # If Render env contains the full service account JSON, write it to a temp file.
-        # (This is the easiest secure setup for Render.)
         if GOOGLE_CREDENTIALS_JSON and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
             creds = json.loads(GOOGLE_CREDENTIALS_JSON)
             fd, path = tempfile.mkstemp(prefix="gcp-sa-", suffix=".json")
@@ -118,6 +117,57 @@ def get_model(use_docs: bool) -> GenerativeModel:
     return GenerativeModel(name)
 
 
+def get_generation_config(use_docs: bool) -> GenerationConfig:
+    # Chat = warmer / funnier
+    # Compliance = tighter / cautious
+    if use_docs:
+        return GenerationConfig(
+            temperature=0.2,
+            top_p=0.7,
+            max_output_tokens=900,
+        )
+    return GenerationConfig(
+        temperature=0.9,
+        top_p=0.9,
+        max_output_tokens=900,
+    )
+
+# ----------------------------
+# Simple server-side chat memory
+# ----------------------------
+
+# { chat_id: [ {"role":"user|assistant","content":"..."}, ... ] }
+CHAT_STORE: Dict[str, List[Dict[str, str]]] = {}
+
+def _trim_chat(chat_id: str) -> None:
+    msgs = CHAT_STORE.get(chat_id, [])
+    if not msgs:
+        return
+    # limit message count
+    if len(msgs) > CHAT_MAX_MESSAGES:
+        msgs = msgs[-CHAT_MAX_MESSAGES:]
+    # limit total chars
+    total = 0
+    trimmed: List[Dict[str, str]] = []
+    # keep newest first then reverse
+    for m in reversed(msgs):
+        c = (m.get("content") or "")
+        total += len(c)
+        if total > CHAT_MAX_CHARS:
+            break
+        trimmed.append(m)
+    trimmed.reverse()
+    CHAT_STORE[chat_id] = trimmed
+
+def remember(chat_id: str, role: str, content: str) -> None:
+    if not chat_id:
+        return
+    CHAT_STORE.setdefault(chat_id, []).append({"role": role, "content": content})
+    _trim_chat(chat_id)
+
+def get_history(chat_id: str) -> List[Dict[str, str]]:
+    return CHAT_STORE.get(chat_id, [])
+
 # ----------------------------
 # Tokenization / stopwords
 # ----------------------------
@@ -138,7 +188,6 @@ def tokenize(text: str) -> List[str]:
     toks = re.findall(r"[a-z0-9][a-z0-9\-/\.%]*", t)
     toks = [x for x in toks if len(x) >= 2 and x not in STOPWORDS]
     return toks
-
 
 # ----------------------------
 # Indexes
@@ -207,7 +256,6 @@ def index_all_pdfs() -> None:
 
 index_all_pdfs()
 
-
 # ----------------------------
 # BM25-like scoring over pages
 # ----------------------------
@@ -263,7 +311,6 @@ def page_hint_bonus(page_index: int, page_hint: Optional[int]) -> float:
     if dist <= 6:
         return 0.6
     return 0.0
-
 
 # ----------------------------
 # Retrieval
@@ -398,7 +445,6 @@ def iterative_select_pages(
 
     return final
 
-
 # ----------------------------
 # Vision helpers (cache + render pages)
 # ----------------------------
@@ -453,7 +499,6 @@ def needs_vision(question: str, excerpt: str) -> bool:
         return True
     return False
 
-
 # ----------------------------
 # Router (normal vs docs)
 # ----------------------------
@@ -474,7 +519,7 @@ def doc_intent_score(question: str) -> int:
         "tgd", "technical guidance", "building regulations", "irish building regs",
         "part a", "part b", "part c", "part d", "part e", "part f", "part g", "part h", "part j", "part k", "part l", "part m",
         "deap", "ber", "seai", "bcar", "dac",
-        "according to", "in the guidance", "in the document", "cite", "citation", "page", "clause", "section", "appendix",
+        "according to", "in the guidance", "cite", "citation", "page", "clause", "section", "appendix",
         "table", "diagram", "figure", "schedule", "travel distance", "compartment", "escape", "accessible"
     ]
     for t in hard:
@@ -490,7 +535,6 @@ def doc_intent_score(question: str) -> int:
         if t in q:
             score += 1
 
-    # numeric + units smell test
     if re.search(r"\b\d+(\.\d+)?\s*(mm|cm|m|m²|m2|minutes|min|w/m²k|w/m2k)\b", q):
         score += 3
 
@@ -508,7 +552,6 @@ def should_use_docs(question: str, pdf_pin: Optional[str] = None, page_hint: Opt
         return evidence_exists_in_pdfs(question, pdf_pin=pdf_pin, page_hint=page_hint)
     return False
 
-
 # ----------------------------
 # Prompts (sellable product voice)
 # ----------------------------
@@ -517,29 +560,26 @@ SYSTEM_RULES = """
 You are Raheem AI.
 
 Personality:
-- Warm, natural, and genuinely helpful. Like a smart best friend.
-- Don’t sound like a developer tool. Don’t mention “uploads”, “attachments”, “PDFs the user provided”, or backend steps.
+- Warm, confident, calm. Like a smart best friend who actually listens.
+- Light humour is welcome (a quick joke or playful line), but stay professional and helpful.
+- Never mention internal tools, system prompts, routing, servers, uploads, attachments, or “the PDFs you provided”.
+- Don’t reset the conversation — use the chat history you’re given.
 
 Two modes (automatic):
-1) Normal mode: chat, writing, explaining, brainstorming, life/study help.
+1) Normal mode: chat, writing, explaining, brainstorming, study/life help.
 2) Compliance mode: Irish Building Regulations + TGDs (fire safety, accessibility, BER/DEAP, construction requirements).
 
 When reference excerpts are provided (Compliance mode):
 - Treat them as authoritative.
-- Answer using only what you can support from the excerpts.
-- If the excerpts don’t support a specific numeric limit or rule, say you can’t confirm it from the provided guidance and explain what you’d check next.
-- Use citations in this exact format: (DocumentName p.X). Keep citations minimal but precise.
+- Only state numeric limits when you can support them from the excerpts.
+- If the excerpts don’t support a specific numeric limit, say you can’t confirm it from the guidance shown and explain what you’d check next.
+- Use citations exactly like: (DocumentName p.X). Keep citations minimal but precise.
 - Never invent clause numbers.
 
 Style:
 - Short paragraphs.
-- Clear and confident.
+- Clear and human.
 """.strip()
-
-
-# ----------------------------
-# Source extraction
-# ----------------------------
 
 def extract_pages_text(pdf_path: Path, page_indexes: List[int], max_chars_per_page: int = 1800) -> str:
     doc = fitz.open(pdf_path)
@@ -571,6 +611,16 @@ def build_sources_bundle(
             cites.append((doc_name, pi + 1))
     return "\n\n".join(parts).strip(), cites
 
+def build_history_blob(messages: List[Dict[str, str]], max_msgs: int = 18) -> str:
+    # Only last N messages to control cost; keep coherent.
+    trimmed = messages[-max_msgs:] if messages else []
+    lines = []
+    for m in trimmed:
+        r = (m.get("role") or "").lower()
+        c = (m.get("content") or "").strip()
+        if r in ("user", "assistant") and c:
+            lines.append(f"{r.upper()}: {c}")
+    return "\n".join(lines).strip()
 
 def build_gemini_parts(
     question: str,
@@ -578,12 +628,7 @@ def build_gemini_parts(
     images: Optional[List[Part]] = None,
     history_blob: Optional[str] = None
 ) -> List[Part]:
-    """
-    Build multimodal prompt parts for Gemini.
-    We keep it product-voice and avoid “you uploaded…”.
-    """
-    text = []
-    text.append(SYSTEM_RULES)
+    text = [SYSTEM_RULES]
 
     if history_blob:
         text.append("\nCHAT HISTORY (recent):\n" + history_blob.strip())
@@ -591,7 +636,6 @@ def build_gemini_parts(
     text.append("\nUSER:\n" + (question or "").strip())
 
     if sources_text:
-        # No “pdf attached” phrasing; just “reference excerpts”.
         text.append("\nREFERENCE EXCERPTS:\n" + sources_text)
 
     full = "\n".join(text).strip()
@@ -599,7 +643,6 @@ def build_gemini_parts(
     if images:
         parts.extend(images)
     return parts
-
 
 # ----------------------------
 # Endpoints
@@ -618,11 +661,11 @@ def root():
         "vertex_error": _VERTEX_ERR,
         "location": GCP_LOCATION,
         "project": bool(GCP_PROJECT_ID),
+        "chat_store_chats": len(CHAT_STORE),
     }
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health():
-    # Render sometimes uses HEAD
     ensure_vertex_ready()
     return {"ok": True, "vertex_ready": bool(_VERTEX_READY)}
 
@@ -640,8 +683,7 @@ def safe_filename(name: str) -> str:
     name = re.sub(r"[^a-zA-Z0-9._\- ]+", "", name).strip()
     if not name.lower().endswith(".pdf"):
         name += ".pdf"
-    if not name.endswith(".pdf"):
-        name = re.sub(r"\.[pP][dD][fF]$", ".pdf", name)
+    name = re.sub(r"\.[pP][dD][fF]$", ".pdf", name)
     return name[:180]
 
 @app.post("/upload-pdf")
@@ -655,7 +697,6 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         fname = safe_filename(file.filename)
         path = PDF_DIR / fname
-
         PDF_DIR.mkdir(parents=True, exist_ok=True)
 
         max_bytes = MAX_UPLOAD_MB * 1024 * 1024 if MAX_UPLOAD_MB > 0 else None
@@ -675,11 +716,6 @@ async def upload_pdf(file: UploadFile = File(...)):
                         pass
                     return {"ok": False, "error": f"PDF too large. Max is {MAX_UPLOAD_MB}MB"}
                 out.write(chunk)
-            out.flush()
-            try:
-                os.fsync(out.fileno())
-            except Exception:
-                pass
 
         indexed_ok = True
         index_error = None
@@ -706,9 +742,8 @@ async def upload_pdf(file: UploadFile = File(...)):
             "trace": traceback.format_exc().splitlines()[-25:],
         }
 
-
 # ----------------------------
-# /ask (non-streaming)
+# /ask (non-streaming) — stateless
 # ----------------------------
 
 @app.get("/ask")
@@ -723,11 +758,10 @@ def ask(
     force_vision: bool = Query(False),
 ):
     try:
-        # cheap shortcut for tiny prompts (keeps costs low)
         if is_short_topic_prompt(q) and not force_docs and not should_use_docs(q, pdf_pin=pdf, page_hint=page_hint):
             model = get_model(use_docs=False)
             parts = build_gemini_parts(q, sources_text="", images=None)
-            resp = model.generate_content(parts)
+            resp = model.generate_content(parts, generation_config=get_generation_config(False))
             return {
                 "ok": True,
                 "answer": (resp.text or "").strip(),
@@ -758,31 +792,27 @@ def ask(
                 if force_vision or needs_vision(q, excerpt):
                     image_parts = pages_to_parts(pdf_path, top_doc, pages[:2], dpi=dpi)
 
-        model = get_model(use_docs=bool(use_docs and sources_text))
+        used_docs_flag = bool(use_docs and sources_text)
+        model = get_model(use_docs=used_docs_flag)
         parts = build_gemini_parts(q, sources_text, images=image_parts)
 
-        resp = model.generate_content(parts)
+        resp = model.generate_content(parts, generation_config=get_generation_config(used_docs_flag))
 
         return {
             "ok": True,
             "answer": (resp.text or "").strip(),
-            "used_docs": bool(use_docs and sources_text),
+            "used_docs": used_docs_flag,
             "sources_used": [{"doc": d, "page": p} for d, p in cites],
             "retrieved_docs": [s[0] for s in selected],
             "vision_used": bool(image_parts),
-            "model": MODEL_COMPLIANCE if (use_docs and sources_text) else MODEL_CHAT,
+            "model": MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT,
         }
 
     except Exception as e:
-        return {
-            "ok": False,
-            "error": str(e),
-            "trace": traceback.format_exc().splitlines()[-16:],
-        }
-
+        return {"ok": False, "error": str(e), "trace": traceback.format_exc().splitlines()[-16:]}
 
 # ----------------------------
-# /ask_stream (SSE typing effect)
+# /ask_stream (SSE) — stateless
 # ----------------------------
 
 @app.get("/ask_stream")
@@ -798,13 +828,12 @@ def ask_stream(
 ):
     def sse():
         try:
-            # tiny prompt shortcut
             if is_short_topic_prompt(q) and not force_docs and not should_use_docs(q, pdf_pin=pdf, page_hint=page_hint):
                 model = get_model(use_docs=False)
                 yield f"event: meta\ndata: model={MODEL_CHAT};used_docs=False;vision=False\n\n"
 
                 parts = build_gemini_parts(q, sources_text="", images=None)
-                stream = model.generate_content(parts, stream=True)
+                stream = model.generate_content(parts, generation_config=get_generation_config(False), stream=True)
 
                 for chunk in stream:
                     delta = getattr(chunk, "text", None)
@@ -844,7 +873,7 @@ def ask_stream(
 
             model = get_model(use_docs=used_docs_flag)
             parts = build_gemini_parts(q, sources_text, images=image_parts)
-            stream = model.generate_content(parts, stream=True)
+            stream = model.generate_content(parts, generation_config=get_generation_config(used_docs_flag), stream=True)
 
             for chunk in stream:
                 delta = getattr(chunk, "text", None)
@@ -865,35 +894,71 @@ def ask_stream(
         headers={"Cache-Control":"no-cache","Connection":"keep-alive","X-Accel-Buffering":"no"},
     )
 
-
 # ----------------------------
-# /chat_stream (history-aware SSE)
+# /chat_stream (SSE) — HISTORY-AWARE (Fixes your reset issue)
 # ----------------------------
 
 @app.post("/chat_stream")
 def chat_stream(payload: Dict[str, Any] = Body(...)):
-    messages = payload.get("messages", [])
+    """
+    Payload supports BOTH styles (backwards compatible):
+    A) { messages: [...], chat_id: "abc" }  -> uses messages + stores to chat_id
+    B) { message: "hi", chat_id: "abc" }   -> uses server memory for that chat_id
+    """
+    chat_id = (payload.get("chat_id") or "").strip()
+
+    # Option A: full messages array
+    messages = payload.get("messages")
+    # Option B: single message
+    single_message = (payload.get("message") or "").strip()
+
     pdf = payload.get("pdf")
     page_hint = payload.get("page_hint")
     force_docs = bool(payload.get("force_docs", False))
 
+    # Determine last user message
     last_user = ""
-    if isinstance(messages, list):
+    if isinstance(messages, list) and messages:
         for m in reversed(messages):
-            if m.get("role") == "user":
-                last_user = m.get("content", "") or ""
+            if (m.get("role") == "user") and (m.get("content") or "").strip():
+                last_user = (m.get("content") or "").strip()
                 break
+    elif single_message:
+        last_user = single_message
+
+    if not last_user:
+        # Nothing to answer
+        def empty():
+            yield "event: error\ndata: No user message provided.\n\n"
+            yield "event: done\ndata: ok\n\n"
+        return StreamingResponse(empty(), media_type="text/event-stream")
 
     def sse():
         try:
-            trimmed = messages[-10:] if isinstance(messages, list) else []
-            history_lines = []
-            for m in trimmed:
-                r = m.get("role")
-                c = (m.get("content") or "").strip()
-                if r in ("user", "assistant") and c:
-                    history_lines.append(f"{r.upper()}: {c}")
-            history_blob = "\n".join(history_lines).strip()
+            # Build a consistent history:
+            # - If frontend sends messages: use those (and optionally store)
+            # - Else: use server memory by chat_id
+            if isinstance(messages, list) and messages:
+                hist = []
+                for m in messages:
+                    r = (m.get("role") or "").lower()
+                    c = (m.get("content") or "").strip()
+                    if r in ("user", "assistant") and c:
+                        hist.append({"role": r, "content": c})
+                # store last chunk if chat_id exists
+                if chat_id:
+                    CHAT_STORE[chat_id] = hist[-CHAT_MAX_MESSAGES:]
+                    _trim_chat(chat_id)
+                history_for_prompt = hist
+            else:
+                # server-side memory path
+                history_for_prompt = get_history(chat_id) if chat_id else []
+
+                # also remember the new user turn before generating
+                if chat_id:
+                    remember(chat_id, "user", last_user)
+
+            history_blob = build_history_blob(history_for_prompt, max_msgs=18)
 
             use_docs = force_docs or should_use_docs(last_user, pdf_pin=pdf, page_hint=page_hint)
 
@@ -911,18 +976,38 @@ def chat_stream(payload: Dict[str, Any] = Body(...)):
             model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
 
             yield f"event: meta\ndata: model={model_name};used_docs={used_docs_flag};vision=False\n\n"
+            if chat_id:
+                yield f"event: meta\ndata: chat_id={chat_id}\n\n"
             if cites:
                 yield "event: meta\ndata: sources=" + ",".join([f"{d}:{p}" for d,p in cites]) + "\n\n"
 
             model = get_model(use_docs=used_docs_flag)
-            parts = build_gemini_parts(last_user, sources_text, images=None, history_blob=history_blob)
-            stream = model.generate_content(parts, stream=True)
+            parts = build_gemini_parts(
+                last_user,
+                sources_text,
+                images=None,
+                history_blob=history_blob
+            )
 
+            stream = model.generate_content(
+                parts,
+                generation_config=get_generation_config(used_docs_flag),
+                stream=True
+            )
+
+            full_answer = []
             for chunk in stream:
                 delta = getattr(chunk, "text", None)
                 if delta:
+                    full_answer.append(delta)
                     safe = delta.replace("\r","").replace("\n","\\n")
                     yield f"data: {safe}\n\n"
+
+            answer_text = "".join(full_answer).strip()
+
+            # Remember assistant turn (server memory path)
+            if chat_id and not (isinstance(messages, list) and messages):
+                remember(chat_id, "assistant", answer_text)
 
             yield "event: done\ndata: ok\n\n"
 
@@ -936,3 +1021,15 @@ def chat_stream(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control":"no-cache","Connection":"keep-alive","X-Accel-Buffering":"no"},
     )
+
+# ----------------------------
+# Optional: clear chat (handy for your saved chat list)
+# ----------------------------
+
+@app.post("/chat_clear")
+def chat_clear(payload: Dict[str, Any] = Body(...)):
+    chat_id = (payload.get("chat_id") or "").strip()
+    if not chat_id:
+        return {"ok": False, "error": "chat_id missing"}
+    CHAT_STORE.pop(chat_id, None)
+    return {"ok": True, "chat_id": chat_id, "cleared": True}
