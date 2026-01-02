@@ -10,29 +10,21 @@
       --bg0:#050913;
       --bg1:#071225;
       --bg2:#0a1a33;
-
       --surface: rgba(255,255,255,.06);
       --surface2: rgba(255,255,255,.08);
-      --surface3: rgba(255,255,255,.10);
       --border: rgba(255,255,255,.14);
-
       --text:#eaf2ff;
       --muted: rgba(234,242,255,.82);
       --muted2: rgba(234,242,255,.62);
-
       --p1:#2563eb;
       --p2:#38bdf8;
       --p3:#22d3ee;
-
       --ok:#22c55e;
       --warn:#f59e0b;
-
       --shadow: 0 18px 42px rgba(0,0,0,.52);
       --shadow2: 0 12px 26px rgba(0,0,0,.40);
-
       --r:18px;
       --r2:14px;
-
       --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     }
 
@@ -51,7 +43,6 @@
       overflow-x:hidden;
     }
 
-    /* Alive background: subtle drift grid */
     body::before{
       content:"";
       position: fixed;
@@ -72,7 +63,6 @@
       100%{ background-position: 140px 70px, 70px 140px; }
     }
 
-    /* Premium motion: soft aurora blobs (slow, professional) */
     body::after{
       content:"";
       position: fixed;
@@ -108,7 +98,6 @@
       }
     }
 
-    /* Sidebar */
     .sidebar{
       background: rgba(6,12,26,.84);
       border-right: 1px solid rgba(255,255,255,.08);
@@ -128,7 +117,6 @@
       transform: translate(40px,-40px);
     }
 
-    /* Brand */
     .brand{
       display:flex; align-items:center; gap:12px;
       padding: 10px 10px 14px;
@@ -138,7 +126,6 @@
       z-index:1;
     }
 
-    /* Premium mark */
     .logo{
       width:46px; height:46px;
       border-radius: 16px;
@@ -207,13 +194,7 @@
       color: #d7fbff;
       background: rgba(34,211,238,.10);
     }
-    .pill.danger{
-      border-color: rgba(244,63,94,.40);
-      background: rgba(244,63,94,.10);
-      color: rgba(255,225,230,.92);
-    }
 
-    /* Document selection */
     .doc-panel{
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.07);
@@ -269,14 +250,13 @@
       font-weight: 780;
       outline:none;
     }
-    .input::placeholder{ color: rgba(234,242,255,.55); }
-    .input:focus, select:focus{
-      outline: 3px solid rgba(56,189,248,.22);
-      outline-offset: 2px;
-    }
     select option{
       background: #0b1428;
       color: #eaf2ff;
+    }
+    .input:focus, select:focus{
+      outline: 3px solid rgba(56,189,248,.22);
+      outline-offset: 2px;
     }
 
     .doc-badge-row{
@@ -304,11 +284,10 @@
       box-shadow: 0 0 0 4px rgba(34,197,94,.12);
     }
     .mini.warn .dot{
-      background: var(--warn);
+      background: #f59e0b;
       box-shadow: 0 0 0 4px rgba(245,158,11,.12);
     }
 
-    /* Chat history panel */
     .history-panel{
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.06);
@@ -407,7 +386,7 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    .history-item .history-controls{
+    .history-controls{
       margin-top: 10px;
       display:flex;
       gap: 8px;
@@ -430,7 +409,6 @@
       border-color: rgba(56,189,248,.22);
     }
 
-    /* Nav */
     .nav{
       display:flex;
       flex-direction:column;
@@ -464,10 +442,8 @@
       background: rgba(255,255,255,.10);
     }
 
-    /* Content */
     .content{ padding: 18px 22px 40px; position: relative; z-index: 1; }
 
-    /* Topbar */
     .topbar{
       display:flex;
       align-items:stretch;
@@ -532,7 +508,6 @@
       max-width: 980px;
     }
 
-    /* Login at top */
     .auth-top{
       width: 250px;
       min-width: 230px;
@@ -590,7 +565,6 @@
       border-color: rgba(56,189,248,.24);
       box-shadow: 0 10px 24px rgba(0,0,0,.22);
     }
-    .btn:focus{ outline: 3px solid rgba(56,189,248,.20); outline-offset: 2px; }
 
     .btn.primary{
       background: linear-gradient(135deg, rgba(34,211,238,.96), rgba(37,99,235,.96));
@@ -603,27 +577,7 @@
       width: 100%;
       justify-content:center;
     }
-    .google-badge{
-      width: 18px; height: 18px;
-      border-radius: 7px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      border: 1px solid rgba(255,255,255,.16);
-      background: rgba(3,7,16,.50);
-      font-weight: 950;
-      font-size: 12px;
-    }
-    .auth-hint{
-      margin-top: 10px;
-      font-size: 12px;
-      color: rgba(234,242,255,.62);
-      line-height: 1.45;
-      position:relative;
-      z-index:1;
-    }
 
-    /* Section */
     .section-title{
       display:flex;
       align-items:center;
@@ -686,7 +640,6 @@
     .card-title{
       display:flex; gap: 10px; align-items:center;
     }
-
     .icon{
       width: 44px; height: 44px; border-radius: 16px;
       display:flex; align-items:center; justify-content:center;
@@ -715,11 +668,9 @@
       padding-top: 12px;
     }
 
-    /* Views */
     .view{ display:none; }
     .view.active{ display:block; }
 
-    /* Chat */
     .chat-shell{
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
@@ -792,7 +743,6 @@
     }
     .msg.user .meta{ text-align:right; }
 
-    /* Typing indicator */
     .typing{
       display:inline-flex;
       align-items:center;
@@ -845,31 +795,6 @@
     textarea::placeholder{ color: rgba(234,242,255,.55); }
     textarea:focus{ outline: 3px solid rgba(56,189,248,.22); outline-offset: 2px; }
 
-    /* Modal */
-    .modal-backdrop{
-      position: fixed;
-      inset: 0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding: 18px;
-      background: rgba(0,0,0,.55);
-      z-index: 999;
-    }
-    .modal-backdrop.show{ display:flex; }
-    .modal{
-      width: min(560px, 100%);
-      border-radius: var(--r);
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(6,12,26,.88);
-      backdrop-filter: blur(12px);
-      box-shadow: var(--shadow);
-      padding: 16px;
-    }
-    .modal h3{ margin:0 0 6px; font-size: 15px; }
-    .modal p{ margin:0 0 14px; color: rgba(234,242,255,.74); font-size: 13px; line-height: 1.55; }
-
-    /* Footer */
     .footer{
       margin-top: 16px;
       padding: 14px 4px 0;
@@ -898,7 +823,6 @@
 
 <body>
   <div class="app">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="brand">
         <div class="logo" aria-label="Raheem AI logo">
@@ -916,15 +840,15 @@
         <div>
           <h1>Raheem AI</h1>
           <p>Construction Compliance Intelligence</p>
-          <div class="tagline">Ask in plain language. Get a clear answer supported by your active guidance document.</div>
+          <div class="tagline">Ask naturally. Raheem AI chooses the right guidance and finds the answer.</div>
         </div>
       </div>
 
       <div class="doc-panel">
         <div class="doc-head">
           <div>
-            <div class="doc-title">Active Document</div>
-            <div class="doc-sub">Choose the document Raheem AI should use for this conversation.</div>
+            <div class="doc-title">Document Mode</div>
+            <div class="doc-sub">Auto mode is recommended. Choose a document only if you want to force it.</div>
           </div>
           <span class="pill brand" id="pdfCount">Documents: 0</span>
         </div>
@@ -938,15 +862,15 @@
         </div>
 
         <div class="field">
-          <label class="label" for="pdfSelect">Choose document</label>
+          <label class="label" for="pdfSelect">Force a document (optional)</label>
           <select id="pdfSelect">
-            <option value="">Loading documents...</option>
+            <option value="">Auto (Raheem AI chooses)</option>
           </select>
         </div>
 
         <div class="doc-badge-row">
           <span class="mini warn" id="serviceStatus"><span class="dot"></span>Connecting</span>
-          <span class="mini" id="activeDocPill"><span class="dot"></span>No document selected</span>
+          <span class="mini" id="activeDocPill"><span class="dot"></span>Auto mode</span>
         </div>
       </div>
 
@@ -967,7 +891,6 @@
         </button>
       </div>
 
-      <!-- Previous chats (shows under the nav; saved in browser local storage) -->
       <div class="history-panel" id="historyPanel">
         <div class="history-head">
           <h3 class="history-title">Previous Chats</h3>
@@ -976,24 +899,18 @@
             <button class="btn-mini" type="button" id="btnClearChats">Clear</button>
           </div>
         </div>
-
-        <div class="history-list" id="historyList">
-          <!-- injected -->
-        </div>
+        <div class="history-list" id="historyList"></div>
       </div>
     </aside>
 
-    <!-- CONTENT -->
     <main class="content">
-      <!-- DASHBOARD -->
       <section id="view-dashboard" class="view active">
         <div class="topbar">
           <div class="hero">
             <h2>Raheem AI <span class="pill brand">2026</span></h2>
             <p>
               Raheem AI helps professionals navigate Irish building regulation guidance more efficiently.
-              Ask questions in plain language and receive structured responses based on the active Technical Guidance Document,
-              with references that support verification and professional judgement.
+              Ask a question in plain language. Raheem AI identifies the relevant guidance, searches it, and answers with supporting references.
             </p>
             <div class="quote">Good compliance starts early, when design decisions are still easy to change.</div>
           </div>
@@ -1003,19 +920,16 @@
               <span>Sign in</span>
               <span class="pill brand">Coming</span>
             </div>
-            <button class="btn small" type="button" data-soon="Google Sign In">
-              <span class="google-badge">G</span>
+            <button class="btn small" type="button">
               Continue with Google
             </button>
             <div class="auth-hint">
-              Sign in will enable saved projects, access control, and usage history.
+              Sign in will enable saved projects, access control, and shared chat history.
             </div>
           </div>
         </div>
 
-        <div class="section-title">
-          <h3>Live</h3>
-        </div>
+        <div class="section-title"><h3>Live</h3></div>
 
         <div class="grid">
           <article class="card" id="cardCompliance" role="button" tabindex="0">
@@ -1024,13 +938,13 @@
                 <div class="icon i-live">CG</div>
                 <div>
                   <h4>Compliance Guidance</h4>
-                  <p>Ask a question and receive a clear answer with references to review in the selected document.</p>
+                  <p>Ask anything. Raheem AI chooses the most relevant TGD and finds the answer logically.</p>
                 </div>
               </div>
               <span class="pill live">Live</span>
             </div>
             <div class="cta">
-              <span class="pill brand" id="chipDoc">Select a document</span>
+              <span class="pill brand" id="chipDoc">Auto mode</span>
               <button class="btn primary" id="btnOpenChat" type="button">Start</button>
             </div>
           </article>
@@ -1064,7 +978,6 @@
         </div>
       </section>
 
-      <!-- FUTURE FEATURES -->
       <section id="view-future" class="view">
         <div class="hero" style="margin-bottom:14px;">
           <h2>Future Features <span class="pill brand">Roadmap</span></h2>
@@ -1089,7 +1002,7 @@
             </div>
             <div class="cta">
               <span class="pill brand">Example: 30m2, 2 bed, kitchen</span>
-              <button class="btn" type="button" data-soon="Early Design">Preview</button>
+              <button class="btn" type="button">Preview</button>
             </div>
           </article>
 
@@ -1106,75 +1019,7 @@
             </div>
             <div class="cta">
               <span class="pill brand">Access and use</span>
-              <button class="btn" type="button" data-soon="DAC Report Generator">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="card-head">
-              <div class="card-title">
-                <div class="icon i-report">FS</div>
-                <div>
-                  <h4>Fire Safety Certificate</h4>
-                  <p>Structured report drafting, risk checks, and consistent outputs suitable for professional review.</p>
-                </div>
-              </div>
-              <span class="pill brand">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill brand">Fire safety</span>
-              <button class="btn" type="button" data-soon="Fire Safety Certificate">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="card-head">
-              <div class="card-title">
-                <div class="icon i-bim">BIM</div>
-                <div>
-                  <h4>Model Review</h4>
-                  <p>Upload a model for compliance risks, practical issues, and recommended improvements.</p>
-                </div>
-              </div>
-              <span class="pill brand">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill brand">Revit or IFC</span>
-              <button class="btn" type="button" data-soon="Model Review">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="card-head">
-              <div class="card-title">
-                <div class="icon i-ber">BER</div>
-                <div>
-                  <h4>BER and Part L</h4>
-                  <p>Energy compliance outputs and clear improvement recommendations based on project inputs.</p>
-                </div>
-              </div>
-              <span class="pill brand">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill brand">Energy</span>
-              <button class="btn" type="button" data-soon="BER and Part L">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="card-head">
-              <div class="card-title">
-                <div class="icon i-products">SP</div>
-                <div>
-                  <h4>Manufacturers and Specs</h4>
-                  <p>Match products to performance requirements and support specification decisions.</p>
-                </div>
-              </div>
-              <span class="pill brand">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill brand">Products</span>
-              <button class="btn" type="button" data-soon="Manufacturers and Specs">Preview</button>
+              <button class="btn" type="button">Preview</button>
             </div>
           </article>
         </div>
@@ -1190,13 +1035,12 @@
         </div>
       </section>
 
-      <!-- CHAT -->
       <section id="view-chat" class="view">
         <div class="chat-shell">
           <div class="chat-top">
             <div>
               <strong>Compliance Guidance</strong><br>
-              <span id="chatSub">Using document: none selected</span>
+              <span id="chatSub">Auto mode: Raheem AI chooses the right guidance</span>
             </div>
             <button class="btn" id="btnBack" type="button">Back</button>
           </div>
@@ -1219,21 +1063,9 @@
     </main>
   </div>
 
-  <!-- Roadmap modal -->
-  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
-    <div class="modal">
-      <h3 id="modalTitle">Future Features</h3>
-      <p id="modalBody">This capability is part of the Raheem AI roadmap.</p>
-      <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button class="btn" id="btnCloseModal" type="button">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script>
     const API_BASE = "https://complyr.onrender.com";
 
-    // Views
     const viewDashboard = document.getElementById("view-dashboard");
     const viewFuture = document.getElementById("view-future");
     const viewChat = document.getElementById("view-chat");
@@ -1241,12 +1073,6 @@
     const navDashboard = document.getElementById("navDashboard");
     const navChat = document.getElementById("navChat");
     const navFuture = document.getElementById("navFuture");
-
-    // History UI
-    const historyPanel = document.getElementById("historyPanel");
-    const historyList = document.getElementById("historyList");
-    const btnNewChat = document.getElementById("btnNewChat");
-    const btnClearChats = document.getElementById("btnClearChats");
 
     function setNavActive(which){
       navDashboard.classList.toggle("active", which === "dashboard");
@@ -1259,10 +1085,6 @@
       viewChat.classList.toggle("active", name === "chat");
       viewFuture.classList.toggle("active", name === "future");
       setNavActive(name);
-
-      // Previous chats are most relevant in chat mode, but can stay visible
-      historyPanel.style.opacity = (name === "chat") ? "1" : ".92";
-
       if(name === "chat"){
         setTimeout(() => document.getElementById("chatInput").focus(), 40);
       }
@@ -1297,31 +1119,6 @@
       if(e.key === "Enter" || e.key === " ") openFuture();
     });
 
-    // Modal
-    const modalBackdrop = document.getElementById("modalBackdrop");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalBody = document.getElementById("modalBody");
-    const btnCloseModal = document.getElementById("btnCloseModal");
-
-    function openSoon(name){
-      modalTitle.textContent = "Future Features";
-      modalBody.textContent = name + " is part of the Raheem AI roadmap and will be available in a future release.";
-      modalBackdrop.classList.add("show");
-      modalBackdrop.setAttribute("aria-hidden", "false");
-      btnCloseModal.focus();
-    }
-    function closeSoon(){
-      modalBackdrop.classList.remove("show");
-      modalBackdrop.setAttribute("aria-hidden", "true");
-    }
-    btnCloseModal.addEventListener("click", closeSoon);
-    modalBackdrop.addEventListener("click", (e)=>{ if(e.target === modalBackdrop) closeSoon(); });
-
-    document.querySelectorAll("[data-soon]").forEach(btn=>{
-      btn.addEventListener("click", ()=> openSoon(btn.getAttribute("data-soon")));
-    });
-
-    // Documents
     const pdfCount = document.getElementById("pdfCount");
     const pdfSelect = document.getElementById("pdfSelect");
     const pdfSearch = document.getElementById("pdfSearch");
@@ -1332,48 +1129,21 @@
     const lastSync = document.getElementById("lastSync");
 
     let allDocs = [];
-    let activePdf = "";
+    let activePdf = ""; // empty means Auto mode
 
     function setActivePdf(name){
       activePdf = name || "";
-      const label = activePdf ? activePdf : "No document selected";
-      chatSub.textContent = "Using document: " + (activePdf ? activePdf : "none selected");
-      activeDocPill.innerHTML = '<span class="dot"></span>' + label;
-      chipDoc.textContent = activePdf ? "Document selected" : "Select a document";
+      if(!activePdf){
+        chatSub.textContent = "Auto mode: Raheem AI chooses the right guidance";
+        activeDocPill.innerHTML = '<span class="dot"></span>Auto mode';
+        chipDoc.textContent = "Auto mode";
+      } else {
+        chatSub.textContent = "Forced document: " + activePdf;
+        activeDocPill.innerHTML = '<span class="dot"></span>' + activePdf;
+        chipDoc.textContent = "Forced document";
+      }
       persistActiveChat();
       renderHistory();
-    }
-
-    function sortDocs(list){
-      return list.slice().sort((a,b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-    }
-
-    function fillSelect(list){
-      pdfSelect.innerHTML = "";
-      if(!list.length){
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "No documents available";
-        pdfSelect.appendChild(opt);
-        setActivePdf("");
-        return;
-      }
-
-      const sorted = sortDocs(list);
-
-      for(const name of sorted){
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        pdfSelect.appendChild(opt);
-      }
-
-      if(activePdf && sorted.includes(activePdf)){
-        pdfSelect.value = activePdf;
-      } else {
-        pdfSelect.value = sorted[0];
-        setActivePdf(sorted[0]);
-      }
     }
 
     function setSyncLabel(){
@@ -1382,15 +1152,31 @@
       lastSync.textContent = "Updated " + t;
     }
 
+    function fillSelect(list){
+      const current = activePdf;
+      pdfSelect.innerHTML = "";
+      const autoOpt = document.createElement("option");
+      autoOpt.value = "";
+      autoOpt.textContent = "Auto (Raheem AI chooses)";
+      pdfSelect.appendChild(autoOpt);
+
+      const sorted = list.slice().sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:"base"}));
+      for(const name of sorted){
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        pdfSelect.appendChild(opt);
+      }
+      pdfSelect.value = current; // stays Auto by default
+    }
+
     async function refreshDocs(){
       try{
         const r = await fetch(API_BASE + "/pdfs", { cache: "no-store" });
         if(!r.ok) throw new Error("bad");
         const data = await r.json();
-        const list = Array.isArray(data.pdfs) ? data.pdfs : [];
-
-        allDocs = list.slice();
-        pdfCount.textContent = "Documents: " + (typeof data.count === "number" ? data.count : list.length);
+        allDocs = Array.isArray(data.pdfs) ? data.pdfs : [];
+        pdfCount.textContent = "Documents: " + (typeof data.count === "number" ? data.count : allDocs.length);
 
         serviceStatus.classList.add("ok");
         serviceStatus.classList.remove("warn");
@@ -1398,14 +1184,20 @@
 
         setSyncLabel();
         fillSelect(allDocs);
-      } catch (e){
+
+        // If user previously forced a doc that no longer exists, reset to Auto
+        if(activePdf && !allDocs.includes(activePdf)){
+          setActivePdf("");
+          pdfSelect.value = "";
+        }
+
+      } catch(e){
         pdfCount.textContent = "Documents: 0";
         serviceStatus.classList.remove("ok");
         serviceStatus.classList.add("warn");
         serviceStatus.innerHTML = '<span class="dot"></span>Service unavailable';
-        pdfSelect.innerHTML = '<option value="">Documents unavailable</option>';
+        pdfSelect.innerHTML = '<option value="">Auto (Raheem AI chooses)</option>';
         setSyncLabel();
-        setActivePdf("");
       }
     }
 
@@ -1414,13 +1206,12 @@
       const q = pdfSearch.value.trim().toLowerCase();
       const filtered = !q ? allDocs : allDocs.filter(n => n.toLowerCase().includes(q));
       fillSelect(filtered);
-      if(activePdf && filtered.includes(activePdf)) pdfSelect.value = activePdf;
+      pdfSelect.value = activePdf;
     });
 
     refreshDocs();
     setInterval(refreshDocs, 8000);
 
-    // Chat (streaming typing)
     const chatLog = document.getElementById("chatLog");
     const chatInput = document.getElementById("chatInput");
     const btnSend = document.getElementById("btnSend");
@@ -1441,12 +1232,7 @@
     }
 
     function stopActiveStream(){
-      try{
-        if(activeStream){
-          activeStream.close();
-          activeStream = null;
-        }
-      } catch(e){}
+      try{ if(activeStream){ activeStream.close(); activeStream = null; } }catch(e){}
     }
 
     function addMessageDom(role, text, time){
@@ -1493,12 +1279,14 @@
     function buildStreamUrl(question){
       const params = new URLSearchParams();
       params.set("q", question);
-      params.set("pdf", activePdf);
+      if(activePdf){
+        params.set("pdf", activePdf);
+      }
       return API_BASE + "/ask_stream?" + params.toString();
     }
 
-    // Local chat history (browser storage)
-    const STORAGE_KEY = "raheem_ai_chats_v1";
+    // Local chat history
+    const STORAGE_KEY = "raheem_ai_chats_v2";
     let chats = [];
     let activeChatId = null;
 
@@ -1507,34 +1295,20 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         chats = raw ? JSON.parse(raw) : [];
         if(!Array.isArray(chats)) chats = [];
-      } catch(e){
-        chats = [];
-      }
+      } catch(e){ chats = []; }
     }
-
     function saveChats(){
-      try{
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-      } catch(e){}
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); } catch(e){}
     }
-
     function newChatTitle(){
       const d = new Date();
       const date = d.toLocaleDateString([], {year:"numeric", month:"short", day:"2-digit"});
       const time = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
       return "Chat " + date + " " + time;
     }
-
     function createChat(){
       const id = "c_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
-      const chat = {
-        id,
-        title: newChatTitle(),
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        pdf: activePdf || "",
-        messages: []
-      };
+      const chat = { id, title: newChatTitle(), createdAt: Date.now(), updatedAt: Date.now(), forcedPdf: activePdf || "", messages: [] };
       chats.unshift(chat);
       activeChatId = id;
       saveChats();
@@ -1542,45 +1316,38 @@
       renderActiveChat();
       return chat;
     }
-
-    function getActiveChat(){
-      return chats.find(c => c.id === activeChatId) || null;
-    }
-
+    function getActiveChat(){ return chats.find(c => c.id === activeChatId) || null; }
     function setActiveChat(id){
       const c = chats.find(x => x.id === id);
       if(!c) return;
       activeChatId = id;
-
-      // Restore document used for that chat if it still exists
-      if(c.pdf && allDocs.includes(c.pdf)){
-        activePdf = c.pdf;
-        pdfSelect.value = activePdf;
-        setActivePdf(activePdf);
+      // restore forced doc only if it exists; otherwise auto
+      if(c.forcedPdf && allDocs.includes(c.forcedPdf)){
+        setActivePdf(c.forcedPdf);
+        pdfSelect.value = c.forcedPdf;
+      } else {
+        setActivePdf("");
+        pdfSelect.value = "";
       }
-
       renderHistory();
       renderActiveChat();
     }
-
     function persistActiveChat(){
       const c = getActiveChat();
       if(!c) return;
       c.updatedAt = Date.now();
-      c.pdf = activePdf || c.pdf || "";
+      c.forcedPdf = activePdf || "";
       saveChats();
     }
-
     function addMsgToChat(role, text){
       const c = getActiveChat();
       if(!c) return;
       c.messages.push({ role, text: text || "", time: stamp() });
       c.updatedAt = Date.now();
-      c.pdf = activePdf || c.pdf || "";
+      c.forcedPdf = activePdf || "";
       saveChats();
       renderHistory();
     }
-
     function lastMeaningfulPreview(chat){
       const arr = chat.messages || [];
       for(let i = arr.length - 1; i >= 0; i--){
@@ -1589,15 +1356,20 @@
       }
       return "No messages yet.";
     }
-
     function formatSmallTime(ts){
       const d = new Date(ts);
       return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
     }
+    function escapeHtml(s){
+      return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    const historyList = document.getElementById("historyList");
+    const btnNewChat = document.getElementById("btnNewChat");
+    const btnClearChats = document.getElementById("btnClearChats");
 
     function renderHistory(){
       historyList.innerHTML = "";
-
       if(!chats.length){
         const empty = document.createElement("div");
         empty.className = "history-item";
@@ -1606,7 +1378,6 @@
         historyList.appendChild(empty);
         return;
       }
-
       for(const c of chats){
         const item = document.createElement("div");
         item.className = "history-item" + (c.id === activeChatId ? " active" : "");
@@ -1668,10 +1439,8 @@
     function deleteChat(id){
       const c = chats.find(x => x.id === id);
       if(!c) return;
-      const ok = confirm("Delete this chat?");
-      if(!ok) return;
+      if(!confirm("Delete this chat?")) return;
       chats = chats.filter(x => x.id !== id);
-
       if(activeChatId === id){
         activeChatId = chats.length ? chats[0].id : null;
       }
@@ -1681,8 +1450,7 @@
     }
 
     function clearAllChats(){
-      const ok = confirm("Clear all saved chats? This cannot be undone.");
-      if(!ok) return;
+      if(!confirm("Clear all saved chats? This cannot be undone.")) return;
       chats = [];
       activeChatId = null;
       saveChats();
@@ -1690,23 +1458,17 @@
       renderActiveChat();
     }
 
-    btnNewChat.addEventListener("click", ()=>{
-      createChat();
-      openChat();
-    });
+    btnNewChat.addEventListener("click", ()=>{ createChat(); openChat(); });
     btnClearChats.addEventListener("click", clearAllChats);
 
     function renderActiveChat(){
       chatLog.innerHTML = "";
       const c = getActiveChat();
-
       if(!c){
-        // Create first chat automatically
         const created = createChat();
-        // Add welcome only once per new chat
         created.messages.push({
           role: "assistant",
-          text: "Welcome to Raheem AI. Select an active document on the left, then ask a compliance question in plain language. Your chats are saved here in Previous Chats.",
+          text: "Hi. Ask your question normally and I will work out which guidance applies, then find the answer. If you want to force a document you can choose one on the left, but Auto mode is recommended.",
           time: stamp()
         });
         saveChats();
@@ -1714,28 +1476,14 @@
         renderActiveChat();
         return;
       }
-
-      // Show messages
       for(const m of (c.messages || [])){
         addMessageDom(m.role, m.text, m.time);
       }
       chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    function escapeHtml(s){
-      return String(s)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    // Init chat history
     loadChats();
-    if(chats.length){
-      activeChatId = chats[0].id;
-    }
+    if(chats.length) activeChatId = chats[0].id;
     renderHistory();
     renderActiveChat();
 
@@ -1743,25 +1491,15 @@
       const raw = chatInput.value.trim();
       if(!raw) return;
 
-      if(!activePdf){
-        addMsgToChat("assistant", "Please select an active document first.");
-        renderActiveChat();
-        return;
-      }
-
       stopActiveStream();
-
-      // Add user message
       addMsgToChat("user", raw);
       renderActiveChat();
       chatInput.value = "";
 
-      // Create assistant placeholder + typing
       const timeNow = stamp();
       const assistantDom = addMessageDom("assistant", "", timeNow);
       setTyping(assistantDom.bubble, true);
 
-      // Stream
       const url = buildStreamUrl(raw);
       let buffer = "";
 
@@ -1780,8 +1518,6 @@
           stopActiveStream();
           const finalText = (buffer || "").trim() || "No response available.";
           assistantDom.bubble.textContent = finalText;
-
-          // Save assistant message to history
           addMsgToChat("assistant", finalText);
           persistActiveChat();
           renderHistory();
@@ -1806,7 +1542,6 @@
       }
     }
 
-    // Chat events
     btnSend.addEventListener("click", send);
     chatInput.addEventListener("keydown", (e)=>{
       if(e.key === "Enter" && !e.shiftKey){
@@ -1815,18 +1550,12 @@
       }
     });
 
-    // Keep history in sync with route
-    function onRouteSyncHistory(){
-      const h = location.hash || "#/";
-      if(h === "#/chat"){
-        // Ensure chat exists and is rendered
-        if(!getActiveChat()) createChat();
-        renderHistory();
-        renderActiveChat();
-      }
-    }
-    window.addEventListener("hashchange", onRouteSyncHistory);
-    onRouteSyncHistory();
+    document.querySelectorAll("[data-prompt]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        chatInput.value = btn.getAttribute("data-prompt");
+        chatInput.focus();
+      });
+    });
   </script>
 </body>
 </html>
