@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Complyr | Construction Compliance Intelligence</title>
+  <title>Raheem AI | Construction Compliance Intelligence</title>
 
   <style>
     :root{
@@ -63,6 +63,7 @@
       background-size: 64px 64px;
       mask-image: radial-gradient(circle at 30% 10%, rgba(0,0,0,1), rgba(0,0,0,0) 65%);
       animation: gridDrift 18s linear infinite;
+      z-index: 0;
     }
 
     @keyframes gridDrift{
@@ -70,10 +71,33 @@
       100%{ background-position: 140px 70px, 70px 140px; }
     }
 
+    /* Extra premium motion: soft aurora blobs (professional, slow) */
+    body::after{
+      content:"";
+      position: fixed;
+      inset:-40vh -40vw;
+      pointer-events:none;
+      background:
+        radial-gradient(closest-side at 18% 30%, rgba(56,189,248,.12), rgba(56,189,248,0) 60%),
+        radial-gradient(closest-side at 82% 18%, rgba(37,99,235,.14), rgba(37,99,235,0) 62%),
+        radial-gradient(closest-side at 55% 86%, rgba(34,211,238,.10), rgba(34,211,238,0) 60%);
+      filter: blur(10px);
+      opacity: .92;
+      animation: auroraDrift 26s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    @keyframes auroraDrift{
+      0%,100%{ transform: translate3d(0,0,0) scale(1); }
+      50%{ transform: translate3d(3vw,-2vh,0) scale(1.03); }
+    }
+
     .app{
       display:grid;
       grid-template-columns: 340px 1fr;
       min-height:100vh;
+      position: relative;
+      z-index: 1;
     }
     @media (max-width: 980px){
       .app{ grid-template-columns: 1fr; }
@@ -91,6 +115,7 @@
       padding: 18px;
       position: relative;
       overflow:hidden;
+      z-index: 1;
     }
     .sidebar::after{
       content:"";
@@ -112,7 +137,7 @@
       z-index:1;
     }
 
-    /* Premium Complyr mark: architectural frame + structure + verification */
+    /* Premium mark */
     .logo{
       width:46px; height:46px;
       border-radius: 16px;
@@ -304,7 +329,7 @@
     }
 
     /* Content */
-    .content{ padding: 18px 22px 40px; }
+    .content{ padding: 18px 22px 40px; position: relative; z-index: 1; }
 
     /* Topbar */
     .topbar{
@@ -712,7 +737,7 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="brand">
-        <div class="logo" aria-label="Complyr logo">
+        <div class="logo" aria-label="Raheem AI logo">
           <!-- Upgraded mark: grid frame + structural block + compliance tick -->
           <svg viewBox="0 0 48 48" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
             <rect x="7" y="7" width="34" height="34" rx="7" stroke="rgba(255,255,255,.92)" stroke-width="2"/>
@@ -726,9 +751,9 @@
           </svg>
         </div>
         <div>
-          <h1>Complyr</h1>
+          <h1>Raheem AI</h1>
           <p>Construction Compliance Intelligence</p>
-          <div class="tagline">Clear guidance, trusted references, professional judgement supported</div>
+          <div class="tagline">Compliance guidance with references to support professional review</div>
         </div>
       </div>
 
@@ -736,7 +761,7 @@
         <div class="doc-head">
           <div>
             <div class="doc-title">Active Document</div>
-            <div class="doc-sub">Select the Technical Guidance Document you want Complyr to use.</div>
+            <div class="doc-sub">Select the Technical Guidance Document you want Raheem AI to use.</div>
           </div>
           <span class="pill brand" id="pdfCount">Documents: 0</span>
         </div>
@@ -783,10 +808,10 @@
       <section id="view-dashboard" class="view active">
         <div class="topbar">
           <div class="hero">
-            <h2>Complyr <span class="pill brand">2026</span></h2>
+            <h2>Raheem AI <span class="pill brand">2026</span></h2>
 
             <p>
-              Complyr makes building regulation compliance clearer and easier to navigate.
+              Raheem AI makes building regulation compliance clearer and easier to navigate.
               Ask questions in plain language and receive structured guidance based on the selected Technical Guidance Document,
               with references to support verification and professional judgement.
             </p>
@@ -797,7 +822,7 @@
           <div class="auth-top">
             <div class="auth-title">
               <span>Sign in</span>
-              <span class="pill brand">Roadmap</span>
+              <span class="pill brand">Coming</span>
             </div>
             <button class="btn small" type="button" data-soon="Google Sign In">
               <span class="google-badge">G</span>
@@ -834,9 +859,9 @@
           <article class="card" id="cardRoadmap" role="button" tabindex="0">
             <div class="card-head">
               <div class="card-title">
-                <div class="icon i-early">RF</div>
+                <div class="icon i-early">FF</div>
                 <div>
-                  <h4>Roadmap</h4>
+                  <h4>Future Features</h4>
                   <p>Explore upcoming capabilities including Early Design, DAC, certificates, model review, and energy compliance.</p>
                 </div>
               </div>
@@ -851,11 +876,11 @@
 
         <div class="footer">
           <div class="footer-left">
-            <span class="pill brand">Complyr</span>
+            <span class="pill brand">Raheem AI</span>
             <span class="sep" aria-hidden="true"></span>
             <span>Built 2026</span>
             <span class="sep" aria-hidden="true"></span>
-            <span>Made by Abdulraheem</span>
+            <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
           </div>
           <div class="footer-quote">Designed for real projects and real decisions.</div>
         </div>
@@ -866,10 +891,10 @@
         <div class="hero" style="margin-bottom:14px;">
           <h2>Future Features <span class="pill brand">Roadmap</span></h2>
           <p>
-            These capabilities expand Complyr from guidance into a complete compliance and certification platform.
+            These capabilities expand Raheem AI from guidance into a complete compliance and certification platform.
             Each module is designed for professional workflows, clear outputs, and reliable verification support.
           </p>
-          <div class="quote">Complyr is built to reduce time spent searching and increase confidence in decisions.</div>
+          <div class="quote">Raheem AI is built to reduce time spent searching and increase confidence in decisions.</div>
         </div>
 
         <div class="grid">
@@ -879,7 +904,7 @@
                 <div class="icon i-early">ED</div>
                 <div>
                   <h4>Early Design</h4>
-                  <p>Enter your area and requirements. Complyr generates multiple basic layout options and you choose what works best.</p>
+                  <p>Enter your area and requirements. Raheem AI generates multiple basic layout options and you choose what works best.</p>
                 </div>
               </div>
               <span class="pill brand">Roadmap</span>
@@ -978,11 +1003,11 @@
 
         <div class="footer">
           <div class="footer-left">
-            <span class="pill brand">Complyr</span>
+            <span class="pill brand">Raheem AI</span>
             <span class="sep" aria-hidden="true"></span>
             <span>Built 2026</span>
             <span class="sep" aria-hidden="true"></span>
-            <span>Made by Abdulraheem</span>
+            <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
           </div>
           <div class="footer-quote">A compliance platform designed to scale.</div>
         </div>
@@ -1017,11 +1042,11 @@
     </main>
   </div>
 
-  <!-- Roadmap modal (client-friendly) -->
+  <!-- Roadmap modal -->
   <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
     <div class="modal">
       <h3 id="modalTitle">Future Features</h3>
-      <p id="modalBody">This capability is part of the Complyr roadmap.</p>
+      <p id="modalBody">This capability is part of the Raheem AI roadmap.</p>
       <div style="display:flex; justify-content:flex-end; gap:10px;">
         <button class="btn" id="btnCloseModal" type="button">Close</button>
       </div>
@@ -1094,7 +1119,7 @@
 
     function openSoon(name){
       modalTitle.textContent = "Future Features";
-      modalBody.textContent = name + " is part of the Complyr roadmap and will be available in a future release.";
+      modalBody.textContent = name + " is part of the Raheem AI roadmap and will be available in a future release.";
       modalBackdrop.classList.add("show");
       modalBackdrop.setAttribute("aria-hidden", "false");
       btnCloseModal.focus();
@@ -1202,7 +1227,7 @@
 
     const messages = [
       { role:"assistant", text:
-        "Welcome to Complyr.\n\nSelect an active document on the left, then ask a compliance question in plain language.\nYou will receive a clear answer with helpful references to review in the document."
+        "Welcome to Raheem AI.\n\nSelect an active document on the left, then ask a compliance question in plain language.\nYou will receive a clear answer with helpful references to review in the document."
       }
     ];
 
