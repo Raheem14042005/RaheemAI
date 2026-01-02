@@ -3,33 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Raheem AI</title>
+  <title>Raheem AI | Construction Compliance Intelligence</title>
 
   <style>
+    /* -----------------------------------
+      RAHEEM AI — NEW LAYOUT (SELLABLE)
+      - spacious, premium, clear
+      - visible movement (aurora + particles)
+      - keep all existing functions
+      - hide saved chats unless in Chat view
+    ----------------------------------- */
+
     :root{
       --bg0:#050610;
       --bg1:#070a18;
-      --bg2:#0a1024;
+      --bg2:#0a0f22;
 
-      --card: rgba(255,255,255,.06);
-      --card2: rgba(255,255,255,.08);
+      --panel: rgba(255,255,255,.07);
+      --panel2: rgba(255,255,255,.10);
       --stroke: rgba(255,255,255,.12);
-      --stroke2: rgba(255,255,255,.16);
+      --stroke2: rgba(255,255,255,.18);
 
-      --text:#eef4ff;
-      --muted: rgba(238,244,255,.72);
-      --muted2: rgba(238,244,255,.58);
+      --text:#f3f7ff;
+      --muted: rgba(243,247,255,.78);
+      --muted2: rgba(243,247,255,.60);
 
-      --a1:#60a5fa; /* blue */
-      --a2:#5eead4; /* mint */
-      --a3:#a78bfa; /* violet */
+      /* Brighter brand accents */
+      --a1:#55f7d6; /* neon mint */
+      --a2:#6cb6ff; /* bright blue */
+      --a3:#b99bff; /* violet */
 
       --ok:#22c55e;
       --warn:#f59e0b;
-      --bad:#ef4444;
 
-      --shadow: 0 22px 70px rgba(0,0,0,.55);
-      --shadow2: 0 14px 40px rgba(0,0,0,.38);
+      --shadow: 0 26px 70px rgba(0,0,0,.58);
+      --shadow2: 0 16px 44px rgba(0,0,0,.40);
 
       --r:22px;
       --r2:16px;
@@ -43,495 +51,332 @@
       margin:0;
       font-family: var(--font);
       color: var(--text);
-      background: linear-gradient(180deg, var(--bg0), var(--bg1) 40%, var(--bg2));
+      background: linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
       overflow-x:hidden;
     }
 
-    /* ---- Animated background “alive” layer ---- */
-    .bg{
-      position: fixed;
-      inset: 0;
+    /* ---------- Motion background ---------- */
+    .bg-wrap{
+      position:fixed;
+      inset:0;
+      z-index:0;
       pointer-events:none;
-      z-index: 0;
       overflow:hidden;
     }
 
-    .bg::before{
-      content:"";
+    /* animated aurora */
+    .aurora{
       position:absolute;
-      inset:-2px;
-      opacity:.12;
-      background-image:
-        linear-gradient(to right, rgba(255,255,255,.16) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,.10) 1px, transparent 1px);
-      background-size: 78px 78px;
+      inset:-20%;
+      background:
+        radial-gradient(900px 520px at 15% 20%, rgba(85,247,214,.18) 0%, rgba(85,247,214,0) 65%),
+        radial-gradient(900px 520px at 85% 18%, rgba(108,182,255,.18) 0%, rgba(108,182,255,0) 62%),
+        radial-gradient(980px 560px at 55% 105%, rgba(185,155,255,.16) 0%, rgba(185,155,255,0) 60%);
+      filter: blur(18px);
+      opacity:.95;
       transform: translate3d(0,0,0);
-      animation: gridFloat 26s linear infinite;
-      mask-image: radial-gradient(circle at 25% 10%, rgba(0,0,0,1), rgba(0,0,0,0) 72%);
+      animation: auroraMove 14s ease-in-out infinite;
     }
-    @keyframes gridFloat{
-      0%{ background-position: 0 0, 0 0; }
-      100%{ background-position: 200px 110px, 110px 200px; }
+    @keyframes auroraMove{
+      0%,100%{ transform: translate3d(0,0,0) scale(1); }
+      40%{ transform: translate3d(18px,-14px,0) scale(1.02); }
+      70%{ transform: translate3d(-16px,12px,0) scale(1.03); }
     }
 
-    .blob{
-      position:absolute;
-      width: 720px;
-      height: 720px;
-      border-radius: 999px;
-      filter: blur(40px);
-      opacity: .22;
-      transform: translate3d(0,0,0);
-      mix-blend-mode: screen;
-      will-change: transform;
-    }
-    .blob.b1{
-      left:-220px; top:-240px;
-      background: radial-gradient(circle at 30% 30%, rgba(96,165,250,.9), rgba(96,165,250,0) 62%);
-      animation: blob1 18s ease-in-out infinite;
-    }
-    .blob.b2{
-      right:-260px; top:-160px;
-      background: radial-gradient(circle at 40% 30%, rgba(94,234,212,.85), rgba(94,234,212,0) 64%);
-      animation: blob2 20s ease-in-out infinite;
-    }
-    .blob.b3{
-      left:18vw; bottom:-380px;
-      width: 840px; height: 840px;
-      background: radial-gradient(circle at 50% 45%, rgba(167,139,250,.9), rgba(167,139,250,0) 65%);
-      animation: blob3 22s ease-in-out infinite;
-    }
-
-    @keyframes blob1{
-      0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      45%{ transform: translate3d(26px, 20px,0) scale(1.05); }
-      70%{ transform: translate3d(14px,-18px,0) scale(1.02); }
-    }
-    @keyframes blob2{
-      0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      40%{ transform: translate3d(-28px, 14px,0) scale(1.06); }
-      75%{ transform: translate3d(-14px,-20px,0) scale(1.03); }
-    }
-    @keyframes blob3{
-      0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      35%{ transform: translate3d(-18px, -24px,0) scale(1.05); }
-      72%{ transform: translate3d(22px, 10px,0) scale(1.02); }
-    }
-
-    /* subtle noise */
-    .noise{
+    /* subtle grid */
+    .grid{
       position:absolute;
       inset:0;
       opacity:.08;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
-      background-size: 220px 220px;
-      mix-blend-mode: overlay;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.16) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.10) 1px, transparent 1px);
+      background-size: 76px 76px;
+      mask-image: radial-gradient(circle at 30% 15%, rgba(0,0,0,1), rgba(0,0,0,0) 70%);
+      animation: gridDrift 24s linear infinite;
+    }
+    @keyframes gridDrift{
+      0%{ background-position: 0 0, 0 0; }
+      100%{ background-position: 220px 140px, 140px 220px; }
     }
 
-    /* ---- Shell ---- */
-    .shell{
+    /* particles */
+    canvas#particles{
+      position:absolute;
+      inset:0;
+      opacity:.55;
+      filter: blur(.1px);
+    }
+
+    /* ---------- Layout ---------- */
+    .app{
       position:relative;
       z-index:1;
       min-height:100vh;
-      padding: 18px;
-      display:flex;
-      flex-direction:column;
-      gap: 14px;
+      padding: 22px;
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items:start;
+      max-width: 1320px;
+      margin: 0 auto;
     }
 
-    /* ---- Top bar ---- */
-    .topbar{
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
+    @media (max-width: 1080px){
+      .app{
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
+      .sidebar{ position: relative; }
+    }
+
+    /* Sidebar (brand + controls) */
+    .sidebar{
+      border:1px solid var(--stroke);
+      background: var(--panel);
       border-radius: var(--r);
+      box-shadow: var(--shadow2);
       backdrop-filter: blur(14px);
-      box-shadow: 0 1px 0 rgba(255,255,255,.03);
       overflow:hidden;
     }
 
-    .topbar-inner{
-      padding: 14px 16px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 14px;
-    }
-
     .brand{
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
       display:flex;
-      align-items:center;
       gap: 12px;
-      min-width: 240px;
+      align-items:center;
     }
 
     .logo{
-      width:44px; height:44px;
-      border-radius: 16px;
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
       border: 1px solid rgba(255,255,255,.16);
       background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), rgba(255,255,255,0) 60%),
-        linear-gradient(135deg, rgba(96,165,250,.95), rgba(94,234,212,.95));
-      box-shadow: 0 18px 44px rgba(96,165,250,.16);
-      display:flex; align-items:center; justify-content:center;
-      user-select:none;
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.18), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
+      box-shadow: 0 18px 40px rgba(85,247,214,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 auto;
     }
-    .logo svg{ width:30px; height:30px; }
+    .logo svg{ width: 32px; height: 32px; }
 
-    .brand-title{
-      display:flex; flex-direction:column;
-      line-height:1.05;
+    .brand-meta{
+      display:flex;
+      flex-direction:column;
+      gap: 4px;
+      min-width: 0;
     }
-    .brand-title strong{
-      font-size: 14px;
+    .brand-meta strong{
+      font-size: 16px;
       letter-spacing:.2px;
       font-weight: 950;
+      line-height:1.1;
     }
-    .brand-title span{
+    .brand-meta span{
       font-size: 12px;
       color: var(--muted);
+      line-height:1.35;
     }
 
-    .tabs{
+    .nav{
       display:flex;
-      gap: 8px;
-      align-items:center;
-      flex-wrap: wrap;
-      justify-content:center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
     }
 
     .tab{
-      border: 1px solid rgba(255,255,255,.12);
+      flex:1;
+      border: 1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
       color: var(--text);
-      border-radius: 999px;
-      padding: 10px 12px;
+      padding: 11px 12px;
+      border-radius: 14px;
       cursor:pointer;
-      font-weight: 900;
-      font-size: 12px;
+      font-weight: 950;
+      font-size: 13px;
       transition: transform .12s ease, background .12s ease, border-color .12s ease;
       user-select:none;
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
-      white-space:nowrap;
     }
     .tab:hover{
       transform: translateY(-1px);
       background: rgba(255,255,255,.10);
-      border-color: rgba(96,165,250,.22);
+      border-color: rgba(108,182,255,.25);
     }
     .tab.active{
-      background: linear-gradient(135deg, rgba(96,165,250,.95), rgba(167,139,250,.95));
-      border-color: rgba(96,165,250,.30);
-      color: #061018;
+      background: linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
+      border-color: rgba(85,247,214,.30);
+      color: #041017;
     }
 
-    .pill{
-      font-size: 11px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(238,244,255,.74);
-      white-space: nowrap;
+    .block{
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
-    .pill.live{ border-color: rgba(34,197,94,.38); color:#d7ffe8; background: rgba(34,197,94,.10); }
-    .pill.brand{ border-color: rgba(94,234,212,.32); color: rgba(230,255,250,.92); background: rgba(94,234,212,.08); }
-    .pill.warn{ border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.10); color:#fff2d8; }
+    .block:last-child{ border-bottom:none; }
 
-    .right-meta{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      min-width: 220px;
-      justify-content:flex-end;
-    }
-
-    .mini{
-      display:inline-flex;
-      align-items:center;
-      gap: 8px;
-      font-size: 11px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: rgba(238,244,255,.76);
-      user-select:none;
-    }
-    .dot{
-      width:8px; height:8px;
-      border-radius:50%;
-      background: rgba(238,244,255,.36);
-    }
-    .mini.ok .dot{ background: var(--ok); box-shadow: 0 0 0 4px rgba(34,197,94,.12); }
-    .mini.warn .dot{ background: var(--warn); box-shadow: 0 0 0 4px rgba(245,158,11,.12); }
-    .mini.bad .dot{ background: var(--bad); box-shadow: 0 0 0 4px rgba(239,68,68,.12); }
-
-    /* ---- Main grid ---- */
-    .main{
-      display:grid;
-      grid-template-columns: 1fr 360px;
-      gap: 14px;
-      align-items:start;
-    }
-    @media (max-width: 1080px){
-      .main{ grid-template-columns: 1fr; }
-      .side{ order:-1; }
-    }
-
-    .panel{
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
-      border-radius: var(--r);
-      box-shadow: 0 1px 0 rgba(255,255,255,.03);
-      overflow:hidden;
-      backdrop-filter: blur(14px);
-    }
-
-    .panel-head{
-      padding: 14px 14px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap: 10px;
-    }
-    .panel-head h2{
-      margin:0;
-      font-size: 14px;
-      font-weight: 950;
-      letter-spacing:.2px;
-      display:flex;
-      gap: 10px;
-      align-items:center;
-    }
-    .panel-head p{
-      margin: 8px 0 0;
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.45;
-      max-width: 760px;
-    }
-
-    .panel-body{ padding: 14px; }
-
-    /* ---- Dashboard cards ---- */
-    .cards{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0,1fr));
-      gap: 12px;
-      margin-top: 14px;
-    }
-    @media (max-width: 900px){
-      .cards{ grid-template-columns: 1fr; }
-    }
-
-    .card{
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
-      border-radius: var(--r);
-      padding: 16px;
-      position:relative;
-      overflow:hidden;
-      box-shadow: 0 1px 0 rgba(255,255,255,.03);
-      transition: transform .14s ease, border-color .14s ease, background .14s ease, box-shadow .14s ease;
-      cursor:pointer;
-      min-height: 170px;
-    }
-    .card:hover{
-      transform: translateY(-2px);
-      border-color: rgba(96,165,250,.26);
-      background: rgba(255,255,255,.09);
-      box-shadow: var(--shadow2);
-    }
-    .card::after{
-      content:"";
-      position:absolute;
-      width: 300px; height: 300px;
-      border-radius: 999px;
-      top:-170px; right:-170px;
-      background: radial-gradient(circle, rgba(94,234,212,.14), rgba(94,234,212,0) 66%);
-      pointer-events:none;
-    }
-
-    .card-top{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap: 10px;
-    }
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      font-weight: 950;
-      font-size: 11px;
-      color: rgba(238,244,255,.84);
-      user-select:none;
-    }
-
-    .icon{
-      width: 44px; height: 44px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: linear-gradient(135deg, rgba(96,165,250,.95), rgba(94,234,212,.95));
-      display:flex; align-items:center; justify-content:center;
-      color:#061018;
-      font-weight: 950;
-      box-shadow: 0 14px 30px rgba(0,0,0,.35);
-      user-select:none;
-    }
-
-    .card h3{
-      margin: 12px 0 0;
-      font-size: 16px;
-      letter-spacing:.2px;
-      font-weight: 950;
-    }
-    .card p{
-      margin: 8px 0 0;
-      color: rgba(238,244,255,.74);
-      font-size: 13px;
-      line-height: 1.5;
-      max-width: 70ch;
-    }
-    .card .cta{
-      margin-top: 12px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap: 10px;
-    }
-
-    .btn{
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 10px 12px;
-      border-radius: 14px;
-      font-weight: 950;
-      font-size: 13px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;
-      display:inline-flex;
-      align-items:center;
-      gap: 8px;
-      user-select:none;
-    }
-    .btn:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.10);
-      border-color: rgba(96,165,250,.22);
-      box-shadow: 0 10px 24px rgba(0,0,0,.22);
-    }
-    .btn.primary{
-      background: linear-gradient(135deg, rgba(94,234,212,.95), rgba(96,165,250,.95));
-      border-color: rgba(94,234,212,.26);
-      color: #041016;
-    }
-    .btn.ghost{
-      background: rgba(255,255,255,.04);
-    }
-
-    /* ---- Side column blocks ---- */
-    .side-block{
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      padding: 14px;
-    }
-    .side-block:last-child{ border-bottom:none; }
-
-    .side-title{
+    .block-title{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 10px;
       margin-bottom: 10px;
     }
-    .side-title strong{
+    .block-title b{
       font-size: 12px;
-      letter-spacing: 1.1px;
+      letter-spacing: 1px;
       text-transform: uppercase;
-      font-weight: 950;
-      color: rgba(238,244,255,.86);
+      color: rgba(243,247,255,.86);
     }
 
-    .field{ margin-top: 10px; }
-    .label{
-      display:flex;
+    .pill{
+      display:inline-flex;
       align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      font-size: 11px;
-      color: rgba(238,244,255,.84);
-      margin-bottom: 6px;
-      letter-spacing: .2px;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
       font-weight: 950;
+      font-size: 12px;
+      color: rgba(243,247,255,.82);
+      white-space: nowrap;
+      user-select:none;
+    }
+    .pill.live{
+      border-color: rgba(34,197,94,.36);
+      background: rgba(34,197,94,.10);
+      color: #d9ffe9;
+    }
+    .pill.brand{
+      border-color: rgba(85,247,214,.26);
+      background: rgba(85,247,214,.08);
+      color: rgba(230,255,250,.95);
     }
 
-    .input, select{
+    .row{ margin-top: 10px; }
+    label{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 10px;
+      font-size: 12px;
+      color: rgba(243,247,255,.84);
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    input, select{
       width:100%;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.14);
-      background: rgba(3,6,14,.88);
+      background: rgba(2,5,12,.78);
       color: var(--text);
       padding: 11px 12px;
       font-size: 13px;
-      font-weight: 760;
+      font-weight: 750;
       outline:none;
     }
-    select option{ background:#0b1222; color:#eef4ff; }
-    .input:focus, select:focus{
-      outline: 3px solid rgba(96,165,250,.20);
+    select option{ background:#0b1222; color:#f3f7ff; }
+    input:focus, select:focus{
+      outline: 3px solid rgba(108,182,255,.22);
       outline-offset: 2px;
     }
+
+    .status{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      justify-content:space-between;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+    }
+    .mini{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      color: rgba(243,247,255,.76);
+      font-weight: 900;
+      font-size: 12px;
+    }
+    .dot{
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(243,247,255,.40);
+    }
+    .ok .dot{ background: var(--ok); box-shadow: 0 0 0 5px rgba(34,197,94,.12); }
+    .warn .dot{ background: var(--warn); box-shadow: 0 0 0 5px rgba(245,158,11,.12); }
+
+    .hint{
+      margin-top: 10px;
+      font-size: 12px;
+      color: rgba(243,247,255,.66);
+      line-height: 1.5;
+    }
+
+    /* Hide history panel unless in chat view */
+    .history-panel{ display:none; }
+    body.is-chat .history-panel{ display:block; }
 
     .history-list{
       display:flex;
       flex-direction:column;
       gap: 8px;
-      max-height: 240px;
+      max-height: 260px;
       overflow:auto;
       padding-right: 4px;
     }
     .history-item{
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(3,6,14,.58);
-      border-radius: 14px;
-      padding: 10px;
+      background: rgba(2,5,12,.55);
+      border-radius: 16px;
+      padding: 10px 10px;
       cursor:pointer;
       transition: transform .12s ease, background .12s ease, border-color .12s ease;
     }
     .history-item:hover{
       transform: translateY(-1px);
       background: rgba(255,255,255,.08);
-      border-color: rgba(96,165,250,.22);
+      border-color: rgba(108,182,255,.24);
     }
     .history-item.active{
-      border-color: rgba(94,234,212,.30);
+      border-color: rgba(85,247,214,.30);
       background: rgba(255,255,255,.10);
     }
     .history-row{
       display:flex;
       justify-content:space-between;
-      align-items:flex-start;
       gap: 10px;
+      align-items:flex-start;
     }
-    .history-name{ font-weight: 950; font-size: 12px; color: rgba(238,244,255,.92); line-height: 1.25; }
-    .history-meta{ font-size: 11px; color: rgba(238,244,255,.60); white-space: nowrap; }
+    .history-name{
+      font-weight: 950;
+      font-size: 12px;
+      color: rgba(243,247,255,.92);
+      line-height: 1.25;
+    }
+    .history-meta{
+      font-size: 11px;
+      color: rgba(243,247,255,.60);
+      white-space:nowrap;
+    }
     .history-preview{
       margin-top: 6px;
       font-size: 12px;
-      color: rgba(238,244,255,.70);
+      color: rgba(243,247,255,.72);
       line-height: 1.35;
-      display: -webkit-box;
+      display:-webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
-      overflow: hidden;
+      overflow:hidden;
     }
     .history-controls{
       margin-top: 10px;
@@ -542,7 +387,7 @@
       flex:1;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.06);
-      color: rgba(238,244,255,.88);
+      color: rgba(243,247,255,.88);
       padding: 8px 10px;
       border-radius: 12px;
       font-weight: 950;
@@ -553,14 +398,14 @@
     .history-btn:hover{
       transform: translateY(-1px);
       background: rgba(255,255,255,.10);
-      border-color: rgba(96,165,250,.22);
+      border-color: rgba(108,182,255,.22);
     }
 
     .btn-mini{
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
       color: var(--text);
-      padding: 7px 9px;
+      padding: 8px 10px;
       border-radius: 12px;
       font-weight: 950;
       font-size: 12px;
@@ -570,36 +415,287 @@
     .btn-mini:hover{
       transform: translateY(-1px);
       background: rgba(255,255,255,.10);
-      border-color: rgba(96,165,250,.22);
+      border-color: rgba(108,182,255,.22);
     }
 
-    /* ---- Views ---- */
-    .view{ display:none; }
-    .view.active{ display:block; }
-
-    /* ---- Chat ---- */
-    .chat-shell{
+    /* Content area */
+    .content{
+      border:1px solid var(--stroke);
+      background: var(--panel);
       border-radius: var(--r);
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
-      box-shadow: var(--shadow2);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
       overflow:hidden;
     }
 
-    .chat-top{
+    .content-inner{ padding: 18px; }
+
+    .hero{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      border-radius: var(--r);
+      padding: 18px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.03);
+    }
+
+    .hero h2{
+      margin:0;
+      font-size: 18px;
+      letter-spacing:.2px;
+      font-weight: 980;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+
+    .hero p{
+      margin: 10px 0 0;
+      color: rgba(243,247,255,.74);
+      font-size: 13px;
+      line-height: 1.55;
+      max-width: 80ch;
+    }
+
+    .quote{
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(2,5,12,.55);
+      color: rgba(243,247,255,.80);
+      font-weight: 800;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .top-row{
+      display:grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px;
+      align-items:start;
+      margin-top: 16px;
+    }
+    @media (max-width: 980px){
+      .top-row{ grid-template-columns: 1fr; }
+    }
+
+    .auth-top{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      border-radius: var(--r);
+      padding: 16px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.03);
+    }
+    .auth-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .auth-title span:first-child{
+      font-weight: 980;
+      font-size: 14px;
+    }
+
+    .btn{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 11px 12px;
+      border-radius: 14px;
+      font-weight: 950;
+      font-size: 13px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+      user-select:none;
+      width:100%;
+    }
+    .btn:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.10);
+      border-color: rgba(108,182,255,.22);
+      box-shadow: 0 12px 26px rgba(0,0,0,.22);
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
+      border-color: rgba(85,247,214,.26);
+      color: #041017;
+      width:auto;
+    }
+    .btn.small{
+      padding: 10px 12px;
+      width:100%;
+    }
+
+    .auth-hint{
+      margin-top: 10px;
+      font-size: 12px;
+      color: rgba(243,247,255,.68);
+      line-height:1.45;
+    }
+
+    .section-title{
+      margin: 18px 2px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .section-title h3{
+      margin:0;
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(243,247,255,.86);
+      font-weight: 980;
+    }
+
+    .grid-cards{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 14px;
+    }
+    @media (max-width: 980px){
+      .grid-cards{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      border-radius: var(--r);
+      padding: 16px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.03);
+      transition: transform .14s ease, background .14s ease, border-color .14s ease, box-shadow .14s ease;
+      cursor:pointer;
+      min-height: 170px;
+      position:relative;
+      overflow:hidden;
+    }
+    .card:hover{
+      transform: translateY(-2px);
+      border-color: rgba(108,182,255,.26);
+      background: rgba(255,255,255,.09);
+      box-shadow: var(--shadow2);
+    }
+    .card::after{
+      content:"";
+      position:absolute;
+      width: 320px; height: 320px;
+      border-radius: 999px;
+      top:-190px; right:-190px;
+      background: radial-gradient(circle, rgba(85,247,214,.14), rgba(85,247,214,0) 66%);
+      pointer-events:none;
+    }
+
+    .card-head{
+      display:flex;
+      justify-content:space-between;
+      gap: 12px;
+      align-items:flex-start;
+    }
+
+    .card-title{
+      display:flex;
+      gap: 12px;
+      align-items:flex-start;
+      min-width:0;
+    }
+
+    .icon{
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background: linear-gradient(135deg, rgba(108,182,255,.95), rgba(85,247,214,.95));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#041017;
+      font-weight: 980;
+      flex:0 0 auto;
+      box-shadow: 0 16px 30px rgba(0,0,0,.30);
+    }
+
+    .card-title h4{
+      margin: 0;
+      font-size: 15px;
+      font-weight: 980;
+      letter-spacing:.2px;
+    }
+    .card-title p{
+      margin: 6px 0 0;
+      font-size: 12.5px;
+      color: rgba(243,247,255,.72);
+      line-height: 1.45;
+      max-width: 70ch;
+    }
+
+    .cta{
+      margin-top: 14px;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+
+    .footer{
+      margin-top: 18px;
+      padding: 14px 4px 0;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 12px;
+      color: rgba(243,247,255,.62);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .footer-left{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .sep{
+      width: 6px;
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(85,247,214,.35);
+      box-shadow: 0 0 0 4px rgba(85,247,214,.12);
+    }
+
+    /* Views */
+    .view{ display:none; }
+    .view.active{ display:block; }
+
+    /* Chat */
+    .chat-shell{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      overflow:hidden;
+      box-shadow: var(--shadow2);
+    }
+
+    .chat-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 12px;
       padding: 14px 14px;
       border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(6,10,18,.55);
+      background: rgba(2,5,12,.55);
       backdrop-filter: blur(12px);
     }
     .chat-top strong{ font-size: 14px; }
-    .chat-top span{ font-size: 12px; color: rgba(238,244,255,.70); }
+    .chat-top span{ font-size: 12px; color: rgba(243,247,255,.72); }
 
-    .chips{
+    .chat-help{
       padding: 12px 14px;
       border-bottom: 1px solid rgba(255,255,255,.08);
       display:flex;
@@ -618,15 +714,19 @@
       transition: transform .12s ease, background .12s ease, border-color .12s ease;
       user-select:none;
     }
-    .chip:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); border-color: rgba(96,165,250,.22); }
+    .chip:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.10);
+      border-color: rgba(108,182,255,.22);
+    }
 
     .chat-log{
       height: 62vh;
       overflow-y:auto;
       padding: 14px;
       background:
-        radial-gradient(900px 480px at 20% 0%, rgba(96,165,250,.12), rgba(96,165,250,0) 62%),
-        radial-gradient(900px 480px at 90% 10%, rgba(94,234,212,.10), rgba(94,234,212,0) 55%),
+        radial-gradient(900px 480px at 20% 0%, rgba(108,182,255,.12), rgba(108,182,255,0) 62%),
+        radial-gradient(900px 480px at 90% 10%, rgba(85,247,214,.10), rgba(85,247,214,0) 55%),
         rgba(0,0,0,.10);
     }
 
@@ -645,15 +745,15 @@
       white-space: pre-wrap;
     }
     .msg.user .bubble{
-      background: linear-gradient(135deg, rgba(94,234,212,.95), rgba(96,165,250,.95));
-      border-color: rgba(94,234,212,.20);
-      color: #05121a;
+      background: linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
+      border-color: rgba(85,247,214,.20);
+      color: #041017;
       font-weight: 760;
     }
 
     .meta{
       font-size: 11px;
-      color: rgba(238,244,255,.55);
+      color: rgba(243,247,255,.55);
       margin-top: 6px;
     }
     .msg.user .meta{ text-align:right; }
@@ -662,8 +762,8 @@
       display:inline-flex;
       align-items:center;
       gap: 6px;
-      color: rgba(238,244,255,.72);
-      font-weight: 700;
+      color: rgba(243,247,255,.72);
+      font-weight: 800;
     }
     .dots{
       display:inline-flex;
@@ -673,7 +773,7 @@
     .dots span{
       width: 6px; height: 6px;
       border-radius: 99px;
-      background: rgba(238,244,255,.42);
+      background: rgba(243,247,255,.42);
       animation: dot 1.2s infinite ease-in-out;
     }
     .dots span:nth-child(2){ animation-delay: .15s; }
@@ -689,7 +789,7 @@
       align-items:flex-end;
       padding: 12px;
       border-top: 1px solid rgba(255,255,255,.10);
-      background: rgba(6,10,18,.60);
+      background: rgba(2,5,12,.60);
       backdrop-filter: blur(12px);
       position: sticky;
       bottom: 0;
@@ -701,288 +801,269 @@
       resize:none;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(3,6,14,.88);
+      background: rgba(2,5,12,.78);
       color: var(--text);
       font-family: var(--font);
       font-size: 13px;
       padding: 10px 12px;
       line-height: 1.35;
     }
-    textarea::placeholder{ color: rgba(238,244,255,.55); }
-    textarea:focus{ outline: 3px solid rgba(96,165,250,.20); outline-offset: 2px; }
-
-    .footer{
-      margin-top: 14px;
-      padding: 10px 2px 0;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 12px;
-      color: rgba(238,244,255,.62);
-      font-size: 12px;
-      flex-wrap: wrap;
-    }
-    .footer-left{ display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
-    .sep{
-      width: 6px; height: 6px;
-      border-radius: 99px;
-      background: rgba(94,234,212,.30);
-      box-shadow: 0 0 0 4px rgba(94,234,212,.10);
-    }
-
-    /* Mobile helpers */
-    .hide-mobile{ display:block; }
-    @media (max-width: 520px){
-      .hide-mobile{ display:none; }
-      .right-meta{ min-width: unset; }
-      .brand{ min-width: unset; }
-    }
+    textarea::placeholder{ color: rgba(243,247,255,.55); }
+    textarea:focus{ outline: 3px solid rgba(108,182,255,.22); outline-offset: 2px; }
   </style>
 </head>
 
 <body>
-  <div class="bg" aria-hidden="true">
-    <div class="blob b1"></div>
-    <div class="blob b2"></div>
-    <div class="blob b3"></div>
-    <div class="noise"></div>
+  <div class="bg-wrap" aria-hidden="true">
+    <div class="aurora"></div>
+    <div class="grid"></div>
+    <canvas id="particles"></canvas>
   </div>
 
-  <div class="shell">
-    <!-- TOPBAR -->
-    <header class="topbar">
-      <div class="topbar-inner">
-        <div class="brand">
-          <div class="logo" aria-label="Raheem AI logo">
-            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-              <rect x="7" y="7" width="34" height="34" rx="7" stroke="rgba(255,255,255,.92)" stroke-width="2"/>
-              <path d="M15 16H30V30H22.5C18.9 30 16 27.1 16 23.5V16Z" stroke="rgba(255,255,255,.88)" stroke-width="2"/>
-              <path d="M22.5 30V35" stroke="rgba(255,255,255,.88)" stroke-width="2" stroke-linecap="round"/>
-              <path d="M13 24H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M13 20H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M13 28H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M30.5 19.5L34 23" stroke="rgba(255,255,255,.96)" stroke-width="2.6" stroke-linecap="round"/>
-              <path d="M34 23L40 17" stroke="rgba(255,255,255,.96)" stroke-width="2.6" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="brand-title">
-            <strong>Raheem AI</strong>
-            <span>Your calm, capable assistant — chat normally or ask compliance.</span>
-          </div>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo" aria-label="Raheem AI logo">
+          <!-- same logo SVG you had -->
+          <svg viewBox="0 0 48 48" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <rect x="7" y="7" width="34" height="34" rx="7" stroke="rgba(255,255,255,.92)" stroke-width="2"/>
+            <path d="M15 16H30V30H22.5C18.9 30 16 27.1 16 23.5V16Z" stroke="rgba(255,255,255,.88)" stroke-width="2"/>
+            <path d="M22.5 30V35" stroke="rgba(255,255,255,.88)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M13 24H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M13 20H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M13 28H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M30.5 19.5L34 23" stroke="rgba(255,255,255,.96)" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M34 23L40 17" stroke="rgba(255,255,255,.96)" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
         </div>
-
-        <nav class="tabs" aria-label="Primary">
-          <button class="tab" id="navDashboard" type="button"><span>Home</span><span class="pill live">Live</span></button>
-          <button class="tab" id="navChat" type="button"><span>Chat</span><span class="pill brand">Auto</span></button>
-          <button class="tab" id="navFuture" type="button"><span>Roadmap</span><span class="pill brand">Future</span></button>
-        </nav>
-
-        <div class="right-meta">
-          <span class="pill brand" id="pdfCount">Docs: 0</span>
-          <span class="mini warn" id="serviceStatus"><span class="dot"></span>Connecting</span>
-          <span class="pill" id="lastSync">Updated —</span>
+        <div class="brand-meta">
+          <strong>Raheem AI</strong>
+          <span>Talk normally. When it becomes a compliance question, it switches automatically.</span>
         </div>
       </div>
-    </header>
 
-    <div class="main">
-      <!-- MAIN VIEWS -->
-      <div>
-        <!-- DASHBOARD VIEW -->
+      <div class="nav">
+        <button class="tab active" id="navDashboard" type="button">Home</button>
+        <button class="tab" id="navChat" type="button">Chat</button>
+        <button class="tab" id="navFuture" type="button">Future</button>
+      </div>
+
+      <div class="block">
+        <div class="block-title">
+          <b>Guidance</b>
+          <span class="pill brand" id="pdfCount">Docs 0</span>
+        </div>
+
+        <div class="row">
+          <label for="pdfSearch">Search documents <span class="pill" id="syncInline">sync</span></label>
+          <input id="pdfSearch" type="text" placeholder="Type to filter document names" />
+        </div>
+
+        <div class="row">
+          <label for="pdfSelect">Force a document <span class="pill brand" id="chipDoc">Auto mode</span></label>
+          <select id="pdfSelect">
+            <option value="">Auto mode</option>
+          </select>
+        </div>
+
+        <div class="status" id="serviceStatusWrap">
+          <div class="mini warn" id="serviceStatus"><span class="dot"></span>Connecting</div>
+          <div class="pill" id="lastSync">Updated</div>
+        </div>
+
+        <div class="hint">
+          Auto mode is recommended. Use “Force a document” only when you want to pin a source.
+        </div>
+      </div>
+
+      <div class="block history-panel" id="historyPanel">
+        <div class="block-title">
+          <b>Saved chats</b>
+          <div style="display:flex;gap:8px">
+            <button class="btn-mini" type="button" id="btnNewChat">New</button>
+            <button class="btn-mini" type="button" id="btnClearChats">Clear</button>
+          </div>
+        </div>
+        <div class="history-list" id="historyList"></div>
+        <div class="hint">Chats are stored locally in your browser.</div>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="content">
+      <div class="content-inner">
+        <!-- DASHBOARD -->
         <section id="view-dashboard" class="view active">
-          <div class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>Make decisions faster <span class="pill brand">with confidence</span></h2>
-                <p>
-                  Chat like you would with a smart friend. When your question turns into a regulation/compliance one,
-                  Raheem AI automatically switches gears and answers with clean supporting references.
-                </p>
-                <p style="margin-top:10px;color:rgba(238,244,255,.68)">
-                  “Good design feels effortless. Good compliance makes it stay that way.”
-                </p>
-              </div>
-              <div class="hide-mobile">
-                <button class="btn primary" id="btnOpenChat" type="button">Start chatting</button>
+          <div class="top-row">
+            <div class="hero">
+              <h2>Raheem AI <span class="pill brand">2026</span> <span class="pill live">Live</span></h2>
+              <p>
+                A calm, professional assistant for Irish building regulation guidance.
+                Ask in plain language. It will select the right guidance and answer with clear support.
+              </p>
+              <div class="quote">
+                Good compliance starts early. The best time to catch a problem is before it becomes a drawing.
               </div>
             </div>
 
-            <div class="panel-body">
-              <div class="cards">
-                <div class="card" id="cardChat" role="button" tabindex="0">
-                  <div class="card-top">
-                    <div class="icon">AI</div>
-                    <div class="badge"><span class="dot"></span>Live</div>
-                  </div>
-                  <h3>Chat (Normal + Compliance)</h3>
-                  <p>
-                    Ask anything. If it’s a regs/TGD question, I’ll handle it like a pro and keep it readable.
-                  </p>
-                  <div class="cta">
-                    <span class="pill brand" id="chipDoc">Auto guidance</span>
-                    <button class="btn primary" type="button">Open</button>
-                  </div>
-                </div>
-
-                <div class="card" id="cardRoadmap" role="button" tabindex="0">
-                  <div class="card-top">
-                    <div class="icon">+</div>
-                    <div class="badge"><span class="dot"></span>Roadmap</div>
-                  </div>
-                  <h3>Future features</h3>
-                  <p>
-                    Early design helpers, structured DAC-style outputs, BIM review hooks, and energy workflows — built around real project needs.
-                  </p>
-                  <div class="cta">
-                    <span class="pill brand">See what’s coming</span>
-                    <button class="btn" type="button">View</button>
-                  </div>
-                </div>
+            <div class="auth-top">
+              <div class="auth-title">
+                <span>Sign in</span>
+                <span class="pill brand">Coming</span>
               </div>
-
-              <div class="footer">
-                <div class="footer-left">
-                  <span class="pill brand">Raheem AI</span>
-                  <span class="sep" aria-hidden="true"></span>
-                  <span>Built 2026</span>
-                </div>
+              <button class="btn small" type="button">Continue with Google</button>
+              <div class="auth-hint">
+                Sign in will unlock saved projects, access control, and shared chat history.
+                For now, chats save locally in your browser.
               </div>
+            </div>
+          </div>
+
+          <div class="section-title"><h3>Live</h3></div>
+
+          <div class="grid-cards">
+            <article class="card" id="cardCompliance" role="button" tabindex="0">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon">CG</div>
+                  <div>
+                    <h4>Compliance Guidance</h4>
+                    <p>Ask anything. Raheem AI selects the most relevant guidance and answers logically with support.</p>
+                  </div>
+                </div>
+                <span class="pill live">Live</span>
+              </div>
+              <div class="cta">
+                <span class="pill brand" id="chipDoc2">Auto mode</span>
+                <button class="btn primary" id="btnOpenChat" type="button">Start</button>
+              </div>
+            </article>
+
+            <article class="card" id="cardRoadmap" role="button" tabindex="0">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon">FF</div>
+                  <div>
+                    <h4>Future Features</h4>
+                    <p>Early Design, structured reports, BIM review, energy compliance, and certification workflows.</p>
+                  </div>
+                </div>
+                <span class="pill brand">Roadmap</span>
+              </div>
+              <div class="cta">
+                <span class="pill brand">Preview roadmap</span>
+                <button class="btn" id="btnOpenFuture" type="button" style="width:auto">View</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="footer">
+            <div class="footer-left">
+              <span class="pill brand">Raheem AI</span>
+              <span class="sep" aria-hidden="true"></span>
+              <span>Built 2026</span>
+              <span class="sep" aria-hidden="true"></span>
+              <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
             </div>
           </div>
         </section>
 
-        <!-- FUTURE VIEW -->
+        <!-- FUTURE -->
         <section id="view-future" class="view">
-          <div class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>Roadmap <span class="pill brand">Future</span></h2>
-                <p>
-                  Raheem AI grows from “answers” into a workflow: capture inputs, spot risks early, and generate clean, reviewable outputs.
-                </p>
-                <p style="margin-top:10px;color:rgba(238,244,255,.68)">
-                  “The best time to catch a compliance issue is before it becomes a drawing.”
-                </p>
-              </div>
-              <button class="btn" id="btnBackFromFuture" type="button">Back</button>
+          <div class="hero" style="margin-bottom:14px;">
+            <h2>Future Features <span class="pill brand">Roadmap</span></h2>
+            <p>
+              Expanding Raheem AI into a full compliance and certification workflow.
+              Outputs will be clear, structured, and verifiable.
+            </p>
+            <div class="quote">
+              Move faster by knowing earlier. Reduce rework by catching risks before they become drawings.
             </div>
+          </div>
 
-            <div class="panel-body">
-              <div class="cards">
-                <div class="card" role="button" tabindex="0">
-                  <div class="card-top">
-                    <div class="icon">ED</div>
-                    <div class="badge"><span class="dot"></span>Planned</div>
-                  </div>
-                  <h3>Early Design</h3>
-                  <p>Input areas + constraints. Generate layout directions and refine the best option fast.</p>
-                  <div class="cta">
-                    <span class="pill brand">Example: 2-bed / 30m² zone</span>
-                    <button class="btn ghost" type="button">Preview</button>
+          <div class="grid-cards">
+            <article class="card">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon">ED</div>
+                  <div>
+                    <h4>Early Design</h4>
+                    <p>Enter areas and requirements. Generate basic layout options and refine the best direction.</p>
                   </div>
                 </div>
-
-                <div class="card" role="button" tabindex="0">
-                  <div class="card-top">
-                    <div class="icon">DAC</div>
-                    <div class="badge"><span class="dot"></span>Planned</div>
-                  </div>
-                  <h3>DAC-style Report Generator</h3>
-                  <p>Structured accessibility reports aligned to guidance and project inputs, ready for review.</p>
-                  <div class="cta">
-                    <span class="pill brand">Access & use</span>
-                    <button class="btn ghost" type="button">Preview</button>
-                  </div>
-                </div>
+                <span class="pill brand">Roadmap</span>
               </div>
-
-              <div class="footer">
-                <div class="footer-left">
-                  <span class="pill brand">Raheem AI</span>
-                  <span class="sep" aria-hidden="true"></span>
-                  <span>Roadmap</span>
-                </div>
+              <div class="cta">
+                <span class="pill brand">Example, 30m², 2 bed, kitchen</span>
+                <button class="btn" type="button" style="width:auto">Preview</button>
               </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon">DAC</div>
+                  <div>
+                    <h4>DAC Report Generator</h4>
+                    <p>Draft structured DAC reports aligned to guidance and project inputs, ready for review.</p>
+                  </div>
+                </div>
+                <span class="pill brand">Roadmap</span>
+              </div>
+              <div class="cta">
+                <span class="pill brand">Access and use</span>
+                <button class="btn" type="button" style="width:auto">Preview</button>
+              </div>
+            </article>
+
+            <!-- KEEP SPACE FOR MORE FUTURE FEATURES YOU ALREADY HAD -->
+            <!-- If your old file had more cards, paste them here and they will match styling. -->
+          </div>
+
+          <div class="footer">
+            <div class="footer-left">
+              <span class="pill brand">Raheem AI</span>
+              <span class="sep" aria-hidden="true"></span>
+              <span>Built 2026</span>
+              <span class="sep" aria-hidden="true"></span>
+              <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
             </div>
           </div>
         </section>
 
-        <!-- CHAT VIEW -->
+        <!-- CHAT -->
         <section id="view-chat" class="view">
           <div class="chat-shell">
             <div class="chat-top">
               <div>
                 <strong>Chat</strong><br>
-                <span id="chatSub">Auto mode: Raheem AI chooses the right guidance when needed</span>
+                <span id="chatSub">Auto mode, Raheem AI chooses the right guidance</span>
               </div>
-              <div style="display:flex;gap:10px;align-items:center">
-                <span class="pill brand" id="activeDocPill">Auto guidance</span>
-                <button class="btn" id="btnBack" type="button">Back</button>
-              </div>
+              <button class="btn" id="btnBack" type="button" style="width:auto">Back</button>
             </div>
 
-            <div class="chips">
-              <button class="chip" type="button" data-prompt="Explain this simply: what does 'major renovation' mean in Irish regs?">Major renovation</button>
+            <div class="chat-help">
+              <button class="chip" type="button" data-prompt="What are the typical travel distance limits for an office?">Travel distance</button>
               <button class="chip" type="button" data-prompt="What are the key requirements for an accessible WC?">Accessible WC</button>
-              <button class="chip" type="button" data-prompt="What are typical travel distance limits for an office?">Travel distance</button>
               <button class="chip" type="button" data-prompt="What are the main requirements for stair widths?">Stairs</button>
+              <button class="chip" type="button" data-prompt="What is the difference between compartments and sub-compartments?">Compartmentation</button>
             </div>
 
             <div class="chat-log" id="chatLog"></div>
 
             <div class="chat-input">
-              <textarea id="chatInput" placeholder="Message Raheem AI… (Enter to send, Shift+Enter for a new line)"></textarea>
-              <button class="btn primary" id="btnSend" type="button">Send</button>
+              <textarea id="chatInput" placeholder="Type your message. Enter to send. Shift+Enter for a new line."></textarea>
+              <button class="btn primary" id="btnSend" type="button" style="width:auto">Send</button>
             </div>
           </div>
         </section>
+
       </div>
-
-      <!-- SIDE PANEL -->
-      <aside class="panel side">
-        <!-- Docs -->
-        <div class="side-block">
-          <div class="side-title">
-            <strong>Guidance control</strong>
-            <span class="pill brand">Optional</span>
-          </div>
-
-          <div style="color:rgba(238,244,255,.68);font-size:12px;line-height:1.45">
-            Leave it on <b>Auto</b> most of the time. Only force a document when you want to pin the source.
-          </div>
-
-          <div class="field">
-            <label class="label" for="pdfSearch">Search documents <span class="pill" id="syncInline">—</span></label>
-            <input id="pdfSearch" class="input" type="text" placeholder="Filter by name…" />
-          </div>
-
-          <div class="field">
-            <label class="label" for="pdfSelect">Force a document</label>
-            <select id="pdfSelect">
-              <option value="">Auto (Raheem AI chooses)</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- History -->
-        <div class="side-block" id="historyPanel">
-          <div class="side-title">
-            <strong>Saved chats</strong>
-            <div style="display:flex;gap:8px">
-              <button class="btn-mini" type="button" id="btnNewChat">New</button>
-              <button class="btn-mini" type="button" id="btnClearChats">Clear</button>
-            </div>
-          </div>
-
-          <div class="history-list" id="historyList"></div>
-        </div>
-      </aside>
-    </div>
+    </main>
   </div>
 
   <script>
-    // If your frontend is served from the same domain as the API, set API_BASE to "".
-    // Keeping your current setup:
     const API_BASE = "https://complyr.onrender.com";
 
     // Views
@@ -994,17 +1075,14 @@
     const navChat = document.getElementById("navChat");
     const navFuture = document.getElementById("navFuture");
 
-    const btnOpenChat = document.getElementById("btnOpenChat");
-    const btnBack = document.getElementById("btnBack");
-    const btnBackFromFuture = document.getElementById("btnBackFromFuture");
-
-    const cardChat = document.getElementById("cardChat");
-    const cardRoadmap = document.getElementById("cardRoadmap");
-
     function setNavActive(which){
       navDashboard.classList.toggle("active", which === "dashboard");
       navChat.classList.toggle("active", which === "chat");
       navFuture.classList.toggle("active", which === "future");
+    }
+
+    function setBodyMode(which){
+      document.body.classList.toggle("is-chat", which === "chat");
     }
 
     function showView(name){
@@ -1012,6 +1090,7 @@
       viewChat.classList.toggle("active", name === "chat");
       viewFuture.classList.toggle("active", name === "future");
       setNavActive(name);
+      setBodyMode(name);
       if(name === "chat"){
         setTimeout(() => document.getElementById("chatInput").focus(), 40);
       }
@@ -1034,41 +1113,34 @@
     navChat.addEventListener("click", openChat);
     navFuture.addEventListener("click", openFuture);
 
-    if(btnOpenChat) btnOpenChat.addEventListener("click", openChat);
-    if(btnBack) btnBack.addEventListener("click", goDash);
-    if(btnBackFromFuture) btnBackFromFuture.addEventListener("click", goDash);
+    document.getElementById("btnOpenChat").addEventListener("click", openChat);
+    document.getElementById("btnBack").addEventListener("click", goDash);
+    document.getElementById("btnOpenFuture").addEventListener("click", openFuture);
 
-    cardChat.addEventListener("click", openChat);
-    cardChat.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") openChat(); });
-
-    cardRoadmap.addEventListener("click", openFuture);
-    cardRoadmap.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") openFuture(); });
+    document.getElementById("cardCompliance").addEventListener("click", openChat);
+    document.getElementById("cardRoadmap").addEventListener("click", openFuture);
 
     // Docs panel
     const pdfCount = document.getElementById("pdfCount");
     const pdfSelect = document.getElementById("pdfSelect");
     const pdfSearch = document.getElementById("pdfSearch");
     const chatSub = document.getElementById("chatSub");
-    const activeDocPill = document.getElementById("activeDocPill");
     const chipDoc = document.getElementById("chipDoc");
+    const chipDoc2 = document.getElementById("chipDoc2");
+
     const serviceStatus = document.getElementById("serviceStatus");
     const lastSync = document.getElementById("lastSync");
     const syncInline = document.getElementById("syncInline");
 
     let allDocs = [];
-    let activePdf = ""; // empty means Auto mode
+    let activePdf = "";
 
     function setActivePdf(name){
       activePdf = name || "";
-      if(!activePdf){
-        chatSub.textContent = "Auto mode: Raheem AI chooses the right guidance when needed";
-        activeDocPill.textContent = "Auto guidance";
-        chipDoc.textContent = "Auto guidance";
-      } else {
-        chatSub.textContent = "Pinned guidance: " + activePdf;
-        activeDocPill.textContent = activePdf;
-        chipDoc.textContent = "Pinned guidance";
-      }
+      const label = activePdf ? ("Pinned, " + activePdf) : "Auto mode";
+      chatSub.textContent = activePdf ? ("Pinned document, " + activePdf) : "Auto mode, Raheem AI chooses the right guidance";
+      chipDoc.textContent = label;
+      chipDoc2.textContent = label;
       persistActiveChat();
       renderHistory();
     }
@@ -1077,7 +1149,7 @@
       const d = new Date();
       const t = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
       lastSync.textContent = "Updated " + t;
-      if(syncInline) syncInline.textContent = t;
+      syncInline.textContent = t;
     }
 
     function fillSelect(list){
@@ -1085,7 +1157,7 @@
       pdfSelect.innerHTML = "";
       const autoOpt = document.createElement("option");
       autoOpt.value = "";
-      autoOpt.textContent = "Auto (Raheem AI chooses)";
+      autoOpt.textContent = "Auto mode";
       pdfSelect.appendChild(autoOpt);
 
       const sorted = list.slice().sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:"base"}));
@@ -1105,10 +1177,11 @@
         const data = await r.json();
         allDocs = Array.isArray(data.pdfs) ? data.pdfs : [];
         const count = (typeof data.count === "number") ? data.count : allDocs.length;
-        pdfCount.textContent = "Docs: " + count;
 
+        pdfCount.textContent = "Docs " + count;
+
+        serviceStatus.classList.remove("warn");
         serviceStatus.classList.add("ok");
-        serviceStatus.classList.remove("warn","bad");
         serviceStatus.innerHTML = '<span class="dot"></span>Service ready';
 
         setSyncLabel();
@@ -1119,11 +1192,11 @@
           pdfSelect.value = "";
         }
       } catch(e){
-        pdfCount.textContent = "Docs: 0";
+        pdfCount.textContent = "Docs 0";
         serviceStatus.classList.remove("ok");
         serviceStatus.classList.add("warn");
         serviceStatus.innerHTML = '<span class="dot"></span>Service unavailable';
-        pdfSelect.innerHTML = '<option value="">Auto (Raheem AI chooses)</option>';
+        pdfSelect.innerHTML = '<option value="">Auto mode</option>';
         setSyncLabel();
       }
     }
@@ -1192,7 +1265,7 @@
         bubbleEl.innerHTML = '';
         const span = document.createElement("span");
         span.className = "typing";
-        span.textContent = "Raheem AI is typing";
+        span.textContent = "Typing";
         const dots = document.createElement("span");
         dots.className = "dots";
         dots.innerHTML = "<span></span><span></span><span></span>";
@@ -1215,8 +1288,8 @@
       return API_BASE + "/ask_stream?" + params.toString();
     }
 
-    // Local chat history
-    const STORAGE_KEY = "raheem_ai_chats_v3";
+    // Local chat history (improved naming)
+    const STORAGE_KEY = "raheem_ai_chats_v4";
     let chats = [];
     let activeChatId = null;
 
@@ -1230,12 +1303,19 @@
     function saveChats(){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); } catch(e){}
     }
-    function newChatTitle(){
-      const d = new Date();
-      const date = d.toLocaleDateString([], {year:"numeric", month:"short", day:"2-digit"});
-      const time = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-      return "Chat " + date + " " + time;
+
+    function cleanTitle(s){
+      const t = (s || "").trim().replace(/\s+/g," ");
+      if(!t) return "";
+      return t.length > 42 ? (t.slice(0,42) + "…") : t;
     }
+
+    function newChatTitle(){
+      // Session numbering, clean and sellable
+      const n = (chats?.length || 0) + 1;
+      return "Session " + n;
+    }
+
     function createChat(){
       const id = "c_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
       const chat = { id, title: newChatTitle(), createdAt: Date.now(), updatedAt: Date.now(), forcedPdf: activePdf || "", messages: [] };
@@ -1246,7 +1326,9 @@
       renderActiveChat();
       return chat;
     }
+
     function getActiveChat(){ return chats.find(c => c.id === activeChatId) || null; }
+
     function setActiveChat(id){
       const c = chats.find(x => x.id === id);
       if(!c) return;
@@ -1263,6 +1345,7 @@
       renderHistory();
       renderActiveChat();
     }
+
     function persistActiveChat(){
       const c = getActiveChat();
       if(!c) return;
@@ -1270,15 +1353,24 @@
       c.forcedPdf = activePdf || "";
       saveChats();
     }
+
     function addMsgToChat(role, text){
       const c = getActiveChat();
       if(!c) return;
+
+      // auto-title after first user message if still "Session X"
+      if(role === "user" && /^Session\s\d+$/.test(c.title || "")){
+        const candidate = cleanTitle(text);
+        if(candidate) c.title = candidate;
+      }
+
       c.messages.push({ role, text: text || "", time: stamp() });
       c.updatedAt = Date.now();
       c.forcedPdf = activePdf || "";
       saveChats();
       renderHistory();
     }
+
     function lastMeaningfulPreview(chat){
       const arr = chat.messages || [];
       for(let i = arr.length - 1; i >= 0; i--){
@@ -1287,10 +1379,12 @@
       }
       return "No messages yet.";
     }
+
     function formatSmallTime(ts){
       const d = new Date(ts);
       return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
     }
+
     function escapeHtml(s){
       return String(s)
         .replaceAll("&","&amp;")
@@ -1310,7 +1404,7 @@
         const empty = document.createElement("div");
         empty.className = "history-item";
         empty.style.cursor = "default";
-        empty.innerHTML = '<div class="history-name">No saved chats yet</div><div class="history-preview">Start chatting and it’ll appear here.</div>';
+        empty.innerHTML = '<div class="history-name">No saved chats yet</div><div class="history-preview">Start a chat and it will appear here.</div>';
         historyList.appendChild(empty);
         return;
       }
@@ -1324,7 +1418,7 @@
 
         item.innerHTML = `
           <div class="history-row">
-            <div class="history-name">${escapeHtml(c.title || "Chat")}</div>
+            <div class="history-name">${escapeHtml(c.title || "Session")}</div>
             <div class="history-meta">${meta}</div>
           </div>
           <div class="history-preview">${escapeHtml(preview)}</div>
@@ -1362,11 +1456,11 @@
     function renameChat(id){
       const c = chats.find(x => x.id === id);
       if(!c) return;
-      const name = prompt("Rename chat", c.title || "Chat");
+      const name = prompt("Rename chat", c.title || "Session");
       if(name === null) return;
       const cleaned = (name || "").trim();
       if(!cleaned) return;
-      c.title = cleaned;
+      c.title = cleanTitle(cleaned) || c.title;
       c.updatedAt = Date.now();
       saveChats();
       renderHistory();
@@ -1404,7 +1498,7 @@
         const created = createChat();
         created.messages.push({
           role: "assistant",
-          text: "Hey — talk to me normally. If your question turns into a regs/compliance one, I’ll handle it and keep it readable.",
+          text: "Hey. Talk to me normally. If your question turns into regs or compliance, I’ll switch automatically and keep it readable.",
           time: stamp()
         });
         saveChats();
@@ -1508,19 +1602,98 @@
       }
     });
 
-    // Slight mouse-parallax to make the background feel alive (very subtle)
-    const blobs = document.querySelectorAll(".blob");
-    let mx = 0, my = 0;
-    window.addEventListener("mousemove", (e)=>{
-      const w = window.innerWidth || 1;
-      const h = window.innerHeight || 1;
-      mx = (e.clientX / w) * 2 - 1; // -1..1
-      my = (e.clientY / h) * 2 - 1;
-      blobs.forEach((b, i)=>{
-        const amt = (i+1) * 6;
-        b.style.transform = `translate3d(${mx*amt}px, ${my*amt}px, 0)`;
+    // keep pdf pin in sync with history
+    function setActivePdfSafe(v){
+      setActivePdf(v);
+      pdfSelect.value = v || "";
+    }
+
+    // Particle background (visible motion)
+    (function(){
+      const canvas = document.getElementById("particles");
+      const ctx = canvas.getContext("2d");
+      let w=0,h=0, dpr=1;
+      let particles = [];
+      const COUNT = 64;
+
+      function resize(){
+        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        w = canvas.width = Math.floor(window.innerWidth * dpr);
+        h = canvas.height = Math.floor(window.innerHeight * dpr);
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+      }
+
+      function rand(a,b){ return a + Math.random()*(b-a); }
+
+      function init(){
+        particles = [];
+        for(let i=0;i<COUNT;i++){
+          particles.push({
+            x: rand(0,w),
+            y: rand(0,h),
+            r: rand(1.2, 2.8) * dpr,
+            vx: rand(-0.18, 0.18) * dpr,
+            vy: rand(-0.12, 0.12) * dpr,
+            a: rand(0.18, 0.55)
+          });
+        }
+      }
+
+      function draw(){
+        ctx.clearRect(0,0,w,h);
+
+        // dots
+        for(const p of particles){
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if(p.x < -20) p.x = w+20;
+          if(p.x > w+20) p.x = -20;
+          if(p.y < -20) p.y = h+20;
+          if(p.y > h+20) p.y = -20;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+
+          // alternate between mint and blue softly
+          const c = (p.x / w) > 0.5 ? `rgba(108,182,255,${p.a})` : `rgba(85,247,214,${p.a})`;
+          ctx.fillStyle = c;
+          ctx.fill();
+        }
+
+        // faint connecting lines
+        for(let i=0;i<particles.length;i++){
+          for(let j=i+1;j<particles.length;j++){
+            const a = particles[i], b = particles[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const max = 140 * dpr;
+            if(dist < max){
+              const alpha = (1 - dist/max) * 0.10;
+              ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+              ctx.lineWidth = 1 * dpr;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener("resize", ()=>{
+        resize();
+        init();
       });
-    });
+
+      resize();
+      init();
+      draw();
+    })();
+
   </script>
 </body>
 </html>
