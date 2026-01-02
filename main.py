@@ -1,28 +1,4 @@
 # main.py — Raheem AI (Persistent PDFs + Smart Vision + Streaming)
-#
-# What you get:
-# 1) Persistent PDFs on Render:
-#    - Requires Render Disk mounted at /var/data
-#    - Stores PDFs in /var/data/pdfs so they survive restarts/redeploys
-#
-# 2) Lower cost per question:
-#    - Default mode: TEXT excerpts (cheap)
-#    - Automatically switches to VISION (images) only when needed (tables/diagrams)
-#    - Uses fewer pages by default + caps output tokens
-#    - Uses gpt-4o-mini by default (cheap), configurable via env var MODEL_NAME
-#
-# 3) Typing effect:
-#    - Adds /ask_stream (Server-Sent Events) so the frontend can show gradual output
-#    - Your current /ask still works (non-stream)
-#
-# Endpoints:
-# - GET  /                (status)
-# - GET  /health          (health)
-# - GET  /docs            (frontend check)
-# - GET  /pdfs            (list PDFs)
-# - POST /upload-pdf      (upload PDFs)
-# - GET  /ask             (non-stream answer)
-# - GET  /ask_stream      (stream answer for "typing")
 
 from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,17 +14,12 @@ import fitz  # PyMuPDF
 import traceback
 from typing import List, Optional, Dict, Tuple
 
-# ----------------------------
-# Setup
-# ----------------------------
-
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY missing")
 
-# Default cheaper model. Override on Render with env var MODEL_NAME=gpt-4o if desired.
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -57,7 +28,7 @@ app = FastAPI(docs_url="/swagger", redoc_url=None)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # demo-safe; tighten later
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -65,34 +36,38 @@ app.add_middleware(
 BASE_DIR = Path(__file__).resolve().parent
 
 # ----------------------------
-# Persistent PDFs on Render
-# ----------------------------
-# IMPORTANT:
-# Render -> Service -> Settings -> Disks -> Add Disk
-# Mount path: /var/data
-#
-# PDFs will live in /var/data/pdfs on Render (persistent).
-if os.getenv("RENDER"):
-    PDF_DIR = Path("/var/data/pdfs")
-else:
-    PDF_DIR = BASE_DIR / "pdfs"
-
-PDF_DIR.mkdir(parents=True, exist_ok=True)
-
-# ----------------------------
-# In-memory page text index (for fast page selection)
+# PDF storage (Render disk if available, otherwise fallback)
 # ----------------------------
 
-# pdf_name -> list[str] (page_texts, index 0 = page 1)
+def choose_pdf_dir() -> Path:
+    preferred = Path("/var/data/pdfs")      # persistent if Render Disk mounted at /var/data
+    fallback = BASE_DIR / "pdfs"            # always works, not persistent on Render
+
+    if os.getenv("RENDER"):
+        try:
+            preferred.mkdir(parents=True, exist_ok=True)
+            return preferred
+        except Exception:
+            fallback.mkdir(parents=True, exist_ok=True)
+            return fallback
+
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+PDF_DIR = choose_pdf_dir()
+
+# ----------------------------
+# In-memory page text index
+# ----------------------------
+
 PDF_TEXT_INDEX: Dict[str, List[str]] = {}
 
 def _clean_text(s: str) -> str:
-    s = s.replace("\u00ad", "")  # soft hyphen
+    s = s.replace("\u00ad", "")
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
 def index_pdf(pdf_path: Path) -> None:
-    """Extract text from all pages into memory for fast page selection."""
     name = pdf_path.name
     page_texts: List[str] = []
     doc = fitz.open(pdf_path)
@@ -171,10 +146,9 @@ def score_page(page_text: str, tokens: List[str], full_q: str) -> int:
 def auto_select_pages(
     pdf_name: str,
     question: str,
-    top_k: int = 4,  # cheaper default
+    top_k: int = 4,
     window: int = 1
 ) -> List[int]:
-    """Returns 0-based page indexes."""
     page_texts = PDF_TEXT_INDEX.get(pdf_name)
     if not page_texts:
         pdf_path = PDF_DIR / pdf_name
@@ -230,11 +204,10 @@ def extract_pages_text(pdf_path: Path, page_indexes: List[int], max_chars_per_pa
         doc.close()
 
 # ----------------------------
-# VISION images (expensive mode, use sparingly)
+# VISION images (use sparingly)
 # ----------------------------
 
 def pdf_pages_to_images(pdf_path: Path, page_indexes: List[int], dpi: int = 120):
-    """Render specified pages to data-url images for vision."""
     images = []
     doc = fitz.open(pdf_path)
     try:
@@ -282,7 +255,6 @@ def needs_vision_from_text_excerpt(excerpt: str) -> bool:
         return True
     if very_short > (len(lines) * 0.25):
         return True
-
     if len(excerpt) < 900:
         return True
 
@@ -319,7 +291,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     return {"ok": True, "pdf": file.filename, "stored_in": str(PDF_DIR)}
 
 # ----------------------------
-# Prompt
+# Prompt (no symbols, no markdown)
 # ----------------------------
 
 SYSTEM_RULES = """
@@ -327,12 +299,12 @@ You are Raheem AI, a specialist assistant for Irish Building Regulations Technic
 
 Communication style (mandatory):
 - Do NOT use markdown of any kind.
-- Do NOT use bullet points, numbered lists, asterisks (*), hashes (#), headings, or symbols.
+- Do NOT use bullet points, numbered lists, asterisks, hashes, headings, or symbols.
 - Write in natural, flowing sentences only.
 - Respond as if explaining verbally to a professional colleague.
 - Sound calm, confident, and approachable.
 - Avoid robotic or overly formal language.
-- Do not say things like “thinking”, “analyzing”, or describe internal processes.
+- Do not say things like thinking or analyzing, and do not describe internal processes.
 
 Answer rules:
 - Prioritise correctness. Do not invent numbers, limits, or clauses.
@@ -340,7 +312,6 @@ Answer rules:
 - If an exact value is not clearly visible in the provided material, say so plainly and explain what can be verified instead.
 - Keep answers clear, helpful, and naturally structured in short paragraphs.
 """
-
 
 def build_user_header(question: str, pdf_name: str, pages_used: List[int], mode: str) -> str:
     shown = [p + 1 for p in pages_used]
@@ -350,10 +321,6 @@ def build_user_header(question: str, pdf_name: str, pages_used: List[int], mode:
         f"Mode: {mode}\n\n"
         f"User question:\n{question}\n"
     )
-
-# ----------------------------
-# Core answer (shared by /ask and /ask_stream)
-# ----------------------------
 
 def build_openai_input(
     question: str,
@@ -414,7 +381,7 @@ def resolve_page_indexes(pdf_name: str, question: str, pages: Optional[str], top
     return page_indexes
 
 # ----------------------------
-# Non-stream endpoint (compatible with your current frontend)
+# Non-stream endpoint
 # ----------------------------
 
 @app.get("/ask")
@@ -445,7 +412,7 @@ def ask(
 
         resp = client.responses.create(
             model=MODEL_NAME,
-            max_output_tokens=700,  # cost control
+            max_output_tokens=700,
             input=[{"role": "user", "content": user_blocks}],
         )
 
@@ -459,7 +426,7 @@ def ask(
         return {"ok": False, "error": str(e), "trace": traceback.format_exc().splitlines()[-12:]}
 
 # ----------------------------
-# Streaming endpoint (for "typing" UI)
+# Streaming endpoint (typing UI)
 # ----------------------------
 
 @app.get("/ask_stream")
@@ -476,7 +443,11 @@ def ask_stream(
     if not pdf_path.exists():
         def err():
             yield "event: error\ndata: PDF not found\n\n"
-        return StreamingResponse(err(), media_type="text/event-stream")
+        return StreamingResponse(
+            err(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+        )
 
     try:
         page_indexes = resolve_page_indexes(pdf, q, pages, top_k, window, pdf_path)
@@ -491,10 +462,13 @@ def ask_stream(
     except Exception as e:
         def err():
             yield f"event: error\ndata: {str(e)}\n\n"
-        return StreamingResponse(err(), media_type="text/event-stream")
+        return StreamingResponse(
+            err(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+        )
 
     def sse():
-        # Let UI know we started + what pages are being used (optional)
         yield f"event: meta\ndata: pages_used={','.join(str(p+1) for p in page_indexes)};vision_used={vision_used}\n\n"
 
         stream = client.responses.create(
@@ -504,18 +478,14 @@ def ask_stream(
             stream=True,
         )
 
-        # Stream text deltas as they arrive
         try:
             for event in stream:
-                # Most helpful is "response.output_text.delta" events
                 if getattr(event, "type", None) == "response.output_text.delta":
                     delta = getattr(event, "delta", "")
                     if delta:
-                        # SSE requires no newlines unescaped; keep it simple
                         safe = delta.replace("\r", "").replace("\n", "\\n")
                         yield f"data: {safe}\n\n"
 
-                # When done:
                 if getattr(event, "type", None) == "response.completed":
                     break
 
@@ -525,7 +495,11 @@ def ask_stream(
 
         yield "event: done\ndata: ok\n\n"
 
-    return StreamingResponse(sse(), media_type="text/event-stream")
+    return StreamingResponse(
+        sse(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+    )
 
 # ----------------------------
 # List PDFs
