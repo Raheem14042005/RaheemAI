@@ -1,4 +1,4 @@
-# main.py — Complyr (PDF-first, multimodal + auto page selection)
+# main.py — Raheem AI (PDF-first, multimodal + auto page selection)
 #
 # What this fixes:
 # - Automatically selects the most relevant PDF pages based on the question
@@ -99,14 +99,14 @@ index_all_pdfs()
 def root():
     return {
         "ok": True,
-        "service": "Complyr API",
+        "service": "Raheem AI API",
         "pdf_dir": str(PDF_DIR),
         "indexed_pdfs": len(PDF_TEXT_INDEX),
     }
 
 @app.get("/health")
 def health():
-    return {"ok": True, "status": "Complyr backend running"}
+    return {"ok": True, "status": "Raheem AI backend running"}
 
 # frontend hard-checks this path in your UI
 @app.get("/docs")
@@ -260,7 +260,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 # ----------------------------
 
 SYSTEM_RULES = """
-You are Complyr, a specialist assistant for Irish Building Regulations Technical Guidance Documents (TGDs).
+You are Raheem AI, a specialist assistant for Irish Building Regulations Technical Guidance Documents (TGDs).
 
 Rules:
 - Prioritise correctness. Do not invent numbers or clauses.
