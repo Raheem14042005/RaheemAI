@@ -1179,7 +1179,6 @@ async function send(){
     const payload = {
       chat_id: activeChatId,
       message: text,
-      messages: c.messages,         // ✅ now includes the user turn
       force_docs: !!forceDocsEl.checked
     };
 
@@ -1286,4 +1285,5 @@ async function send(){
   </script>
 </body>
 </html>
+
 
