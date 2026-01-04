@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Raheem AI | Construction Compliance Intelligence</title>
+  <title>Raheem AI</title>
 
   <style>
     :root{
@@ -14,19 +14,15 @@
       --glass: rgba(255,255,255,.08);
       --glass2: rgba(255,255,255,.11);
       --stroke: rgba(255,255,255,.14);
-      --stroke2: rgba(255,255,255,.22);
 
       --text:#f4f7ff;
       --muted: rgba(244,247,255,.78);
       --muted2: rgba(244,247,255,.60);
 
-      --a1:#50ffd7;   /* neon mint */
-      --a2:#65b7ff;   /* neon blue */
-      --a3:#c7a5ff;   /* neon violet */
-      --hot:#ff4fd8;  /* neon pink accent */
-
-      --ok:#22c55e;
-      --warn:#f59e0b;
+      --a1:#50ffd7;
+      --a2:#65b7ff;
+      --a3:#c7a5ff;
+      --hot:#ff4fd8;
 
       --shadow: 0 28px 72px rgba(0,0,0,.58);
       --shadow2: 0 18px 48px rgba(0,0,0,.42);
@@ -43,14 +39,15 @@
       margin:0;
       font-family: var(--font);
       color: var(--text);
-      background: radial-gradient(1200px 700px at 20% -10%, rgba(80,255,215,.18), transparent 60%),
-                  radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.18), transparent 58%),
-                  radial-gradient(900px 620px at 50% 115%, rgba(199,165,255,.16), transparent 58%),
-                  linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
+      background:
+        radial-gradient(1200px 700px at 18% -10%, rgba(80,255,215,.14), transparent 60%),
+        radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.14), transparent 58%),
+        radial-gradient(900px 620px at 50% 115%, rgba(199,165,255,.12), transparent 58%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
       overflow-x:hidden;
     }
 
-    /* ---------- Motion background ---------- */
+    /* calmer background motion */
     .bg-wrap{
       position:fixed;
       inset:0;
@@ -63,42 +60,49 @@
       position:absolute;
       inset:-25%;
       background:
-        radial-gradient(900px 520px at 12% 18%, rgba(80,255,215,.18) 0%, rgba(80,255,215,0) 65%),
-        radial-gradient(900px 520px at 88% 14%, rgba(101,183,255,.18) 0%, rgba(101,183,255,0) 62%),
-        radial-gradient(980px 560px at 50% 108%, rgba(199,165,255,.16) 0%, rgba(199,165,255,0) 60%),
-        radial-gradient(840px 520px at 45% 40%, rgba(255,79,216,.08) 0%, rgba(255,79,216,0) 60%);
-      filter: blur(18px);
-      opacity:.95;
+        radial-gradient(900px 520px at 12% 18%, rgba(80,255,215,.14) 0%, rgba(80,255,215,0) 65%),
+        radial-gradient(900px 520px at 88% 14%, rgba(101,183,255,.14) 0%, rgba(101,183,255,0) 62%),
+        radial-gradient(980px 560px at 50% 108%, rgba(199,165,255,.12) 0%, rgba(199,165,255,0) 60%),
+        radial-gradient(840px 520px at 45% 40%, rgba(255,79,216,.06) 0%, rgba(255,79,216,0) 60%);
+      filter: blur(22px);
+      opacity:.85;
       transform: translate3d(0,0,0);
-      animation: auroraMove 14s ease-in-out infinite;
-    }
-    @keyframes auroraMove{
-      0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      40%{ transform: translate3d(18px,-14px,0) scale(1.03); }
-      75%{ transform: translate3d(-18px,12px,0) scale(1.02); }
+      animation: auroraMove 22s ease-in-out infinite;
     }
 
+    @keyframes auroraMove{
+      0%,100%{ transform: translate3d(0,0,0) scale(1); }
+      45%{ transform: translate3d(12px,-10px,0) scale(1.02); }
+      75%{ transform: translate3d(-12px,10px,0) scale(1.015); }
+    }
+
+    /* particles only as subtle sparkle */
     canvas#particles{
       position:absolute;
       inset:0;
-      opacity:.55;
-      filter: blur(.15px);
+      opacity:.18;
+      filter: blur(.2px);
     }
 
     .vignette{
       position:absolute;
       inset:-1px;
-      background: radial-gradient(900px 520px at 50% 20%, rgba(0,0,0,0), rgba(0,0,0,.55));
+      background: radial-gradient(900px 520px at 50% 22%, rgba(0,0,0,0), rgba(0,0,0,.58));
       opacity:.9;
     }
 
-    /* ---------- Layout ---------- */
+    @media (prefers-reduced-motion: reduce){
+      .aurora{ animation:none; }
+      canvas#particles{ display:none; }
+    }
+
+    /* layout */
     .app{
       position:relative;
       z-index:1;
       min-height:100vh;
       display:grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 330px 1fr;
       gap: 18px;
       padding: 18px;
     }
@@ -108,26 +112,23 @@
       .side{ position:sticky; top:0; }
     }
 
-    .side{
+    .side, .main{
       border: 1px solid var(--stroke);
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
       border-radius: var(--r);
       box-shadow: var(--shadow2);
       overflow:hidden;
+      backdrop-filter: blur(10px);
     }
 
     .main{
-      border: 1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-      border-radius: var(--r);
       box-shadow: var(--shadow);
-      overflow:hidden;
       display:flex;
       flex-direction:column;
       min-height: calc(100vh - 36px);
     }
 
-    /* ---------- Brand / header ---------- */
+    /* brand */
     .brand{
       display:flex;
       align-items:center;
@@ -136,43 +137,37 @@
       border-bottom: 1px solid rgba(255,255,255,.10);
     }
 
-    .mark{
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      position:relative;
-      background: radial-gradient(18px 18px at 30% 30%, rgba(80,255,215,.95), rgba(80,255,215,0) 70%),
-                  radial-gradient(20px 20px at 75% 35%, rgba(101,183,255,.95), rgba(101,183,255,0) 72%),
-                  radial-gradient(22px 22px at 55% 80%, rgba(199,165,255,.90), rgba(199,165,255,0) 72%),
-                  linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+    .logoMark{
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
       border: 1px solid rgba(255,255,255,.16);
-      box-shadow: 0 0 28px rgba(80,255,215,.14), 0 0 26px rgba(101,183,255,.12);
+      background: rgba(0,0,0,.18);
+      box-shadow: 0 0 26px rgba(80,255,215,.10), 0 0 26px rgba(101,183,255,.08);
+      display:grid;
+      place-items:center;
       overflow:hidden;
+      position:relative;
     }
-    .mark:after{
-      content:"";
-      position:absolute;
-      inset:-40%;
-      background: conic-gradient(from 180deg, rgba(80,255,215,.0), rgba(80,255,215,.25), rgba(101,183,255,.0), rgba(255,79,216,.18), rgba(199,165,255,.0));
-      animation: spin 7s linear infinite;
-      opacity:.85;
-    }
-    @keyframes spin{ to{ transform: rotate(360deg);} }
+
+    .logoMark svg{ width:38px; height:38px; opacity:.95; }
 
     .brand h1{
       margin:0;
       font-size: 18px;
-      letter-spacing:.6px;
-      font-weight: 800;
+      letter-spacing:.5px;
+      font-weight: 900;
       line-height:1.1;
     }
+
     .brand h1 span{
       background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
       -webkit-background-clip: text;
       background-clip:text;
       color: transparent;
-      text-shadow: 0 0 22px rgba(101,183,255,.15);
+      text-shadow: 0 0 18px rgba(101,183,255,.12);
     }
+
     .brand .sub{
       margin-top:4px;
       font-size: 12px;
@@ -180,9 +175,9 @@
       line-height:1.2;
     }
 
-    /* ---------- Side nav ---------- */
+    /* nav */
     .nav{
-      padding: 12px 12px 14px 12px;
+      padding: 12px 12px 10px 12px;
       display:flex;
       flex-direction:column;
       gap: 10px;
@@ -207,11 +202,13 @@
       border-color: rgba(101,183,255,.34);
       background: rgba(0,0,0,.24);
     }
+
     .navbtn .left{
       display:flex;
       align-items:center;
       gap: 10px;
     }
+
     .tag{
       font-size: 11px;
       padding: 6px 10px;
@@ -222,25 +219,27 @@
       white-space:nowrap;
     }
     .tag.live{
-      border-color: rgba(34,197,94,.45);
+      border-color: rgba(80,255,215,.38);
       color: rgba(230,255,240,.92);
-      background: rgba(34,197,94,.10);
+      background: rgba(80,255,215,.10);
     }
 
-    /* ---------- Chat list (only in chat view) ---------- */
+    /* saved chats */
     .chatlist{
       display:none;
-      padding: 0 12px 12px 12px;
+      padding: 8px 12px 12px 12px;
+      border-top: 1px solid rgba(255,255,255,.10);
     }
     .chatlist.show{ display:block; }
     .chatlist h3{
       margin: 10px 4px 8px 4px;
       font-size: 12px;
       color: var(--muted2);
-      font-weight:700;
+      font-weight:800;
       letter-spacing:.35px;
       text-transform:uppercase;
     }
+
     .chatitem{
       width:100%;
       text-align:left;
@@ -251,13 +250,21 @@
       color: var(--text);
       cursor:pointer;
       margin-bottom: 8px;
-      transition: border-color .15s ease, transform .15s ease;
+      transition: border-color .15s ease, transform .15s ease, background .15s ease;
     }
-    .chatitem:hover{ transform: translateY(-1px); border-color: rgba(80,255,215,.28); }
-    .chatitem .t{ font-weight:750; font-size: 13px; }
-    .chatitem .s{ margin-top:3px; font-size: 11px; color: var(--muted2); }
+    .chatitem:hover{
+      transform: translateY(-1px);
+      border-color: rgba(80,255,215,.26);
+      background: rgba(0,0,0,.20);
+    }
+    .chatitem.active{
+      border-color: rgba(101,183,255,.34);
+      background: rgba(0,0,0,.22);
+    }
+    .chatitem .t{ font-weight:850; font-size: 13px; }
+    .chatitem .s{ margin-top:4px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; }
 
-    .sidefoot{
+    .sideFoot{
       padding: 12px 16px 14px 16px;
       border-top: 1px solid rgba(255,255,255,.10);
       color: var(--muted2);
@@ -265,7 +272,7 @@
       line-height:1.35;
     }
 
-    /* ---------- Main header ---------- */
+    /* main topbar */
     .topbar{
       padding: 14px 16px;
       display:flex;
@@ -282,7 +289,7 @@
       min-width: 0;
     }
     .crumb .title{
-      font-weight: 850;
+      font-weight: 900;
       letter-spacing:.25px;
       font-size: 15px;
       white-space:nowrap;
@@ -297,9 +304,8 @@
       text-overflow:ellipsis;
     }
 
-    .actions{
-      display:flex; gap:10px; align-items:center;
-    }
+    .actions{ display:flex; gap:10px; align-items:center; }
+
     .btn{
       padding: 10px 12px;
       border-radius: 14px;
@@ -308,7 +314,7 @@
       color: var(--text);
       cursor:pointer;
       transition: transform .15s ease, border-color .15s ease, background .15s ease;
-      font-weight: 750;
+      font-weight: 800;
       font-size: 13px;
       white-space:nowrap;
     }
@@ -318,12 +324,12 @@
       background: rgba(255,255,255,.10);
     }
     .btn.primary{
-      border-color: rgba(80,255,215,.38);
-      background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.12));
-      box-shadow: 0 0 24px rgba(80,255,215,.10);
+      border-color: rgba(80,255,215,.34);
+      background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
+      box-shadow: 0 0 18px rgba(80,255,215,.08);
     }
 
-    /* ---------- Views ---------- */
+    /* views */
     .view{ display:none; padding: 18px; }
     .view.show{ display:block; }
 
@@ -331,22 +337,15 @@
       padding: 16px;
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
-      background: radial-gradient(900px 320px at 20% 0%, rgba(80,255,215,.14), transparent 65%),
-                  radial-gradient(900px 320px at 90% 0%, rgba(101,183,255,.12), transparent 62%),
-                  rgba(0,0,0,.16);
+      background:
+        radial-gradient(900px 320px at 18% 0%, rgba(80,255,215,.12), transparent 65%),
+        radial-gradient(900px 320px at 88% 0%, rgba(101,183,255,.10), transparent 62%),
+        rgba(0,0,0,.16);
       box-shadow: var(--shadow2);
     }
-    .hero h2{
-      margin:0;
-      font-size: 22px;
-      letter-spacing:.2px;
-    }
-    .hero p{
-      margin:8px 0 0 0;
-      color: var(--muted);
-      max-width: 920px;
-      line-height:1.5;
-    }
+    .hero h2{ margin:0; font-size: 22px; letter-spacing:.2px; }
+    .hero p{ margin:8px 0 0 0; color: var(--muted); max-width: 920px; line-height:1.5; }
+
     .quote{
       margin-top: 12px;
       padding: 12px 14px;
@@ -363,9 +362,7 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
     }
-    @media (max-width: 980px){
-      .grid{ grid-template-columns: 1fr; }
-    }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
 
     .card{
       border-radius: var(--r);
@@ -377,17 +374,20 @@
       flex-direction:column;
       gap: 12px;
     }
+
     .cardhead{
       display:flex;
       align-items:flex-start;
       justify-content:space-between;
       gap: 10px;
     }
+
     .cardtitle{
       display:flex;
       gap: 12px;
       align-items:flex-start;
     }
+
     .icon{
       width: 42px;
       height: 42px;
@@ -398,8 +398,9 @@
       letter-spacing:.4px;
       border: 1px solid rgba(255,255,255,.14);
       background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10), rgba(199,165,255,.08));
-      box-shadow: 0 0 22px rgba(101,183,255,.08);
+      box-shadow: 0 0 16px rgba(101,183,255,.08);
     }
+
     .card h4{ margin:0; font-size: 15px; }
     .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.45; }
 
@@ -422,14 +423,15 @@
       margin-top:auto;
     }
 
-    /* ---------- Chat UI ---------- */
+    /* chat UI */
     .chatwrap{
       display:flex;
       flex-direction:column;
       gap: 12px;
-      height: calc(100vh - 168px);
-      min-height: 520px;
+      height: calc(100vh - 170px);
+      min-height: 540px;
     }
+
     .chatbox{
       flex: 1;
       border-radius: var(--r);
@@ -453,17 +455,16 @@
       margin-left:auto;
       background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.12));
       border-color: rgba(80,255,215,.30);
-      box-shadow: 0 0 18px rgba(80,255,215,.06);
+      box-shadow: 0 0 14px rgba(80,255,215,.06);
     }
-    .msg.ai{
-      background: rgba(255,255,255,.06);
-    }
+    .msg.ai{ background: rgba(255,255,255,.06); }
 
     .composer{
       display:flex;
       gap: 10px;
       align-items:flex-end;
     }
+
     textarea{
       flex:1;
       min-height: 46px;
@@ -477,6 +478,7 @@
       outline:none;
       line-height:1.4;
     }
+
     textarea:focus{
       border-color: rgba(101,183,255,.40);
       box-shadow: 0 0 0 3px rgba(101,183,255,.12);
@@ -503,7 +505,7 @@
     }
     .toggle input{ transform: translateY(1px); }
 
-    /* ---------- Toast ---------- */
+    /* toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -518,13 +520,16 @@
       color: rgba(244,247,255,.95);
       box-shadow: var(--shadow2);
       display:none;
-      max-width: min(680px, calc(100vw - 26px));
+      max-width: min(720px, calc(100vw - 26px));
       line-height:1.4;
     }
     .toast.show{ display:block; animation: pop .18s ease; }
-    @keyframes pop{ from{ transform: translateX(-50%) translateY(8px); opacity:0; } to{ transform: translateX(-50%) translateY(0); opacity:1; } }
+    @keyframes pop{
+      from{ transform: translateX(-50%) translateY(8px); opacity:0; }
+      to{ transform: translateX(-50%) translateY(0); opacity:1; }
+    }
 
-    /* ---------- Footer ---------- */
+    /* footer */
     .footer{
       margin-top: 14px;
       padding: 14px 16px;
@@ -538,9 +543,7 @@
       flex-wrap:wrap;
       background: rgba(0,0,0,.10);
     }
-    .copy{
-      color: rgba(244,247,255,.78);
-    }
+    .copy{ color: rgba(244,247,255,.78); }
   </style>
 </head>
 
@@ -555,20 +558,40 @@
     <!-- SIDE -->
     <aside class="side">
       <div class="brand">
-        <div class="mark" aria-hidden="true"></div>
+        <div class="logoMark" aria-hidden="true">
+          <!-- Custom neon "RA" mark -->
+          <svg viewBox="0 0 64 64" fill="none">
+            <defs>
+              <linearGradient id="g1" x1="6" y1="10" x2="58" y2="54" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#50FFD7"/>
+                <stop offset="0.55" stop-color="#65B7FF"/>
+                <stop offset="1" stop-color="#C7A5FF"/>
+              </linearGradient>
+              <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="2.4" result="b"/>
+                <feMerge>
+                  <feMergeNode in="b"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <path filter="url(#glow)" d="M14 50V14h18c8 0 14 6 14 14 0 6-3 10-8 12l10 10h-10l-9-9H24v9H14Zm10-27h8c3 0 5 2 5 5s-2 5-5 5h-8V23Z" fill="url(#g1)" opacity="0.95"/>
+            <path filter="url(#glow)" d="M48 50l-5-12h8l5 12h-8Z" fill="#FF4FD8" opacity="0.7"/>
+          </svg>
+        </div>
         <div>
           <h1><span>Raheem AI</span></h1>
-          <div class="sub">Construction compliance + project intelligence</div>
+          <div class="sub">Abdulraheem Hayder Ahmed · C22310933 · TU Dublin</div>
         </div>
       </div>
 
       <div class="nav">
         <button class="navbtn" id="navHome" type="button">
           <div class="left">
-            <span class="tag">Dashboard</span>
+            <span class="tag">Home</span>
             <div style="min-width:0">
-              <div style="font-weight:850">Overview</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Live tools + roadmap</div>
+              <div style="font-weight:900">Overview</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Start here</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -578,8 +601,8 @@
           <div class="left">
             <span class="tag live">Live</span>
             <div style="min-width:0">
-              <div style="font-weight:850">Chat</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Best-friend + compliance brain</div>
+              <div style="font-weight:900">Chat</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Conversation memory per chat</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -589,7 +612,7 @@
           <div class="left">
             <span class="tag">Roadmap</span>
             <div style="min-width:0">
-              <div style="font-weight:850">Future Features</div>
+              <div style="font-weight:900">Future Features</div>
               <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, manufacturers</div>
             </div>
           </div>
@@ -603,11 +626,10 @@
         <button class="btn" id="btnNewChat" type="button" style="width:100%; margin-top:6px;">New chat</button>
       </div>
 
-      <div class="sidefoot">
-        <div style="font-weight:800; color: rgba(244,247,255,.85)">Built for professionals.</div>
-        <div style="margin-top:6px;">
-          Calm answers when it’s casual.<br/>
-          Proper citations when it’s compliance.
+      <div class="sideFoot">
+        <div style="font-weight:850;color:rgba(244,247,255,.86)">Quick tip</div>
+        <div style="margin-top:6px">
+          Use <b>Strict compliance mode</b> when you want exact numbers and cleaner citations.
         </div>
       </div>
     </aside>
@@ -617,7 +639,7 @@
       <div class="topbar">
         <div class="crumb">
           <div class="title" id="viewTitle">Overview</div>
-          <div class="hint" id="viewHint">Live tools + roadmap</div>
+          <div class="hint" id="viewHint">Start here</div>
         </div>
         <div class="actions">
           <button class="btn" id="btnPing" type="button">Health</button>
@@ -628,13 +650,13 @@
       <!-- OVERVIEW -->
       <section class="view show" id="viewHome">
         <div class="hero">
-          <h2>Fast answers. Fewer mistakes. Less rework.</h2>
+          <h2>Smart chat for everyday questions and serious compliance checks</h2>
           <p>
-            Raheem AI is built to chat like a normal human when you're brainstorming,
-            and switch into serious compliance mode the second you ask something technical.
+            Ask normally. If your question turns technical (regulations, TGDs, BER/DEAP, fire safety, accessibility),
+            Raheem switches into compliance mode automatically.
           </p>
           <div class="quote">
-            “If it’s a quick idea — we talk. If it’s a regulation — we verify.”
+            Clean answers, calm tone, and when it matters, proper evidence.
           </div>
         </div>
 
@@ -642,33 +664,33 @@
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">CG</div>
+                <div class="icon">AI</div>
                 <div>
-                  <h4>Compliance Guidance (Live)</h4>
-                  <p>Ask anything. It will search the right guidance and answer with support when needed.</p>
+                  <h4>Chat (Live)</h4>
+                  <p>Normal conversation with memory per chat. Compliance mode when needed.</p>
                 </div>
               </div>
-              <span class="pill" style="border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.10); color: rgba(230,255,240,.92)">Live</span>
+              <span class="pill" style="border-color: rgba(80,255,215,.38); background: rgba(80,255,215,.10); color: rgba(230,255,240,.92)">Live</span>
             </div>
             <div class="cta">
-              <span class="pill">Auto mode • optional force-docs</span>
-              <button class="btn primary" id="btnStartChat" type="button">Start</button>
+              <span class="pill">Memory per chat</span>
+              <button class="btn primary" id="btnStartChat" type="button">Open chat</button>
             </div>
           </article>
 
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">FF</div>
+                <div class="icon">+</div>
                 <div>
-                  <h4>Future Features (Roadmap)</h4>
-                  <p>Reports, BIM review, manufacturer/spec search, energy workflows — all inside the same platform.</p>
+                  <h4>Roadmap</h4>
+                  <p>Reports, BIM review, manufacturer search, BER workflows and more.</p>
                 </div>
               </div>
-              <span class="pill">Roadmap</span>
+              <span class="pill">Preview</span>
             </div>
             <div class="cta">
-              <span class="pill">Preview the plan</span>
+              <span class="pill">What’s next</span>
               <button class="btn" id="btnOpenFuture" type="button">View</button>
             </div>
           </article>
@@ -676,7 +698,7 @@
 
         <div class="footer">
           <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
-          <div>Raheem AI — Construction Compliance Intelligence</div>
+          <div>Raheem AI</div>
         </div>
       </section>
 
@@ -685,8 +707,7 @@
         <div class="hero">
           <h2>Chat</h2>
           <p>
-            Talk normally. If you drift into regs/compliance, it snaps into professional mode automatically.
-            (You can also force document mode if you want it extra strict.)
+            Conversations are saved per chat on the left. Pick one and continue where you left off.
           </p>
         </div>
 
@@ -695,25 +716,25 @@
             <div class="row">
               <label class="toggle">
                 <input type="checkbox" id="forceDocs"/>
-                Force document mode
+                Strict compliance mode
               </label>
             </div>
             <div class="row">
-              <button class="btn" id="btnClear" type="button">Clear chat</button>
+              <button class="btn" id="btnClear" type="button">Clear</button>
             </div>
           </div>
 
           <div class="chatbox" id="chatBox"></div>
 
           <div class="composer">
-            <textarea id="msg" placeholder="Say something…"></textarea>
+            <textarea id="msg" placeholder="Type a message"></textarea>
             <button class="btn primary" id="send" type="button">Send</button>
           </div>
         </div>
 
         <div class="footer">
           <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
-          <div>Tip: If you want exact numbers, toggle “Force document mode”.</div>
+          <div>Tip: Strict compliance mode is best for exact technical checks.</div>
         </div>
       </section>
 
@@ -722,10 +743,10 @@
         <div class="hero">
           <h2>Future Features</h2>
           <p>
-            Expanding Raheem AI into a full compliance and certification workflow — clear, structured, verifiable outputs.
+            This is the roadmap. Each feature will be built properly, not rushed.
           </p>
           <div class="quote">
-            The roadmap is ambitious. The goal is simple: fewer errors, faster approvals, less stress.
+            If you click something and it is not live yet, be nice. Raheem is still cooking.
           </div>
         </div>
 
@@ -736,13 +757,13 @@
                 <div class="icon">ED</div>
                 <div>
                   <h4>Early Design</h4>
-                  <p>Enter areas + requirements. Generate layout directions and refine the best option.</p>
+                  <p>Enter areas and requirements. Get layout directions and refine the best option.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Example: 30m² • 2 bed • kitchen</span>
+              <span class="pill">Examples inside</span>
               <button class="btn" data-soon="Early Design">Preview</button>
             </div>
           </article>
@@ -759,8 +780,8 @@
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Access & use</span>
-              <button class="btn" data-soon="DAC Reports">Preview</button>
+              <span class="pill">Access and use</span>
+              <button class="btn" data-soon="DAC Report Generator">Preview</button>
             </div>
           </article>
 
@@ -776,8 +797,8 @@
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">TGD B + workflow</span>
-              <button class="btn" data-soon="Fire Cert Reports">Preview</button>
+              <span class="pill">Fire safety workflow</span>
+              <button class="btn" data-soon="Fire Cert Report Generator">Preview</button>
             </div>
           </article>
 
@@ -786,15 +807,15 @@
               <div class="cardtitle">
                 <div class="icon">MFG</div>
                 <div>
-                  <h4>Manufacturer & Spec Search</h4>
+                  <h4>Manufacturer and Spec Search</h4>
                   <p>Auto-search local manufacturers and specs using element parameters and project context.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Local + verified sources</span>
-              <button class="btn" data-soon="Manufacturer Search">Preview</button>
+              <span class="pill">Local sources</span>
+              <button class="btn" data-soon="Manufacturer and Spec Search">Preview</button>
             </div>
           </article>
 
@@ -804,21 +825,21 @@
                 <div class="icon">BER</div>
                 <div>
                   <h4>BER Report Generator</h4>
-                  <p>Learn DEAP logic, import a Revit model, auto-fill what we can — manual input only where needed.</p>
+                  <p>Learn DEAP logic, import a Revit model, auto-fill what proves out, manual input for the rest.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">DEAP + Revit import</span>
-              <button class="btn" data-soon="BER Reports">Preview</button>
+              <span class="pill">DEAP and Revit</span>
+              <button class="btn" data-soon="BER Report Generator">Preview</button>
             </div>
           </article>
         </div>
 
         <div class="footer">
           <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
-          <div>Roadmap items are under active design.</div>
+          <div>Roadmap preview</div>
         </div>
       </section>
     </main>
@@ -827,9 +848,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // --------------------------
-    // Simple toast
-    // --------------------------
+    // Toast
     const toast = document.getElementById("toast");
     let toastTimer = null;
     function showToast(msg){
@@ -839,15 +858,12 @@
       toastTimer = setTimeout(()=>toast.classList.remove("show"), 2600);
     }
 
-    // --------------------------
     // Navigation
-    // --------------------------
     const viewTitle = document.getElementById("viewTitle");
     const viewHint  = document.getElementById("viewHint");
     const viewHome  = document.getElementById("viewHome");
     const viewChat  = document.getElementById("viewChat");
     const viewFuture= document.getElementById("viewFuture");
-
     const chatList  = document.getElementById("chatList");
 
     function showView(which){
@@ -857,7 +873,7 @@
       if(which==="home"){
         viewHome.classList.add("show");
         viewTitle.textContent = "Overview";
-        viewHint.textContent  = "Live tools + roadmap";
+        viewHint.textContent  = "Start here";
       }
       if(which==="chat"){
         viewChat.classList.add("show");
@@ -886,9 +902,9 @@
       try{
         const r = await fetch("/health");
         const j = await r.json();
-        showToast(j.vertex_ready ? "Healthy. Vertex is ready ✅" : "Healthy… but Vertex isn’t ready yet ⚠️");
+        showToast(j.vertex_ready ? "Healthy. Gemini is ready." : "Healthy, but Gemini is not ready yet.");
       }catch(e){
-        showToast("Health check failed ⚠️");
+        showToast("Health check failed.");
       }
     };
 
@@ -897,32 +913,30 @@
       btn.addEventListener("click", ()=>{
         const name = btn.getAttribute("data-soon");
         const lines = [
-          `${name} is coming soon.`,
-          `It’s cooking. Please don’t stand over the pot 😄`,
-          `Not live yet — patience… I’m trying to make it *good* 😄`,
-          `Soon™. The professional version of “trust me bro” 😄`
+          name + " is coming soon. Let it cook.",
+          "Not live yet. Patience please, this one needs to be perfect.",
+          "Soon. If you keep clicking, it still will not appear. Nice try though.",
+          "Coming soon. I am building it properly, not speed-running it."
         ];
         showToast(lines[Math.floor(Math.random()*lines.length)]);
       });
     });
 
-    // --------------------------
-    // Particles background (alive)
-    // --------------------------
+    // Calmer particles
     const canvas = document.getElementById("particles");
     const ctx = canvas.getContext("2d");
     let W=0,H=0, particles=[];
     function resize(){
       W = canvas.width = window.innerWidth;
       H = canvas.height = window.innerHeight;
-      const n = Math.floor(Math.min(140, Math.max(60, W/14)));
-      particles = Array.from({length:n}).map(()=>({
+      const base = Math.floor(Math.min(80, Math.max(35, W/26)));
+      particles = Array.from({length:base}).map(()=>({
         x: Math.random()*W,
         y: Math.random()*H,
-        r: Math.random()*1.6 + 0.6,
-        vx:(Math.random()*0.5+0.15)*(Math.random()<0.5?-1:1),
-        vy:(Math.random()*0.35+0.12)*(Math.random()<0.5?-1:1),
-        a: Math.random()*0.6 + 0.2
+        r: Math.random()*1.4 + 0.4,
+        vx:(Math.random()*0.22+0.05)*(Math.random()<0.5?-1:1),
+        vy:(Math.random()*0.18+0.04)*(Math.random()<0.5?-1:1),
+        a: Math.random()*0.45 + 0.10
       }));
     }
     window.addEventListener("resize", resize);
@@ -946,19 +960,20 @@
       ctx.globalAlpha = 1;
       requestAnimationFrame(tick);
     }
-    tick();
+    if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      tick();
+    }
 
-    // --------------------------
-    // Chat memory (per saved chat)
-    // Uses /chat_stream with full history so it never "resets".
-    // --------------------------
+    // Chat memory per saved chat (frontend)
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
     const sendBtn = document.getElementById("send");
     const forceDocsEl = document.getElementById("forceDocs");
     const btnClear = document.getElementById("btnClear");
+    const btnNewChat = document.getElementById("btnNewChat");
+    const chatItemsWrap = document.getElementById("chatItems");
 
-    const STORAGE_KEY = "raheem_ai_chats_v2";
+    const STORAGE_KEY = "raheem_ai_chats_v3";
 
     function loadAllChats(){
       try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -972,6 +987,15 @@
       return "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
     }
 
+    function fmtTime(ts){
+      try{
+        const d = new Date(ts);
+        return d.toLocaleString(undefined, { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
+      }catch(e){
+        return "";
+      }
+    }
+
     let activeChatId = null;
 
     function ensureActiveChat(){
@@ -982,7 +1006,7 @@
           title: "New chat",
           updated: Date.now(),
           messages: [
-            { role:"assistant", content:"Hey — I’m Raheem. What are we getting into today?" }
+            { role:"assistant", content:"Hi. I am Raheem. What are we working on today?" }
           ]
         };
         saveAllChats(all);
@@ -995,175 +1019,160 @@
       if(!c) return;
       const firstUser = c.messages.find(m=>m.role==="user");
       if(firstUser && (c.title==="New chat" || !c.title)){
-        c.title = firstUser.content.slice(0, 42) + (firstUser.content.length>42 ? "…" : "");
+        const s = firstUser.content.trim();
+        c.title = s.slice(0, 44) + (s.length>44 ? "…" : "");
       }
     }
 
     function renderChatList(){
       const all = loadAllChats();
-      const items = Object.entries(all)
-        .sort((a,b)=>(b[1].updated||0)-(a[1].updated||0))
-        .slice(0, 24);
-
-      const wrap = document.getElementById("chatItems");
-      wrap.innerHTML = "";
-      for(const [id, chat] of items){
+      const ids = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
+      chatItemsWrap.innerHTML = "";
+      ids.forEach(id=>{
+        const c = all[id];
         const btn = document.createElement("button");
-        btn.className = "chatitem";
-        btn.innerHTML = `<div class="t">${escapeHtml(chat.title || "Chat")}</div>
-                         <div class="s">${new Date(chat.updated||Date.now()).toLocaleString()}</div>`;
+        btn.className = "chatitem" + (id===activeChatId ? " active" : "");
+        btn.type = "button";
+        const title = c.title || "New chat";
+        const time = fmtTime(c.updated || Date.now());
+        btn.innerHTML = `<div class="t">${escapeHtml(title)}</div><div class="s"><span>${escapeHtml(time)}</span><span style="opacity:.7">•</span><span>${(c.messages||[]).length} msgs</span></div>`;
         btn.onclick = ()=>{
           activeChatId = id;
+          renderChatList();
           renderChat();
         };
-        wrap.appendChild(btn);
-      }
+        chatItemsWrap.appendChild(btn);
+      });
     }
 
-    document.getElementById("btnNewChat").onclick = ()=>{
-      activeChatId = null;
-      ensureActiveChat();
-      renderChatList();
-      renderChat();
-      showToast("New chat created ✅");
-    };
-
     function escapeHtml(s){
-      return (s||"").replace(/[&<>"']/g, c => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-      }[c]));
+      return (s||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
     function renderChat(){
       const all = ensureActiveChat();
-      const chat = all[activeChatId];
+      const c = all[activeChatId];
       chatBox.innerHTML = "";
-      for(const m of chat.messages){
-        const div = document.createElement("div");
-        div.className = "msg " + (m.role==="user" ? "user" : "ai");
-        div.textContent = m.content;
-        chatBox.appendChild(div);
-      }
+      (c.messages||[]).forEach(m=>{
+        addMsg(m.role==="user" ? "user" : "ai", m.content, false);
+      });
       chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addMsg(who, text, scroll=true){
+      const div = document.createElement("div");
+      div.className = "msg " + (who==="user" ? "user" : "ai");
+      div.textContent = text;
+      chatBox.appendChild(div);
+      if(scroll) chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
+    function clearChat(){
+      const all = ensureActiveChat();
+      all[activeChatId].messages = [{ role:"assistant", content:"All clear. What are we doing now?" }];
+      all[activeChatId].updated = Date.now();
+      saveAllChats(all);
+      renderChat();
       renderChatList();
     }
 
-    btnClear.onclick = ()=>{
-      const all = ensureActiveChat();
-      all[activeChatId].messages = [
-        { role:"assistant", content:"Alright — clean slate. What’s next?" }
-      ];
-      all[activeChatId].updated = Date.now();
-      all[activeChatId].title = "New chat";
-      saveAllChats(all);
+    btnClear.onclick = clearChat;
+
+    btnNewChat.onclick = ()=>{
+      activeChatId = null;
+      ensureActiveChat();
       renderChat();
-      showToast("Cleared ✅");
+      renderChatList();
+      showToast("New chat created.");
     };
 
-    // Stream parser for SSE over fetch
-    async function streamChat(messages, forceDocs){
-      const resp = await fetch("/chat_stream", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ messages, force_docs: !!forceDocs })
-      });
+    // Start default chat
+    ensureActiveChat();
+    renderChat();
 
-      if(!resp.ok){
-        const t = await resp.text();
-        throw new Error(t || "Request failed");
-      }
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let buffer = "";
-      let done = false;
-
-      let assistantText = "";
-
-      while(!done){
-        const { value, done: d } = await reader.read();
-        done = d;
-        if(value){
-          buffer += decoder.decode(value, {stream:true});
-          // split by double newline (SSE frame boundary)
-          let idx;
-          while((idx = buffer.indexOf("\n\n")) !== -1){
-            const frame = buffer.slice(0, idx);
-            buffer = buffer.slice(idx+2);
-
-            // handle data lines
-            const lines = frame.split("\n");
-            for(const line of lines){
-              if(line.startsWith("data: ")){
-                const payload = line.slice(6);
-                const text = payload.replaceAll("\\n", "\n");
-                assistantText += text;
-
-                // live update last assistant bubble
-                updateAssistantBubble(assistantText);
-              }
-              if(line.startsWith("event: done")){
-                done = true;
-              }
-              if(line.startsWith("event: error")){
-                // next line might have data, but we keep it simple
-              }
-            }
-          }
-        }
-      }
-      return assistantText.trim();
-    }
-
-    function updateAssistantBubble(text){
-      // replace last AI message bubble text visually while streaming
-      const bubbles = chatBox.querySelectorAll(".msg.ai");
-      const last = bubbles[bubbles.length-1];
-      if(last){
-        last.textContent = text;
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }
-    }
-
+    // Send message using /chat_stream so server also remembers chat_id
     async function send(){
       const text = (msgEl.value || "").trim();
       if(!text) return;
-
-      const all = ensureActiveChat();
-      const chat = all[activeChatId];
-
-      // add user message
-      chat.messages.push({ role:"user", content:text });
-      chat.updated = Date.now();
-      saveAllChats(all);
-      renderChat();
-
       msgEl.value = "";
 
-      // add placeholder assistant bubble
-      const all2 = ensureActiveChat();
-      all2[activeChatId].messages.push({ role:"assistant", content:"" });
-      all2[activeChatId].updated = Date.now();
-      saveAllChats(all2);
-      renderChat();
+      const all = ensureActiveChat();
+      const c = all[activeChatId];
+
+      c.messages.push({ role:"user", content:text });
+      c.updated = Date.now();
+      setChatTitleFromFirstUser(all, activeChatId);
+      saveAllChats(all);
+
+      addMsg("user", text);
+
+      // placeholder bubble for streaming
+      const aiDiv = addMsg("ai", "");
 
       try{
-        const assistant = await streamChat(all2[activeChatId].messages, forceDocsEl.checked);
+        const payload = {
+          chat_id: activeChatId,
+          messages: c.messages,
+          force_docs: !!forceDocsEl.checked
+        };
 
-        const all3 = ensureActiveChat();
-        all3[activeChatId].messages[all3[activeChatId].messages.length-1].content = assistant || "…";
-        all3[activeChatId].updated = Date.now();
-        setChatTitleFromFirstUser(all3, activeChatId);
-        saveAllChats(all3);
-        renderChat();
+        const res = await fetch("/chat_stream", {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if(!res.ok){
+          aiDiv.textContent = "Something went wrong. Open Swagger and check the error.";
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        let full = "";
+
+        while(true){
+          const { value, done } = await reader.read();
+          if(done) break;
+          buffer += decoder.decode(value, { stream:true });
+
+          // SSE chunks separated by \n\n
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for(const chunk of parts){
+            if(chunk.startsWith("event: error")){
+              const line = chunk.split("\n").find(x=>x.startsWith("data: "));
+              aiDiv.textContent = (line ? line.replace("data: ","") : "Error");
+              continue;
+            }
+            if(chunk.startsWith("data: ")){
+              const dataLine = chunk.replace("data: ","");
+              const delta = dataLine.replaceAll("\\n","\n");
+              full += delta;
+              aiDiv.textContent = full;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            }
+          }
+        }
+
+        // store assistant message
+        const all2 = ensureActiveChat();
+        const c2 = all2[activeChatId];
+        c2.messages.push({ role:"assistant", content: full.trim() || " " });
+        c2.updated = Date.now();
+        saveAllChats(all2);
+        renderChatList();
+
       }catch(e){
-        const all3 = ensureActiveChat();
-        all3[activeChatId].messages[all3[activeChatId].messages.length-1].content =
-          "Hmm — something broke on my side. Try again in a sec (or check /swagger for errors).";
-        all3[activeChatId].updated = Date.now();
-        saveAllChats(all3);
-        renderChat();
-        showToast("Backend error ⚠️");
+        aiDiv.textContent = "Something broke. Check Swagger for errors.";
       }
     }
 
@@ -1174,12 +1183,6 @@
         send();
       }
     });
-
-    // Boot
-    ensureActiveChat();
-    renderChatList();
-    renderChat();
-    showView("home");
   </script>
 </body>
 </html>
