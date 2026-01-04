@@ -34,7 +34,7 @@ CHAT_MAX_CHARS = int(os.getenv("CHAT_MAX_CHARS", "22000"))
 
 # Vertex config
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID")
-GCP_LOCATION = os.getenv("GCP_LOCATION") or os.getenv("VERTEX_LOCATION", "europe-west4")
+GCP_LOCATION = os.getenv("GCP_LOCATION") or os.getenv("VERTEX_LOCATION", "europe-west3")
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 
 # Models (cost-aware)
@@ -668,3 +668,4 @@ def ask(payload: Dict[str, Any] = Body(...)):
         if out.startswith("data: "):
             chunks.append(out.replace("data: ", "").replace("\\n", "\n"))
     return {"answer": "".join(chunks).strip() or "No response."}
+
