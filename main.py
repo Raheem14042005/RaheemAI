@@ -37,7 +37,7 @@ GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID")
 _raw_location = (
     os.getenv("GCP_LOCATION")
     or os.getenv("VERTEX_LOCATION")
-    or "europe-west3"
+    or "europe-west4"
 )
 
 GCP_LOCATION = _raw_location.strip()
@@ -678,6 +678,7 @@ def ask(payload: Dict[str, Any] = Body(...)):
         if out.startswith("data: "):
             chunks.append(out.replace("data: ", "").replace("\\n", "\n"))
     return {"answer": "".join(chunks).strip() or "No response."}
+
 
 
 
