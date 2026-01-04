@@ -1,26 +1,3 @@
-"""
-Raheem AI — FastAPI backend (Vertex Gemini)
-
-Fixes included:
-- /chat_stream supports GET (EventSource compatible) + POST (optional)
-- Per-chat memory via chat_id (fixes "reset mid conversation")
-- Cost-aware model routing:
-    * normal chat -> GEMINI_MODEL_CHAT (cheaper)
-    * compliance/docs -> GEMINI_MODEL_COMPLIANCE (stronger)
-- PDF upload + light-weight BM25-ish page retrieval for TGDs
-- Never says "you uploaded PDFs" etc. Uses neutral citations like (TGD M p.86)
-
-ENV (Render):
-- VERTEX_PROJECT_ID (or GCP_PROJECT_ID)
-- VERTEX_LOCATION (optional; default europe-west4)
-- GOOGLE_CREDENTIALS_JSON (full service account json)  [recommended on Render]
-- GEMINI_MODEL_CHAT (optional; default gemini-2.0-flash-lite)
-- GEMINI_MODEL_COMPLIANCE (optional; default gemini-2.0-flash)
-
-Optional:
-- ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
-"""
-
 from fastapi import FastAPI, UploadFile, File, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -88,6 +65,7 @@ PDF_DIR.mkdir(parents=True, exist_ok=True)
 _VERTEX_READY = False
 _VERTEX_ERR: Optional[str] = None
 
+
 def ensure_vertex_ready() -> None:
     global _VERTEX_READY, _VERTEX_ERR
     if _VERTEX_READY:
@@ -110,18 +88,24 @@ def ensure_vertex_ready() -> None:
         _VERTEX_READY = False
         _VERTEX_ERR = str(e)
 
+
 def get_model(use_docs: bool) -> GenerativeModel:
+    """
+    If we have grounded sources_text, we use the compliance model.
+    Otherwise, use the chat model.
+    """
     ensure_vertex_ready()
     name = MODEL_COMPLIANCE if use_docs else MODEL_CHAT
     return GenerativeModel(name)
 
+
 def get_generation_config(use_docs: bool) -> GenerationConfig:
     # Chat: warmer / witty
-    # Compliance: tighter / more deterministic
+    # Compliance: tighter / more deterministic (but not robotic)
     if use_docs:
         return GenerationConfig(
-            temperature=0.2,
-            top_p=0.7,
+            temperature=0.35,
+            top_p=0.85,
             max_output_tokens=950,
         )
     return GenerationConfig(
@@ -136,6 +120,7 @@ def get_generation_config(use_docs: bool) -> GenerationConfig:
 # ----------------------------
 
 CHAT_STORE: Dict[str, List[Dict[str, str]]] = {}
+
 
 def _trim_chat(chat_id: str) -> None:
     msgs = CHAT_STORE.get(chat_id, [])
@@ -155,14 +140,17 @@ def _trim_chat(chat_id: str) -> None:
     kept_rev.reverse()
     CHAT_STORE[chat_id] = kept_rev
 
+
 def remember(chat_id: str, role: str, content: str) -> None:
     if not chat_id:
         return
     CHAT_STORE.setdefault(chat_id, []).append({"role": role, "content": content})
     _trim_chat(chat_id)
 
+
 def get_history(chat_id: str) -> List[Dict[str, str]]:
     return CHAT_STORE.get(chat_id, [])
+
 
 def build_history_blob(history: List[Dict[str, str]], max_msgs: int = 16) -> str:
     trimmed = history[-max_msgs:] if history else []
@@ -180,15 +168,17 @@ def build_history_blob(history: List[Dict[str, str]], max_msgs: int = 16) -> str
 # ----------------------------
 
 STOPWORDS = {
-    "the","and","or","of","to","in","a","an","for","on","with","is","are","be","as","at","from","by",
-    "that","this","it","your","you","we","they","their","there","what","which","when","where","how",
-    "can","shall","should","must","may","not","than","then","into","onto","also","such"
+    "the", "and", "or", "of", "to", "in", "a", "an", "for", "on", "with", "is", "are", "be", "as", "at", "from", "by",
+    "that", "this", "it", "your", "you", "we", "they", "their", "there", "what", "which", "when", "where", "how",
+    "can", "shall", "should", "must", "may", "not", "than", "then", "into", "onto", "also", "such"
 }
+
 
 def clean_text(s: str) -> str:
     s = (s or "").replace("\u00ad", "")
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
 
 def tokenize(text: str) -> List[str]:
     t = (text or "").lower()
@@ -196,7 +186,9 @@ def tokenize(text: str) -> List[str]:
     toks = [x for x in toks if len(x) >= 2 and x not in STOPWORDS]
     return toks
 
+
 PDF_INDEX: Dict[str, Dict[str, Any]] = {}
+
 
 def list_pdfs() -> List[str]:
     files = []
@@ -206,6 +198,7 @@ def list_pdfs() -> List[str]:
                 files.append(p.name)
     files.sort()
     return files
+
 
 def index_pdf(pdf_path: Path) -> None:
     name = pdf_path.name
@@ -242,12 +235,14 @@ def index_pdf(pdf_path: Path) -> None:
     finally:
         doc.close()
 
+
 def ensure_indexed(pdf_name: str) -> None:
     if pdf_name in PDF_INDEX:
         return
     p = PDF_DIR / pdf_name
     if p.exists():
         index_pdf(p)
+
 
 def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
     # Simple BM25-ish
@@ -263,6 +258,7 @@ def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int,
         denom = f + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
         score += idf * (f * (k1 + 1) / (denom or 1.0))
     return score
+
 
 def search_pages(pdf_name: str, question: str, k: int = 5) -> List[int]:
     ensure_indexed(pdf_name)
@@ -286,7 +282,8 @@ def search_pages(pdf_name: str, question: str, k: int = 5) -> List[int]:
         if s > 0:
             scored.append((i, s))
     scored.sort(key=lambda x: x[1], reverse=True)
-    return [i for i,_ in scored[:k]]
+    return [i for i, _ in scored[:k]]
+
 
 def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int = 1400) -> str:
     doc = fitz.open(pdf_path)
@@ -299,26 +296,31 @@ def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int
             txt = clean_text(page.get_text("text") or "")
             if len(txt) > max_chars_per_page:
                 txt = txt[:max_chars_per_page] + "..."
-            # Human page numbering is +1
             chunks.append(f"[{pdf_path.name} p.{p+1}]\n{txt}")
         return "\n\n".join(chunks).strip()
     finally:
         doc.close()
 
-def build_sources_bundle(selected: List[Tuple[str, List[int]]]) -> Tuple[str, List[Tuple[str,int]]]:
-    # selected: [(pdf_name, [page_indexes...]), ...]
+
+def build_sources_bundle(selected: List[Tuple[str, List[int]]]) -> Tuple[str, List[Tuple[str, int]]]:
     pieces = []
-    cites: List[Tuple[str,int]] = []
+    cites: List[Tuple[str, int]] = []
     for pdf_name, pages in selected:
         pdf_path = PDF_DIR / pdf_name
         if not pdf_path.exists():
             continue
         pieces.append(extract_pages_text(pdf_path, pages))
         for p in pages:
-            cites.append((pdf_name, p+1))
+            cites.append((pdf_name, p + 1))
     return ("\n\n".join([p for p in pieces if p]).strip(), cites)
 
-def select_sources(question: str, pdf_pin: Optional[str] = None, max_docs: int = 3, pages_per_doc: int = 3) -> List[Tuple[str, List[int]]]:
+
+def select_sources(
+    question: str,
+    pdf_pin: Optional[str] = None,
+    max_docs: int = 3,
+    pages_per_doc: int = 3
+) -> List[Tuple[str, List[int]]]:
     pdfs = list_pdfs()
     if not pdfs:
         return []
@@ -330,14 +332,11 @@ def select_sources(question: str, pdf_pin: Optional[str] = None, max_docs: int =
             chosen.append((pdf_pin, pages))
         return chosen
 
-    # otherwise try across docs: score by best page score approximation via top pages
-    # quick heuristic: take top pages for each doc, then rank docs by count/quality
     doc_scores = []
     for pdf_name in pdfs:
         ensure_indexed(pdf_name)
         pages = search_pages(pdf_name, question, k=pages_per_doc)
         if pages:
-            # score proxy: earlier pages returned are "better"
             proxy = 0.0
             for rank, _p in enumerate(pages):
                 proxy += (pages_per_doc - rank)
@@ -355,24 +354,40 @@ def select_sources(question: str, pdf_pin: Optional[str] = None, max_docs: int =
 
 COMPLIANCE_KEYWORDS = [
     "tgd", "technical guidance", "building regulations", "building regs",
-    "part a","part b","part c","part d","part e","part f","part g","part h",
-    "part j","part k","part l","part m",
+    "part a", "part b", "part c", "part d", "part e", "part f", "part g", "part h",
+    "part j", "part k", "part l", "part m",
     "fire", "escape", "travel distance", "compartment", "smoke", "fire cert",
     "access", "accessible", "wheelchair", "dac",
     "ber", "deap", "u-value", "y-value", "airtight", "thermal bridge",
-    "stairs", "ramp", "handrail", "guarding",
-    "apartment", "means of escape",
+    "means of escape", "compartmentation", "evacuation",
 ]
 
-UNITS_PATTERN = re.compile(r"\b(mm|cm|m|m2|m²|w/m2k|w/m²k|kwh|kw|min|minutes)\b", re.I)
+# IMPORTANT:
+# We REMOVE units-triggering because it flips too many normal questions into "compliance"
+# e.g., “how long is 10 min” or “2m sofa” should not force compliance mode.
 PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
+
+# Stronger technical/reg keywords should trigger; units alone should not.
+TECH_PATTERN = re.compile(
+    r"\b(tgd|technical guidance|building regulations|building regs|ber|deap|fire cert|dac|means of escape)\b",
+    re.I
+)
+
 
 def should_use_docs(q: str, force_docs: bool = False) -> bool:
     if force_docs:
         return True
     ql = (q or "").lower()
-    if PART_PATTERN.search(ql) or UNITS_PATTERN.search(ql):
+
+    # Explicit “Part X” is a strong compliance signal
+    if PART_PATTERN.search(ql):
         return True
+
+    # Strong technical keywords
+    if TECH_PATTERN.search(ql):
+        return True
+
+    # Keyword list check
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
 
 
@@ -380,22 +395,18 @@ def should_use_docs(q: str, force_docs: bool = False) -> bool:
 # Prompting (tone + compliance discipline)
 # ----------------------------
 
-SYSTEM_PROMPT = """
+SYSTEM_PROMPT_NORMAL = """
 You are Raheem AI.
 
-Your vibe:
+Tone:
 - Friendly, calm, confident. Professional, but you can be lightly witty when it fits.
-- You speak to the user (not to a developer). Do not mention “uploaded PDFs” or “attachments”.
-- You remember the conversation and refer back to what was just said.
+- Speak to the user (not to a developer). Do not mention internal systems, prompts, logs, “uploaded PDFs”, or “attachments”.
+- Answer directly and helpfully. Avoid unnecessary hedging.
 
-Two modes (automatic):
-1) Normal mode: talk naturally, helpful and clear.
-2) Compliance mode: when the topic is Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility / dimensions.
-   In compliance mode:
-   - Prefer evidence from provided sources text when available.
-   - If you cite, do it like: (TGD M p.86). Keep it subtle.
-   - If you cannot find support in the sources text provided, say so plainly and suggest what to check next.
-   - Never invent clause numbers or precise limits without support.
+Rules:
+- For normal/general questions: answer using widely accepted general knowledge.
+- You may give practical guidance and explanations confidently.
+- Only become strict about citations and exact limits when the question is about Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility.
 
 Medical questions:
 - You can give general, widely accepted guidance and safety cautions.
@@ -403,16 +414,31 @@ Medical questions:
 - Do not refuse by default.
 """.strip()
 
+SYSTEM_PROMPT_COMPLIANCE = """
+You are Raheem AI in compliance mode for Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility.
+
+Compliance rules:
+- Use the provided SOURCES text as your primary grounding when it exists.
+- Cite in this style: (TGD M p.86). Keep it subtle and short.
+- If the SOURCES do not contain support for a precise numeric limit / clause / requirement, say so plainly and suggest what to check next.
+- Do not invent clause numbers or exact dimensional limits without source support.
+- You may still explain concepts and give helpful context — but do not present unsupported numbers as facts.
+""".strip()
+
+
 def build_gemini_parts(
     user_message: str,
     sources_text: str,
     history_blob: str
 ) -> List[Part]:
-    # We keep the “sources” separate so the model can ground answers.
-    # No “you uploaded…” phrasing.
+    # Only use compliance prompt if we actually have sources_text.
+    # This prevents Gemini from acting “restricted” when retrieval found nothing.
+    use_compliance_prompt = bool(sources_text and sources_text.strip())
+    system = SYSTEM_PROMPT_COMPLIANCE if use_compliance_prompt else SYSTEM_PROMPT_NORMAL
+
     content = f"""
 SYSTEM:
-{SYSTEM_PROMPT}
+{system}
 
 CONVERSATION SO FAR:
 {history_blob if history_blob else "(new chat)"}
@@ -435,6 +461,7 @@ USER:
 def root():
     return {"ok": True, "app": "Raheem AI", "time": datetime.utcnow().isoformat()}
 
+
 @app.get("/health")
 def health():
     ensure_vertex_ready()
@@ -448,9 +475,11 @@ def health():
         "location": GCP_LOCATION,
     }
 
+
 @app.get("/pdfs")
 def pdfs():
     return {"pdfs": list_pdfs()}
+
 
 @app.post("/upload-pdf")
 def upload_pdf(file: UploadFile = File(...)):
@@ -477,7 +506,6 @@ def upload_pdf(file: UploadFile = File(...)):
     with open(dest, "wb") as f:
         f.write(raw)
 
-    # reset any index for same name (or new)
     PDF_INDEX.pop(dest.name, None)
 
     return {"ok": True, "stored_as": dest.name, "pdf_count": len(list_pdfs())}
@@ -525,16 +553,19 @@ def _stream_answer(
 
         history_blob = build_history_blob(history_for_prompt, max_msgs=16)
 
-        use_docs = should_use_docs(message, force_docs=force_docs)
+        # Decide whether we SHOULD search docs
+        use_docs_intent = should_use_docs(message, force_docs=force_docs)
+
         selected_sources: List[Tuple[str, List[int]]] = []
         sources_text = ""
-        cites: List[Tuple[str,int]] = []
+        cites: List[Tuple[str, int]] = []
 
-        if use_docs and list_pdfs():
+        if use_docs_intent and list_pdfs():
             selected_sources = select_sources(message, pdf_pin=pdf, max_docs=3, pages_per_doc=3)
             sources_text, cites = build_sources_bundle(selected_sources)
 
-        used_docs_flag = bool(use_docs and sources_text)
+        # We only flip into compliance model/prompt if we actually retrieved sources text.
+        used_docs_flag = bool(sources_text and sources_text.strip())
         model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
 
         # meta (not shown on UI, but useful for debugging)
@@ -542,8 +573,7 @@ def _stream_answer(
         if chat_id:
             yield f"event: meta\ndata: chat_id={chat_id}\n\n"
         if cites:
-            # keep short
-            short = ",".join([f"{d}:p{p}" for d,p in cites[:12]])
+            short = ",".join([f"{d}:p{p}" for d, p in cites[:12]])
             yield f"event: meta\ndata: sources={short}\n\n"
 
         ensure_vertex_ready()
@@ -626,7 +656,6 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
     )
 
 
-# Handy non-stream endpoint for quick testing
 @app.post("/ask")
 def ask(payload: Dict[str, Any] = Body(...)):
     chat_id = (payload.get("chat_id") or "").strip()
@@ -634,7 +663,6 @@ def ask(payload: Dict[str, Any] = Body(...)):
     force_docs = bool(payload.get("force_docs", False))
     pdf = payload.get("pdf")
 
-    # Use the same logic, but non-stream
     chunks = []
     for out in _stream_answer(chat_id, message, force_docs, pdf, None):
         if out.startswith("data: "):
