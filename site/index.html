@@ -450,6 +450,34 @@
     }
     .msg.ai{ background: rgba(255,255,255,.06); }
 
+    /* Typing indicator */
+    .typing{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color: var(--muted2);
+      font-size: 12px;
+      margin-top: 6px;
+      user-select:none;
+    }
+    .dots{
+      display:inline-flex;
+      gap:4px;
+      transform: translateY(1px);
+    }
+    .dot{
+      width:6px;height:6px;border-radius:999px;
+      background: rgba(244,247,255,.55);
+      animation: bounce 1.1s infinite ease-in-out;
+    }
+    .dot:nth-child(2){ animation-delay: .12s; }
+    .dot:nth-child(3){ animation-delay: .24s; }
+
+    @keyframes bounce{
+      0%, 80%, 100%{ transform: translateY(0); opacity:.55; }
+      40%{ transform: translateY(-4px); opacity:1; }
+    }
+
     .composer{
       display:flex;
       gap: 10px;
@@ -589,7 +617,7 @@
             <span class="tag live">Live</span>
             <div style="min-width:0">
               <div style="font-weight:900">Chat</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Conversation memory per chat</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved conversations · seamless continuity</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -616,7 +644,7 @@
       <div class="sideFoot">
         <div style="font-weight:850;color:rgba(244,247,255,.86)">Quick tip</div>
         <div style="margin-top:6px">
-          Use <b>Strict compliance mode</b> when you want exact numbers and cleaner citations.
+          Toggle <b>Evidence mode</b> when you want tighter answers with citations.
         </div>
       </div>
     </aside>
@@ -628,20 +656,20 @@
           <div class="hint" id="viewHint">Start here</div>
         </div>
         <div class="actions">
-          <button class="btn" id="btnPing" type="button">Health</button>
-          <button class="btn primary" id="btnSwagger" type="button">Swagger</button>
+          <button class="btn" id="btnStatus" type="button" title="Check service status">Status</button>
+          <button class="btn primary" id="btnDocs" type="button" title="Developer docs">Docs</button>
         </div>
       </div>
 
       <section class="view show" id="viewHome">
         <div class="hero">
-          <h2>Smart chat for everyday questions and serious compliance checks</h2>
+          <h2>Smart chat for everyday questions — and serious compliance checks</h2>
           <p>
-            Ask normally. If your question turns technical (regulations, TGDs, BER/DEAP, fire safety, accessibility),
-            Raheem switches into compliance mode automatically.
+            Talk normally. When your question becomes technical (TGDs, BER/DEAP, fire safety, accessibility),
+            Raheem automatically shifts into evidence-based answers.
           </p>
           <div class="quote">
-            Clean answers, calm tone, and when it matters, proper evidence.
+            Clear replies, calm tone, and when it matters: traceable evidence.
           </div>
         </div>
 
@@ -651,8 +679,8 @@
               <div class="cardtitle">
                 <div class="icon">AI</div>
                 <div>
-                  <h4>Chat (Live)</h4>
-                  <p>Normal conversation with memory per chat. Compliance mode when needed.</p>
+                  <h4>Chat</h4>
+                  <p>Natural conversation with saved chats. Evidence mode when needed.</p>
                 </div>
               </div>
               <span class="pill" style="border-color: rgba(80,255,215,.38); background: rgba(80,255,215,.10); color: rgba(230,255,240,.92)">Live</span>
@@ -691,17 +719,16 @@
         <div class="hero">
           <h2>Chat</h2>
           <p>
-            Conversations are saved per chat on the left. Pick one and continue where you left off.
+            Saved chats are on the left. Pick one and continue right where you left off.
           </p>
-          <div class="quote" id="apiBanner" style="display:none;"></div>
         </div>
 
         <div class="chatwrap">
           <div class="row" style="justify-content:space-between;">
             <div class="row">
-              <label class="toggle">
+              <label class="toggle" title="Prefer evidence + citations when available">
                 <input type="checkbox" id="forceDocs"/>
-                Strict compliance mode
+                Evidence mode
               </label>
             </div>
             <div class="row">
@@ -712,14 +739,14 @@
           <div class="chatbox" id="chatBox"></div>
 
           <div class="composer">
-            <textarea id="msg" placeholder="Type a message"></textarea>
+            <textarea id="msg" placeholder="Type a message… (Shift + Enter for a new line)"></textarea>
             <button class="btn primary" id="send" type="button">Send</button>
           </div>
         </div>
 
         <div class="footer">
           <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
-          <div>Tip: Strict compliance mode is best for exact technical checks.</div>
+          <div>Tip: Evidence mode is best for precise technical checks.</div>
         </div>
       </section>
 
@@ -727,7 +754,7 @@
         <div class="hero">
           <h2>Future Features</h2>
           <p>
-            This is the roadmap. Each feature will be built properly, not rushed.
+            This is the roadmap. Each feature will be built properly — not rushed.
           </p>
           <div class="quote">
             If you click something and it is not live yet, be nice. Raheem is still cooking.
@@ -833,23 +860,10 @@
 
   <script>
     // =========================
-    // BACKEND ROUTING FIX
+    // BACKEND ROUTING
     // =========================
-    // Netlify hosts the frontend; Render hosts the backend.
-    // If you call fetch("/chat_stream") on Netlify, it will fail.
-    // So we use a configurable API base URL.
-    //
-    // Change this ONE line if your backend URL changes:
     const API_BASE_DEFAULT = "https://complyr.onrender.com";
-
-    // Optional override for testing:
-    // localStorage.setItem("RAHEEM_API_BASE", "http://127.0.0.1:8000");
     const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
-
-    // Show what backend we’re using (only visible inside Chat page hero)
-    const apiBanner = document.getElementById("apiBanner");
-    apiBanner.style.display = "block";
-    apiBanner.textContent = "Connected to: " + API_BASE;
 
     function apiUrl(path){
       if(!path.startsWith("/")) path = "/" + path;
@@ -886,7 +900,7 @@
       if(which==="chat"){
         viewChat.classList.add("show");
         viewTitle.textContent = "Chat";
-        viewHint.textContent  = "Memory stays per conversation";
+        viewHint.textContent  = "Saved chats · continuous context";
         chatList.classList.add("show");
         renderChatList();
       }
@@ -904,25 +918,25 @@
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
 
-    // Swagger + health (NOW POINTS TO BACKEND)
-    document.getElementById("btnSwagger").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
-    document.getElementById("btnPing").onclick = async ()=>{
+    // Status + Docs buttons (professional labels)
+    document.getElementById("btnDocs").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
+    document.getElementById("btnStatus").onclick = async ()=>{
       try{
         const r = await fetch(apiUrl("/health"));
         const t = await r.text();
         let j = {};
         try{ j = JSON.parse(t); }catch(e){}
         if(!r.ok){
-          showToast("Health error " + r.status + ": " + (t || "No body"));
+          showToast("Status error " + r.status + ": " + (t || "No body"));
           return;
         }
-        showToast(j.vertex_ready ? "Healthy. AI is ready." : "Healthy, but AI not ready yet.");
+        showToast(j.vertex_ready ? "Status: online · AI ready" : "Status: online · AI starting");
       }catch(e){
-        showToast("Health check failed.");
+        showToast("Status check failed.");
       }
     };
 
-    // Future feature buttons
+    // Future feature buttons (KEEP HUMOUR)
     document.querySelectorAll("[data-soon]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const name = btn.getAttribute("data-soon");
@@ -978,7 +992,7 @@
       tick();
     }
 
-    // Chat memory per saved chat (frontend)
+    // Chat memory per saved chat (frontend) — unchanged logic
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
     const sendBtn = document.getElementById("send");
@@ -1087,6 +1101,14 @@
       return div;
     }
 
+    function addTypingIndicator(targetDiv){
+      const wrap = document.createElement("div");
+      wrap.className = "typing";
+      wrap.innerHTML = `<span>Raheem is typing</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+      targetDiv.appendChild(wrap);
+      return wrap;
+    }
+
     function clearChat(){
       const all = ensureActiveChat();
       all[activeChatId].messages = [{ role:"assistant", content:"All clear. What are we doing now?" }];
@@ -1111,7 +1133,7 @@
     renderChat();
 
     // =========================
-    // CHAT SEND (FIXED)
+    // CHAT SEND — STREAM FIRST UX
     // =========================
     async function send(){
       const text = (msgEl.value || "").trim();
@@ -1128,7 +1150,13 @@
 
       addMsg("user", text);
 
+      // AI container (we’ll stream into this)
       const aiDiv = addMsg("ai", "");
+      const typing = addTypingIndicator(aiDiv);
+
+      // Make it feel alive immediately, even before first tokens arrive
+      let full = "";
+      let gotAnyToken = false;
 
       try{
         const payload = {
@@ -1143,7 +1171,6 @@
           body: JSON.stringify(payload)
         });
 
-        // If backend returns a normal JSON response (non-stream), handle it
         const contentType = (res.headers.get("content-type") || "").toLowerCase();
 
         if(!res.ok){
@@ -1152,7 +1179,7 @@
           return;
         }
 
-        // If it’s JSON, just parse and show
+        // If it’s JSON for any reason, show it (fallback)
         if(contentType.includes("application/json")){
           const j = await res.json();
           const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
@@ -1167,33 +1194,56 @@
           return;
         }
 
-        // Otherwise assume SSE stream
+        // STREAM: parse SSE-ish chunks from fetch body
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
-        let full = "";
 
         while(true){
           const { value, done } = await reader.read();
           if(done) break;
+
           buffer += decoder.decode(value, { stream:true });
 
           const parts = buffer.split("\n\n");
           buffer = parts.pop() || "";
 
           for(const chunk of parts){
+            // ignore meta lines completely (they are useful for dev only)
+            if(chunk.startsWith("event: meta")) continue;
+
             if(chunk.startsWith("event: error")){
               const line = chunk.split("\n").find(x=>x.startsWith("data: "));
-              aiDiv.textContent = (line ? line.replace("data: ","") : "Error");
+              const msg = (line ? line.replace("data: ","") : "Error");
+              aiDiv.textContent = msg;
               continue;
             }
+
             if(chunk.startsWith("data: ")){
               const dataLine = chunk.replace("data: ","");
               const delta = dataLine.replaceAll("\\n","\n");
-              full += delta;
-              aiDiv.textContent = full;
-              chatBox.scrollTop = chatBox.scrollHeight;
+
+              if(delta){
+                gotAnyToken = true;
+
+                // remove typing indicator once first token arrives
+                if(typing && typing.parentNode){
+                  typing.parentNode.removeChild(typing);
+                }
+
+                full += delta;
+                aiDiv.textContent = full;
+                chatBox.scrollTop = chatBox.scrollHeight;
+              }
             }
+          }
+        }
+
+        // End of stream
+        if(!gotAnyToken){
+          // If nothing streamed, still remove typing indicator
+          if(typing && typing.parentNode){
+            typing.parentNode.removeChild(typing);
           }
         }
 
@@ -1206,6 +1256,9 @@
         renderChatList();
 
       }catch(e){
+        if(typing && typing.parentNode){
+          typing.parentNode.removeChild(typing);
+        }
         aiDiv.textContent = "Connection error. Check Console + Network for details.";
         console.error("Chat send error:", e);
       }
