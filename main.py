@@ -709,17 +709,3 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
-
-
-@app.post("/ask")
-def ask(payload: Dict[str, Any] = Body(...)):
-    chat_id = (payload.get("chat_id") or "").strip()
-    message = (payload.get("message") or payload.get("q") or "").strip()
-    force_docs = bool(payload.get("force_docs", False))
-    pdf = payload.get("pdf")
-
-    chunks = []
-    for out in _stream_answer(chat_id, message, force_docs, pdf, None):
-        if out.startswith("data: "):
-            chunks.append(out.replace("data: ", "").replace("\\n", "\n"))
-    return {"answer": "".join(chunks).strip() or "No response."}
