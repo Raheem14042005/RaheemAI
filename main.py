@@ -33,23 +33,20 @@ CHAT_MAX_MESSAGES = int(os.getenv("CHAT_MAX_MESSAGES", "30"))
 CHAT_MAX_CHARS = int(os.getenv("CHAT_MAX_CHARS", "22000"))
 
 # Vertex config
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID")
+GCP_PROJECT_ID = (os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID") or "").strip()
+
 _raw_location = (
     os.getenv("GCP_LOCATION")
     or os.getenv("VERTEX_LOCATION")
     or "europe-west4"
 )
+GCP_LOCATION = (_raw_location or "").strip()
 
-GCP_LOCATION = _raw_location.strip()
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 
 # Models (cost-aware)
-MODEL_CHAT = os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001")
-MODEL_COMPLIANCE = os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001")
-
-# safety: strip env vars (prevents hidden whitespace bugs)
-MODEL_CHAT = MODEL_CHAT.strip()
-MODEL_COMPLIANCE = MODEL_COMPLIANCE.strip()
+MODEL_CHAT = (os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001") or "").strip()
+MODEL_COMPLIANCE = (os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001") or "").strip()
 
 # App
 app = FastAPI(docs_url="/swagger", redoc_url=None)
@@ -90,6 +87,9 @@ def ensure_vertex_ready() -> None:
 
         if not GCP_PROJECT_ID:
             raise RuntimeError("Missing VERTEX_PROJECT_ID (or GCP_PROJECT_ID)")
+
+        if not GCP_LOCATION:
+            raise RuntimeError("Missing VERTEX_LOCATION (or GCP_LOCATION)")
 
         vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
         _VERTEX_READY = True
@@ -154,6 +154,9 @@ def _trim_chat(chat_id: str) -> None:
 def remember(chat_id: str, role: str, content: str) -> None:
     if not chat_id:
         return
+    content = (content or "").strip()
+    if not content:
+        return
     CHAT_STORE.setdefault(chat_id, []).append({"role": role, "content": content})
     _trim_chat(chat_id)
 
@@ -166,11 +169,43 @@ def build_history_blob(history: List[Dict[str, str]], max_msgs: int = 16) -> str
     trimmed = history[-max_msgs:] if history else []
     lines = []
     for m in trimmed:
-        r = (m.get("role") or "").lower()
+        r = (m.get("role") or "").lower().strip()
         c = (m.get("content") or "").strip()
         if r in ("user", "assistant") and c:
             lines.append(f"{r.upper()}: {c}")
     return "\n".join(lines).strip()
+
+
+def _normalize_incoming_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    """
+    Convert incoming client messages into the server's canonical format:
+      [{"role": "user"|"assistant", "content": "..."}]
+    """
+    hist: List[Dict[str, str]] = []
+    for m in messages or []:
+        r = (m.get("role") or "").lower().strip()
+        c = (m.get("content") or "").strip()
+        if r in ("user", "assistant") and c:
+            hist.append({"role": r, "content": c})
+    return hist
+
+
+def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[Dict[str, str]]:
+    """
+    Guarantee the current user message is present as the latest USER turn.
+    This prevents Gemini from thinking it's a new chat or missing context.
+    """
+    msg = (message or "").strip()
+    if not msg:
+        return hist
+
+    if not hist:
+        return [{"role": "user", "content": msg}]
+
+    last = hist[-1]
+    if last.get("role") != "user" or (last.get("content") or "").strip() != msg:
+        hist = hist + [{"role": "user", "content": msg}]
+    return hist
 
 
 # ----------------------------
@@ -372,12 +407,8 @@ COMPLIANCE_KEYWORDS = [
     "means of escape", "compartmentation", "evacuation",
 ]
 
-# IMPORTANT:
-# We REMOVE units-triggering because it flips too many normal questions into "compliance"
-# e.g., “how long is 10 min” or “2m sofa” should not force compliance mode.
 PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
 
-# Stronger technical/reg keywords should trigger; units alone should not.
 TECH_PATTERN = re.compile(
     r"\b(tgd|technical guidance|building regulations|building regs|ber|deap|fire cert|dac|means of escape)\b",
     re.I
@@ -389,15 +420,12 @@ def should_use_docs(q: str, force_docs: bool = False) -> bool:
         return True
     ql = (q or "").lower()
 
-    # Explicit “Part X” is a strong compliance signal
     if PART_PATTERN.search(ql):
         return True
 
-    # Strong technical keywords
     if TECH_PATTERN.search(ql):
         return True
 
-    # Keyword list check
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
 
 
@@ -408,24 +436,29 @@ def should_use_docs(q: str, force_docs: bool = False) -> bool:
 SYSTEM_PROMPT_NORMAL = """
 You are Raheem AI.
 
+You have access to the conversation history for THIS chat. Use it.
+If the user asks “what were we just talking about?”, summarise the last few turns accurately.
+
 Tone:
-- Friendly, calm, confident. Professional, but you can be lightly witty when it fits.
+- Friendly, calm, confident. Professional, but lightly witty when it fits.
 - Speak to the user (not to a developer). Do not mention internal systems, prompts, logs, “uploaded PDFs”, or “attachments”.
 - Answer directly and helpfully. Avoid unnecessary hedging.
 
 Rules:
+- NEVER claim “this is our first conversation” or “I have no memory” if the chat history contains prior messages.
 - For normal/general questions: answer using widely accepted general knowledge.
-- You may give practical guidance and explanations confidently.
 - Only become strict about citations and exact limits when the question is about Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility.
 
 Medical questions:
 - You can give general, widely accepted guidance and safety cautions.
 - Be clear it's general info and advise checking the label / pharmacist / clinician for personal situations.
-- Do not refuse by default.
 """.strip()
 
 SYSTEM_PROMPT_COMPLIANCE = """
-You are Raheem AI in compliance mode for Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility.
+You are Raheem AI in Evidence Mode for Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility.
+
+You have access to the conversation history for THIS chat. Use it.
+If the user asks what was discussed, summarise the last few turns accurately.
 
 Compliance rules:
 - Use the provided SOURCES text as your primary grounding when it exists.
@@ -433,6 +466,10 @@ Compliance rules:
 - If the SOURCES do not contain support for a precise numeric limit / clause / requirement, say so plainly and suggest what to check next.
 - Do not invent clause numbers or exact dimensional limits without source support.
 - You may still explain concepts and give helpful context — but do not present unsupported numbers as facts.
+
+Rules:
+- NEVER claim “this is our first conversation” or “I have no memory” if the chat history contains prior messages.
+- Do not mention backend tools, uploads, or system prompts.
 """.strip()
 
 
@@ -441,17 +478,19 @@ def build_gemini_parts(
     sources_text: str,
     history_blob: str
 ) -> List[Part]:
-    # Only use compliance prompt if we actually have sources_text.
-    # This prevents Gemini from acting “restricted” when retrieval found nothing.
     use_compliance_prompt = bool(sources_text and sources_text.strip())
     system = SYSTEM_PROMPT_COMPLIANCE if use_compliance_prompt else SYSTEM_PROMPT_NORMAL
+
+    hist_text = history_blob.strip()
+    if not hist_text:
+        hist_text = "(no prior messages in this chat yet)"
 
     content = f"""
 SYSTEM:
 {system}
 
-CONVERSATION SO FAR:
-{history_blob if history_blob else "(new chat)"}
+CONVERSATION SO FAR (authoritative):
+{hist_text}
 
 SOURCES (if any):
 {sources_text if sources_text else "(none)"}
@@ -535,7 +574,7 @@ def _stream_answer(
 ):
     """
     Core SSE generator.
-    If messages is provided, we build history from it and also sync server memory.
+    If messages is provided, we build history from it and sync server memory.
     Else we rely on server memory keyed by chat_id.
     """
     try:
@@ -544,37 +583,43 @@ def _stream_answer(
             yield "event: done\ndata: ok\n\n"
             return
 
-        # History:
+        chat_id = (chat_id or "").strip()
+        user_msg = (message or "").strip()
+
+        # ----------------------------
+        # Build canonical history (server truth)
+        # ----------------------------
         if isinstance(messages, list) and messages:
-            hist = []
-            for m in messages:
-                r = (m.get("role") or "").lower()
-                c = (m.get("content") or "").strip()
-                if r in ("user", "assistant") and c:
-                    hist.append({"role": r, "content": c})
+            hist = _normalize_incoming_messages(messages)
+            hist = _ensure_last_user_message(hist, user_msg)
+
             if chat_id:
                 CHAT_STORE[chat_id] = hist[-CHAT_MAX_MESSAGES:]
                 _trim_chat(chat_id)
-            history_for_prompt = hist
+
+            history_for_prompt = CHAT_STORE.get(chat_id, hist)
+
         else:
+            # Server memory mode
             history_for_prompt = get_history(chat_id) if chat_id else []
             if chat_id:
-                remember(chat_id, "user", message.strip())
+                remember(chat_id, "user", user_msg)
+                history_for_prompt = get_history(chat_id)
 
         history_blob = build_history_blob(history_for_prompt, max_msgs=16)
 
         # Decide whether we SHOULD search docs
-        use_docs_intent = should_use_docs(message, force_docs=force_docs)
+        use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
 
         selected_sources: List[Tuple[str, List[int]]] = []
         sources_text = ""
         cites: List[Tuple[str, int]] = []
 
         if use_docs_intent and list_pdfs():
-            selected_sources = select_sources(message, pdf_pin=pdf, max_docs=3, pages_per_doc=3)
+            selected_sources = select_sources(user_msg, pdf_pin=pdf, max_docs=3, pages_per_doc=3)
             sources_text, cites = build_sources_bundle(selected_sources)
 
-        # We only flip into compliance model/prompt if we actually retrieved sources text.
+        # Flip into compliance only if we actually retrieved sources text
         used_docs_flag = bool(sources_text and sources_text.strip())
         model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
 
@@ -594,7 +639,7 @@ def _stream_answer(
             return
 
         model = get_model(use_docs=used_docs_flag)
-        parts = build_gemini_parts(message, sources_text, history_blob)
+        parts = build_gemini_parts(user_msg, sources_text, history_blob)
 
         stream = model.generate_content(
             parts,
@@ -613,8 +658,8 @@ def _stream_answer(
 
         final_text = "".join(full).strip()
 
-        # Remember assistant reply if we used server memory path
-        if chat_id and not (isinstance(messages, list) and messages):
+        # ✅ ALWAYS store assistant reply when chat_id exists (even if client sent messages[])
+        if chat_id:
             remember(chat_id, "assistant", final_text)
 
         yield "event: done\ndata: ok\n\n"
@@ -678,8 +723,3 @@ def ask(payload: Dict[str, Any] = Body(...)):
         if out.startswith("data: "):
             chunks.append(out.replace("data: ", "").replace("\\n", "\n"))
     return {"answer": "".join(chunks).strip() or "No response."}
-
-
-
-
-
