@@ -875,12 +875,24 @@ def _stream_answer(
             )
             sources_text, cites = build_sources_bundle(selected_sources)
 
-        # Flip into compliance only if we actually retrieved sources text
+        # If user intent is compliance, ALWAYS use the compliance system rules
+        # We only attach SOURCES when we have them — but we never "guess" numbers without them.
         used_docs_flag = bool(sources_text and sources_text.strip())
-        model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
 
+        use_compliance_rules = use_docs_intent  # <-- key change
+        model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
         system_prompt = SYSTEM_PROMPT_COMPLIANCE if used_docs_flag else SYSTEM_PROMPT_NORMAL
 
+        # If compliance intent but no sources were retrieved, force the assistant to be honest.
+        if use_compliance_rules and not used_docs_flag:
+            # This note goes into the user's message so the model follows it,
+            # without changing your normal tone.
+            sources_text = (
+                "NO_RELEVANT_SOURCES_FOUND.\n"
+                "If the user asks for an exact numeric requirement (distances, widths, U-values, tables, clauses), "
+                "do NOT guess. Say you can't confirm it from the uploaded TGDs and ask what TGD/section or request the relevant PDF."
+                )
+                 
         # meta (not shown on UI, but useful for debugging)
         yield f"event: meta\ndata: model={model_name};used_docs={used_docs_flag}\n\n"
         if chat_id:
@@ -957,3 +969,4 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
