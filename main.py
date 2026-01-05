@@ -197,6 +197,7 @@ Formatting rules (strict):
 - If citing TGDs, cite only: document + section number and/or table number.
 - Never invent section numbers, clause numbers, or table numbers.
 - Only cite a section/table if it is visible in the provided SOURCES text.
+- Do not reproduce large chunks of the TGDs. If quoting, quote only 1–2 short lines.
 """.strip()
 
 SYSTEM_PROMPT_NORMAL = f"""
@@ -230,6 +231,11 @@ Compliance rules (strict):
 - If you cannot confirm a number from SOURCES, say so plainly and ask the user to clarify building type / situation or upload the relevant TGD.
 - Do not invent “optimum” values unless the TGD explicitly states them in the SOURCES.
 - If the user challenges you, re-check SOURCES and correct yourself.
+
+Proof rule (critical):
+- If you give a numeric requirement from a TGD, you MUST include a short verbatim quote (1–2 lines) from the SOURCES text you used.
+- If you cannot quote it from SOURCES, do not give the number.
+- Never mention page numbers in the quote.
 """.strip()
 
 
@@ -593,15 +599,23 @@ def is_numeric_compliance_question(q: str) -> bool:
 
 PAGE_MENTION_RE = re.compile(r"\bpage\s*\d+\b", re.I)
 BULLET_RE = re.compile(r"(^|\n)\s*(\*|-|•|\d+\.)\s+", re.M)
-
-# “Section 1.2.3”, “Table 3”, “Clause 4.1” etc
 REF_RE = re.compile(r"\b(Section|Table|Clause|Figure|Diagram)\s*[A-Za-z0-9][A-Za-z0-9\.\-]*\b", re.I)
+
+# Numeric patterns for grounding
+ANY_NUMBER_RE = re.compile(r"\b\d+(\.\d+)?\b")
+NUM_WITH_UNIT_RE = re.compile(r"\b\d+(\.\d+)?\s*(mm|m|metre|meter|w/m²k|w\/m2k|%)\b", re.I)
 
 
 def strip_bullets_streaming(delta: str) -> str:
-    # Remove bullet markers but keep the content.
-    # Handles "* ", "- ", "• ", and "1. " at line starts.
     return BULLET_RE.sub(lambda m: m.group(1), delta)
+
+
+def _sources_contain_any_number(sources_text: str) -> bool:
+    return bool(ANY_NUMBER_RE.search(sources_text or ""))
+
+
+def _looks_like_numeric_answer(text: str) -> bool:
+    return bool(NUM_WITH_UNIT_RE.search(text or ""))
 
 
 def postprocess_final_answer(final_text: str, sources_text: str, compliance: bool) -> str:
@@ -614,20 +628,15 @@ def postprocess_final_answer(final_text: str, sources_text: str, compliance: boo
     t = BULLET_RE.sub(lambda m: m.group(1), t)
 
     if compliance:
-        # If the model cited section/table/etc but those tokens are not visible in SOURCES,
-        # we strip the references to avoid invented citations.
         src = (sources_text or "").lower()
         if src.strip():
-            # If specific ref keywords aren't present in sources at all, block all ref mentions.
             if ("section" not in src) and ("table" not in src) and ("clause" not in src) and ("diagram" not in src) and ("figure" not in src):
                 if REF_RE.search(t):
                     t = REF_RE.sub("", t).strip()
                     t = (t + "\n\nI can’t confidently point to the exact section or table from the extracted text I have right now, but I can re-check if you tell me the exact TGD and topic or upload a clearer extract.").strip()
         else:
-            # No sources: strip refs completely.
             t = REF_RE.sub("", t).strip()
 
-    # Tidy excessive spaces/newlines
     t = re.sub(r"[ \t]+", " ", t)
     t = re.sub(r"\n{3,}", "\n\n", t).strip()
     return t
@@ -798,18 +807,18 @@ def _stream_answer(
         model_name = MODEL_COMPLIANCE if is_compliance else MODEL_CHAT
         system_prompt = SYSTEM_PROMPT_COMPLIANCE if is_compliance else SYSTEM_PROMPT_NORMAL
 
-        # Hard rule: numeric compliance questions MUST be grounded
-        if numeric_compliance and not used_docs_flag:
-            refusal = (
-                "I can’t confirm that from the Technical Guidance Documents I have available right now. "
-                "If you tell me which TGD (e.g., TGD B / K / L / M) and the situation (building type, sprinklers, etc.), "
-                "or upload the specific document, I’ll answer from the text and cite the section or table."
-            )
-            if chat_id:
-                remember(chat_id, "assistant", refusal)
-            yield f"data: {refusal}\n\n"
-            yield "event: done\ndata: ok\n\n"
-            return
+        # HARD RULE: numeric compliance must be grounded in extracted text that contains numbers
+        if numeric_compliance:
+            if (not used_docs_flag) or (not _sources_contain_any_number(sources_text)):
+                refusal = (
+                    "I can’t confirm the exact numeric limit from the extracted TGD text I have available right now. "
+                    "If you upload a clearer copy or tell me the exact clause or table you want checked, I’ll answer from the text and include a short quote."
+                )
+                if chat_id:
+                    remember(chat_id, "assistant", refusal)
+                yield f"data: {refusal}\n\n"
+                yield "event: done\ndata: ok\n\n"
+                return
 
         ensure_vertex_ready()
         if not _VERTEX_READY:
@@ -833,15 +842,25 @@ def _stream_answer(
             if not delta:
                 continue
 
-            # Strip bullets as they stream (so you never see "*")
             delta_clean = strip_bullets_streaming(delta)
-
             full.append(delta_clean)
             safe = delta_clean.replace("\r", "").replace("\n", "\\n")
             yield f"data: {safe}\n\n"
 
         final_text = "".join(full).strip()
         final_text = postprocess_final_answer(final_text, sources_text, compliance=is_compliance)
+
+        # FINAL HARD CHECK: if it's numeric compliance and the model output contains numbers,
+        # it must include a short quote from SOURCES. If not, refuse.
+        if numeric_compliance:
+            has_numeric_output = _looks_like_numeric_answer(final_text) or bool(ANY_NUMBER_RE.search(final_text or ""))
+            # Require the word "Quote:" to enforce the format without bullets.
+            has_quote_marker = ("quote:" in (final_text or "").lower())
+            if has_numeric_output and not has_quote_marker:
+                final_text = (
+                    "I can’t safely give you that numeric requirement yet because I don’t have a reliable quoted line from the extracted TGD text to prove it. "
+                    "If you re-upload the PDF (so it re-parses) or tell me the exact clause or table, I’ll answer and include a short quote."
+                )
 
         if chat_id:
             remember(chat_id, "assistant", final_text)
