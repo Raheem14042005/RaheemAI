@@ -18,10 +18,18 @@ import io
 
 import fitz  # PyMuPDF
 
-# DOCX export (works now)
-from docx import Document
-from docx.shared import Pt
-from docx.oxml.ns import qn
+# DOCX export (optional)
+DOCX_AVAILABLE = False
+try:
+    from docx import Document
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
+    DOCX_AVAILABLE = True
+except Exception:
+    Document = None
+    Pt = None
+    qn = None
+    DOCX_AVAILABLE = False
 
 import vertexai
 from vertexai.generative_models import (
@@ -1101,14 +1109,39 @@ def _fc_build_report_input(project: Dict[str, Any]) -> str:
     return "\n".join(lines).strip()
 
 
+import html
+
+def _doc_fallback_from_report_text(report_text: str, title: str) -> bytes:
+    """
+    Word-compatible .doc download without python-docx.
+    It's HTML wrapped in a .doc container, which MS Word opens cleanly.
+    """
+    safe = html.escape(report_text or "").replace("\n", "<br/>")
+    safe_title = html.escape(title or "Fire Safety Report (Draft)")
+    doc_html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>{safe_title}</title>
+</head>
+<body style="font-family:Calibri,Arial,sans-serif; font-size:11pt; line-height:1.35;">
+<h1 style="font-size:18pt; margin:0 0 12px 0;">{safe_title}</h1>
+<div>{safe}</div>
+</body>
+</html>"""
+    return doc_html.encode("utf-8")
+
+
 def _docx_from_report_text(report_text: str, title: str = "Fire Safety Report (Draft)") -> bytes:
     """
-    Build a clean DOCX without exposing JSON.
-    The report text is plain paragraphs already (no bullets).
+    If python-docx is installed -> real .docx.
+    Otherwise -> fallback .doc (HTML).
     """
+    if not DOCX_AVAILABLE:
+        return _doc_fallback_from_report_text(report_text, title)
+
     doc = Document()
 
-    # Make Word default font nicer
     style = doc.styles["Normal"]
     style.font.name = "Calibri"
     style._element.rPr.rFonts.set(qn("w:eastAsia"), "Calibri")
@@ -1116,7 +1149,6 @@ def _docx_from_report_text(report_text: str, title: str = "Fire Safety Report (D
 
     doc.add_heading(title, level=1)
 
-    # Preserve paragraphs
     for para in (report_text or "").split("\n"):
         p = para.rstrip()
         if not p.strip():
@@ -1422,35 +1454,62 @@ def firecert_generate_report(payload: Dict[str, Any] = Body(...)):
 @app.post("/firecert/generate")
 def firecert_generate(payload: Dict[str, Any] = Body(...)):
     """
-    Returns a DOCX file download by default.
-    This is the endpoint your Fire Cert "Generate" button should call when you want NO JSON shown.
+    Generate and return a Fire Safety Report file download.
+    Intended for the Fire Cert 'Generate' button where no JSON
+    is shown to the client.
     """
+
     project_id = (payload.get("project_id") or "").strip()
     if not project_id:
-        return JSONResponse({"ok": False, "error": "Missing project_id"}, status_code=400)
+        return JSONResponse(
+            {"ok": False, "error": "Missing project_id"},
+            status_code=400
+        )
 
-    # Generate text first using the same codepath as /generate-report
+    # Generate report text using the same code path as /generate-report
     gen = firecert_generate_report(payload)
+
     if isinstance(gen, JSONResponse):
-        # propagate errors
+        # Propagate errors directly
         return gen
-    data = gen  # dict
+
+    data = gen
     if not data.get("ok"):
-        return JSONResponse({"ok": False, "error": data.get("error", "Unknown")}, status_code=500)
+        return JSONResponse(
+            {"ok": False, "error": data.get("error", "Unknown error")},
+            status_code=500
+        )
 
     report_text = (data.get("report") or "").strip()
     if not report_text:
-        return JSONResponse({"ok": False, "error": "Empty report output."}, status_code=500)
+        return JSONResponse(
+            {"ok": False, "error": "Empty report output"},
+            status_code=500
+        )
 
     title = (payload.get("title") or "Fire Safety Report (Draft)").strip()
-    docx_bytes = _docx_from_report_text(report_text, title=title)
 
-    filename = f"Fire_Safety_Report_Draft_{project_id[:8]}.docx"
+    file_bytes = _docx_from_report_text(
+        report_text,
+        title=title
+    )
+
+    if DOCX_AVAILABLE:
+        filename = f"Fire_Safety_Report_Draft_{project_id[:8]}.docx"
+        media_type = (
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.document"
+        )
+    else:
+        filename = f"Fire_Safety_Report_Draft_{project_id[:8]}.doc"
+        media_type = "application/msword"
+
     headers = {
         "Content-Disposition": f'attachment; filename="{filename}"'
     }
+
     return Response(
-        content=docx_bytes,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        content=file_bytes,
+        media_type=media_type,
         headers=headers
     )
