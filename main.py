@@ -9,7 +9,7 @@ import math
 import json
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple, Any
+from typing import List, Optional, Dict, Tuple, Any, Union
 from collections import Counter
 from datetime import datetime
 
@@ -22,6 +22,15 @@ from vertexai.generative_models import (
     Content,
     GenerationConfig,
 )
+
+# Document AI ingest helper (you create this file)
+# from docai_ingest import docai_extract_pdf_to_text
+try:
+    from docai_ingest import docai_extract_pdf_to_text
+    _DOCAI_HELPER_AVAILABLE = True
+except Exception:
+    docai_extract_pdf_to_text = None
+    _DOCAI_HELPER_AVAILABLE = False
 
 
 # ----------------------------
@@ -68,6 +77,10 @@ BASE_DIR = Path(__file__).resolve().parent
 # Store PDFs beside main.py (Render-safe)
 PDF_DIR = BASE_DIR / "pdfs"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
+
+# Store Document AI parsed text (chunk files)
+DOCAI_DIR = BASE_DIR / "parsed_docai"
+DOCAI_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ----------------------------
@@ -267,7 +280,6 @@ def build_gemini_contents(
         if r == "user":
             contents.append(Content(role="user", parts=[Part.from_text(c)]))
         elif r == "assistant":
-            # Vertex uses role "model" for assistant turns
             contents.append(Content(role="model", parts=[Part.from_text(c)]))
 
     final_user = (user_message or "").strip()
@@ -278,12 +290,10 @@ def build_gemini_contents(
             f"{sources_text}"
         )
 
-    # Ensure last turn is the current user prompt
     if not contents:
         contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
     else:
         if contents[-1].role == "user":
-            # Replace last user content (prevents duplicate last msg + ensures sources are included)
             contents[-1] = Content(role="user", parts=[Part.from_text(final_user)])
         else:
             contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
@@ -315,7 +325,11 @@ def tokenize(text: str) -> List[str]:
     return toks
 
 
+# ---- Existing page-based PDF index (PyMuPDF) ----
 PDF_INDEX: Dict[str, Dict[str, Any]] = {}
+
+# ---- New: Document AI chunk index (range-based) ----
+DOCAI_INDEX: Dict[str, Dict[str, Any]] = {}
 
 
 def list_pdfs() -> List[str]:
@@ -328,7 +342,128 @@ def list_pdfs() -> List[str]:
     return files
 
 
+def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
+    """
+    Files like:
+      parsed_docai/<stem>_p1-15.txt
+      parsed_docai/<stem>_p16-30.txt
+    """
+    stem = Path(pdf_name).stem
+    out = []
+    if DOCAI_DIR.exists():
+        for p in DOCAI_DIR.iterdir():
+            if p.is_file() and p.name.startswith(stem + "_p") and p.suffix.lower() == ".txt":
+                out.append(p)
+    out.sort(key=lambda x: x.name)
+    return out
+
+
+def _parse_range_from_chunk_filename(path: Path) -> Optional[Tuple[int, int]]:
+    # stem_p1-15.txt
+    m = re.search(r"_p(\d+)\-(\d+)\.txt$", path.name)
+    if not m:
+        return None
+    return (int(m.group(1)), int(m.group(2)))
+
+
+def ensure_docai_indexed(pdf_name: str) -> None:
+    """
+    Builds a BM25-ish index over Document AI chunk files (page ranges).
+    This improves extraction quality for multi-column text and tables.
+    """
+    if pdf_name in DOCAI_INDEX:
+        return
+
+    chunk_files = _docai_chunk_files_for(pdf_name)
+    if not chunk_files:
+        return
+
+    chunks = []
+    df = Counter()
+
+    for p in chunk_files:
+        rng = _parse_range_from_chunk_filename(p)
+        if not rng:
+            continue
+        try:
+            txt = p.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+
+        low = txt.lower()
+        toks = tokenize(low)
+        tf = Counter(toks)
+        df.update(set(tf.keys()))
+
+        chunks.append({
+            "range": rng,                 # (start_page, end_page) 1-based
+            "text": txt,
+            "text_lower": low,
+            "tf": tf,
+            "len": len(toks),
+        })
+
+    if not chunks:
+        return
+
+    avgdl = sum(c["len"] for c in chunks) / max(1, len(chunks))
+    DOCAI_INDEX[pdf_name] = {
+        "chunks": chunks,
+        "df": df,
+        "avgdl": avgdl,
+        "N": len(chunks),
+    }
+
+
+def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
+    k1 = 1.2
+    b = 0.75
+    score = 0.0
+    for t in query_toks:
+        if t not in tf:
+            continue
+        n = df.get(t, 0)
+        idf = math.log(1 + (N - n + 0.5) / (n + 0.5))
+        f = tf[t]
+        denom = f + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
+        score += idf * (f * (k1 + 1) / (denom or 1.0))
+    return score
+
+
+def search_docai_chunks(pdf_name: str, question: str, k: int = 3) -> List[Dict[str, Any]]:
+    """
+    Returns best Document AI chunks: [{"range": (a,b), "text": "..."}]
+    """
+    ensure_docai_indexed(pdf_name)
+    idx = DOCAI_INDEX.get(pdf_name)
+    if not idx:
+        return []
+
+    qt = tokenize(question)
+    if not qt:
+        return []
+
+    df = idx["df"]
+    N = idx["N"]
+    avgdl = idx["avgdl"]
+
+    scored = []
+    for i, ch in enumerate(idx["chunks"]):
+        s = bm25_score(qt, ch["tf"], df, N, ch["len"], avgdl)
+        if s > 0:
+            scored.append((i, s))
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    out = []
+    for i, _s in scored[:k]:
+        out.append({"range": idx["chunks"][i]["range"], "text": idx["chunks"][i]["text"]})
+    return out
+
+
 def index_pdf(pdf_path: Path) -> None:
+    """
+    Existing PyMuPDF full-page index (used as fallback and for page-precise citations).
+    """
     name = pdf_path.name
     doc = fitz.open(pdf_path)
     try:
@@ -370,22 +505,6 @@ def ensure_indexed(pdf_name: str) -> None:
     p = PDF_DIR / pdf_name
     if p.exists():
         index_pdf(p)
-
-
-def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
-    # Simple BM25-ish
-    k1 = 1.2
-    b = 0.75
-    score = 0.0
-    for t in query_toks:
-        if t not in tf:
-            continue
-        n = df.get(t, 0)
-        idf = math.log(1 + (N - n + 0.5) / (n + 0.5))
-        f = tf[t]
-        denom = f + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
-        score += idf * (f * (k1 + 1) / (denom or 1.0))
-    return score
 
 
 def search_pages(pdf_name: str, question: str, k: int = 5) -> List[int]:
@@ -430,16 +549,55 @@ def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int
         doc.close()
 
 
-def build_sources_bundle(selected: List[Tuple[str, List[int]]]) -> Tuple[str, List[Tuple[str, int]]]:
+# --- unified sources selection ---
+# cites: list of (doc_name, page_or_range_str)
+Cite = Tuple[str, str]
+
+
+def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]) -> Tuple[str, List[Cite]]:
+    """
+    selected entries are:
+      (pdf_name, pages_or_ranges, mode)
+        mode="docai" and pages_or_ranges is list[(a,b)]
+        mode="pymupdf" and pages_or_ranges is list[int] 0-based page numbers
+    """
     pieces = []
-    cites: List[Tuple[str, int]] = []
-    for pdf_name, pages in selected:
+    cites: List[Cite] = []
+
+    for pdf_name, items, mode in selected:
         pdf_path = PDF_DIR / pdf_name
         if not pdf_path.exists():
             continue
-        pieces.append(extract_pages_text(pdf_path, pages))
-        for p in pages:
-            cites.append((pdf_name, p + 1))
+
+        if mode == "docai":
+            # items: list of (a,b) 1-based page ranges
+            ensure_docai_indexed(pdf_name)
+            idx = DOCAI_INDEX.get(pdf_name)
+            if not idx:
+                continue
+
+            # Pull chunk texts matching ranges
+            for rng in items:  # type: ignore
+                a, b = rng
+                # Find matching chunk
+                txt = ""
+                for ch in idx["chunks"]:
+                    if ch["range"] == (a, b):
+                        txt = ch["text"]
+                        break
+                if txt:
+                    clipped = txt.strip()
+                    if len(clipped) > 4500:
+                        clipped = clipped[:4500] + "..."
+                    pieces.append(f"[{pdf_name} p.{a}-{b}]\n{clipped}")
+                    cites.append((pdf_name, f"p.{a}-{b}"))
+        else:
+            # mode="pymupdf"
+            pages = items  # type: ignore
+            pieces.append(extract_pages_text(pdf_path, pages))
+            for p in pages:
+                cites.append((pdf_name, f"p.{p+1}"))
+
     return ("\n\n".join([p for p in pieces if p]).strip(), cites)
 
 
@@ -447,32 +605,54 @@ def select_sources(
     question: str,
     pdf_pin: Optional[str] = None,
     max_docs: int = 3,
-    pages_per_doc: int = 3
-) -> List[Tuple[str, List[int]]]:
+    pages_per_doc: int = 3,
+    docai_chunks_per_doc: int = 2,
+) -> List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
+    """
+    Prefer Document AI chunk retrieval if chunk files exist for a pdf.
+    Fallback to PyMuPDF pages otherwise.
+    """
     pdfs = list_pdfs()
     if not pdfs:
         return []
 
-    chosen = []
-    if pdf_pin and pdf_pin in pdfs:
-        pages = search_pages(pdf_pin, question, k=pages_per_doc)
-        if pages:
-            chosen.append((pdf_pin, pages))
-        return chosen
+    chosen: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
 
-    doc_scores = []
-    for pdf_name in pdfs:
-        ensure_indexed(pdf_name)
+    def pick_for_pdf(pdf_name: str) -> Optional[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
+        # If docai chunks exist, prefer them
+        if _docai_chunk_files_for(pdf_name):
+            chunks = search_docai_chunks(pdf_name, question, k=docai_chunks_per_doc)
+            if chunks:
+                ranges = [c["range"] for c in chunks]  # [(a,b)]
+                return (pdf_name, ranges, "docai")
+
+        # Fallback to pymupdf page search
         pages = search_pages(pdf_name, question, k=pages_per_doc)
         if pages:
-            proxy = 0.0
-            for rank, _p in enumerate(pages):
-                proxy += (pages_per_doc - rank)
-            doc_scores.append((pdf_name, pages, proxy))
-    doc_scores.sort(key=lambda x: x[2], reverse=True)
+            return (pdf_name, pages, "pymupdf")
+        return None
 
-    for pdf_name, pages, _ in doc_scores[:max_docs]:
-        chosen.append((pdf_name, pages))
+    if pdf_pin and pdf_pin in pdfs:
+        picked = pick_for_pdf(pdf_pin)
+        return [picked] if picked else []
+
+    # Score docs by proxy relevance
+    doc_scores = []
+    for pdf_name in pdfs:
+        picked = pick_for_pdf(pdf_name)
+        if not picked:
+            continue
+        mode = picked[2]
+        if mode == "docai":
+            score = 10.0
+        else:
+            score = 5.0
+        doc_scores.append((pdf_name, picked, score))
+
+    doc_scores.sort(key=lambda x: x[2], reverse=True)
+    for _name, picked, _score in doc_scores[:max_docs]:
+        chosen.append(picked)
+
     return chosen
 
 
@@ -532,12 +712,40 @@ def health():
         "models": {"chat": MODEL_CHAT, "compliance": MODEL_COMPLIANCE},
         "project": GCP_PROJECT_ID,
         "location": GCP_LOCATION,
+        "docai_helper": _DOCAI_HELPER_AVAILABLE,
+        "docai_processor_id_present": bool((os.getenv("DOCAI_PROCESSOR_ID") or "").strip()),
+        "docai_location_present": bool((os.getenv("DOCAI_LOCATION") or "").strip()),
     }
 
 
 @app.get("/pdfs")
 def pdfs():
     return {"pdfs": list_pdfs()}
+
+
+def _split_docai_combined_to_chunks(combined: str) -> List[Tuple[Tuple[int, int], str]]:
+    """
+    Parses combined text produced by docai_ingest.py which includes markers:
+      --- DOC_AI_PAGES a-b ---
+    Returns list of ((a,b), chunk_text).
+    """
+    if not combined:
+        return []
+    pattern = re.compile(r"---\s*DOC_AI_PAGES\s+(\d+)\-(\d+)\s*---", re.IGNORECASE)
+    parts = pattern.split(combined)
+    # split() returns: [pre, a, b, text, a, b, text, ...]
+    out: List[Tuple[Tuple[int, int], str]] = []
+    if len(parts) < 4:
+        return out
+
+    i = 1
+    while i + 2 < len(parts):
+        a = int(parts[i])
+        b = int(parts[i + 1])
+        txt = parts[i + 2].strip()
+        out.append(((a, b), txt))
+        i += 3
+    return out
 
 
 @app.post("/upload-pdf")
@@ -565,9 +773,45 @@ def upload_pdf(file: UploadFile = File(...)):
     with open(dest, "wb") as f:
         f.write(raw)
 
+    # Clear indexes for this file
     PDF_INDEX.pop(dest.name, None)
+    DOCAI_INDEX.pop(dest.name, None)
 
-    return {"ok": True, "stored_as": dest.name, "pdf_count": len(list_pdfs())}
+    # ---- NEW: Document AI parse (optional, never blocks upload) ----
+    docai_ok = False
+    docai_chunks_saved = 0
+    docai_error = None
+
+    try:
+        # Only attempt if helper exists AND env vars are present
+        if _DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text:
+            if (os.getenv("DOCAI_PROCESSOR_ID") or "").strip() and (os.getenv("DOCAI_LOCATION") or "").strip():
+                # Process from saved path (docai_ingest slices the pdf itself)
+                combined_text, chunk_ranges = docai_extract_pdf_to_text(str(dest), chunk_pages=15)
+
+                # Save chunk files so retrieval can cite "p.a-b"
+                chunks = _split_docai_combined_to_chunks(combined_text)
+                stem = dest.stem
+                for (a, b), txt in chunks:
+                    out_path = DOCAI_DIR / f"{stem}_p{a}-{b}.txt"
+                    out_path.write_text(txt, encoding="utf-8", errors="ignore")
+                    docai_chunks_saved += 1
+
+                docai_ok = docai_chunks_saved > 0
+    except Exception as e:
+        docai_error = repr(e)
+
+    return {
+        "ok": True,
+        "stored_as": dest.name,
+        "pdf_count": len(list_pdfs()),
+        "docai": {
+            "attempted": bool(_DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text),
+            "ok": docai_ok,
+            "chunks_saved": docai_chunks_saved,
+            "error": docai_error,
+        }
+    }
 
 
 # ----------------------------
@@ -609,7 +853,6 @@ def _stream_answer(
 
             history_for_prompt = CHAT_STORE.get(chat_id, hist)
         else:
-            # Server memory mode
             history_for_prompt = get_history(chat_id) if chat_id else []
             if chat_id:
                 remember(chat_id, "user", user_msg)
@@ -618,19 +861,24 @@ def _stream_answer(
         # Decide whether we SHOULD search docs
         use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
 
-        selected_sources: List[Tuple[str, List[int]]] = []
+        selected_sources: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
         sources_text = ""
-        cites: List[Tuple[str, int]] = []
+        cites: List[Cite] = []
 
         if use_docs_intent and list_pdfs():
-            selected_sources = select_sources(user_msg, pdf_pin=pdf, max_docs=3, pages_per_doc=3)
+            selected_sources = select_sources(
+                user_msg,
+                pdf_pin=pdf,
+                max_docs=3,
+                pages_per_doc=3,
+                docai_chunks_per_doc=2
+            )
             sources_text, cites = build_sources_bundle(selected_sources)
 
         # Flip into compliance only if we actually retrieved sources text
         used_docs_flag = bool(sources_text and sources_text.strip())
         model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
 
-        # Choose the correct system prompt
         system_prompt = SYSTEM_PROMPT_COMPLIANCE if used_docs_flag else SYSTEM_PROMPT_NORMAL
 
         # meta (not shown on UI, but useful for debugging)
@@ -639,7 +887,7 @@ def _stream_answer(
             yield f"event: meta\ndata: chat_id={chat_id}\n\n"
         yield f"event: meta\ndata: hist_len={len(history_for_prompt)}\n\n"
         if cites:
-            short = ",".join([f"{d}:p{p}" for d, p in cites[:12]])
+            short = ",".join([f"{d}:{p}" for d, p in cites[:12]])
             yield f"event: meta\ndata: sources={short}\n\n"
 
         ensure_vertex_ready()
@@ -649,7 +897,6 @@ def _stream_answer(
             yield "event: done\ndata: ok\n\n"
             return
 
-        # ✅ Correct: multi-turn contents + system_instruction
         model = get_model(use_docs=used_docs_flag, system_prompt=system_prompt)
         contents = build_gemini_contents(history_for_prompt, user_msg, sources_text)
 
@@ -670,7 +917,6 @@ def _stream_answer(
 
         final_text = "".join(full).strip()
 
-        # ✅ ALWAYS store assistant reply when chat_id exists
         if chat_id:
             remember(chat_id, "assistant", final_text)
 
@@ -690,11 +936,6 @@ def chat_stream_get(
     pdf: Optional[str] = Query(None),
     page_hint: Optional[int] = Query(None),
 ):
-    """
-    EventSource-compatible streaming endpoint.
-    Frontend should call:
-      /chat_stream?q=...&chat_id=...&force_docs=0|1
-    """
     return StreamingResponse(
         _stream_answer(chat_id.strip(), q, force_docs, pdf, page_hint),
         media_type="text/event-stream",
@@ -704,11 +945,6 @@ def chat_stream_get(
 
 @app.post("/chat_stream")
 def chat_stream_post(payload: Dict[str, Any] = Body(...)):
-    """
-    Optional POST style (if you ever move away from EventSource).
-    Supports:
-      { "message": "...", "chat_id": "...", "force_docs": false, "pdf": null, "messages": [...] }
-    """
     chat_id = (payload.get("chat_id") or "").strip()
     message = (payload.get("message") or payload.get("q") or "").strip()
     force_docs = bool(payload.get("force_docs", False))
