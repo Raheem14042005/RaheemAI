@@ -572,21 +572,31 @@ TECH_PATTERN = re.compile(
 
 NUMERIC_COMPLIANCE_TRIGGERS = [
     "minimum", "maximum", "max", "min", "limit", "limits",
-    "distance", "width", "height", "u-value", "y-value",
-    "rise", "going", "pitch", "stairs", "escape", "travel distance"
+    "distance", "width", "widths", "lengths", "length", "height", "u-value", "y-value",
+    "rise", "riser", "going", "pitch",
+    "stairs", "stair", "staircase",
+    "dimension", "dimensions", 
+    "escape", "travel distance"
 ]
+
 
 
 def should_use_docs(q: str, force_docs: bool = False) -> bool:
     if force_docs:
         return True
+
     ql = (q or "").lower()
+
+    # If it's a "numeric compliance style" question, always use docs.
+    # This stops the “I need a TGD” problem for stairs/width/rise/etc.
+    if is_numeric_compliance_question(ql):
+        return True
+
     if PART_PATTERN.search(ql):
         return True
     if TECH_PATTERN.search(ql):
         return True
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
-
 
 def is_numeric_compliance_question(q: str) -> bool:
     ql = (q or "").lower()
@@ -789,9 +799,52 @@ def _stream_answer(
         # Decide compliance intent
         use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
         numeric_compliance = use_docs_intent and is_numeric_compliance_question(user_msg)
+        
+def auto_pin_pdf(question: str) -> Optional[str]:
+    q = (question or "").lower()
+    pdfs = set(list_pdfs())
+
+    def pick_any(cands: List[str]) -> Optional[str]:
+        for c in cands:
+            if c in pdfs:
+                return c
+        return None
+
+    # Stairs / fall protection
+    if any(w in q for w in ["stairs", "stair", "staircase", "riser", "rise", "going", "pitch", "headroom", "handrail", "balustrade"]):
+        return pick_any([
+            "Technical Guidance Document K.pdf",
+            "TGD K.pdf",
+            "Technical Guidance Document K (2020).pdf"
+        ])
+
+    # Fire safety / means of escape
+    if any(w in q for w in ["fire", "escape", "means of escape", "travel distance", "sprinkler", "smoke", "compartment", "car park"]):
+        return pick_any([
+            "Technical Guidance Document B Non Dwellings.pdf",
+            "Technical Guidance Document B Dwellings.pdf",
+        ])
+
+    # Energy / fabric
+    if any(w in q for w in ["u-value", "u value", "y-value", "thermal", "insulation", "ber", "deap", "energy", "renovation", "major renovation"]):
+        return pick_any([
+            "Technical Guidance Document L Dwellings.pdf",
+            "Technical Guidance Document L Non Dwellings.pdf",
+        ])
+
+    # Access
+    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac", "part m"]):
+        return pick_any([
+            "Technical Guidance Document M.pdf",
+        ])
+
+    return None
 
         sources_text = ""
         if use_docs_intent and list_pdfs():
+        
+            auto_pdf = pdf or auto_pin_pdf(user_msg)
+            
             selected = select_sources(
                 user_msg,
                 pdf_pin=pdf,
@@ -902,3 +955,4 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
