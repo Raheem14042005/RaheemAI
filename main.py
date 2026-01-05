@@ -290,7 +290,7 @@ def build_gemini_contents(history: List[Dict[str, str]], user_message: str, sour
         contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
     else:
         if contents[-1].role == "user":
-            contents[-1] = Content(role="user", parts=[Part.from_text(final_user)]))
+            contents[-1] = Content(role="user", parts=[Part.from_text(final_user)])
         else:
             contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
 
@@ -1042,3 +1042,4 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
