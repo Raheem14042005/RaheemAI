@@ -23,8 +23,7 @@ from vertexai.generative_models import (
     GenerationConfig,
 )
 
-# Document AI ingest helper (you create this file)
-# from docai_ingest import docai_extract_pdf_to_text
+# Document AI ingest helper (optional file)
 try:
     from docai_ingest import docai_extract_pdf_to_text
     _DOCAI_HELPER_AVAILABLE = True
@@ -48,17 +47,11 @@ CHAT_MAX_CHARS = int(os.getenv("CHAT_MAX_CHARS", "22000"))
 
 # Vertex config
 GCP_PROJECT_ID = (os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID") or "").strip()
-
-_raw_location = (
-    os.getenv("GCP_LOCATION")
-    or os.getenv("VERTEX_LOCATION")
-    or "europe-west4"
-)
-GCP_LOCATION = (_raw_location or "").strip()
+GCP_LOCATION = (os.getenv("GCP_LOCATION") or os.getenv("VERTEX_LOCATION") or "europe-west4").strip()
 
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 
-# Models (cost-aware)
+# Models
 MODEL_CHAT = (os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001") or "").strip()
 MODEL_COMPLIANCE = (os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001") or "").strip()
 
@@ -74,11 +67,9 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# Store PDFs beside main.py (Render-safe)
 PDF_DIR = BASE_DIR / "pdfs"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
 
-# Store Document AI parsed text (chunk files)
 DOCAI_DIR = BASE_DIR / "parsed_docai"
 DOCAI_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -105,7 +96,6 @@ def ensure_vertex_ready() -> None:
 
         if not GCP_PROJECT_ID:
             raise RuntimeError("Missing VERTEX_PROJECT_ID (or GCP_PROJECT_ID)")
-
         if not GCP_LOCATION:
             raise RuntimeError("Missing VERTEX_LOCATION (or GCP_LOCATION)")
 
@@ -117,21 +107,13 @@ def ensure_vertex_ready() -> None:
         _VERTEX_ERR = str(e)
 
 
-def get_model(use_docs: bool, system_prompt: str) -> GenerativeModel:
-    """
-    If we have grounded sources_text, we use the compliance model.
-    Otherwise, use the chat model.
-    System prompt is passed via system_instruction (correct way).
-    """
+def get_model(model_name: str, system_prompt: str) -> GenerativeModel:
     ensure_vertex_ready()
-    name = MODEL_COMPLIANCE if use_docs else MODEL_CHAT
-    return GenerativeModel(name, system_instruction=[Part.from_text(system_prompt)])
+    return GenerativeModel(model_name, system_instruction=[Part.from_text(system_prompt)])
 
 
-def get_generation_config(use_docs: bool) -> GenerationConfig:
-    # Chat: warmer / witty
-    # Compliance: tighter / more deterministic (but not robotic)
-    if use_docs:
+def get_generation_config(is_compliance: bool) -> GenerationConfig:
+    if is_compliance:
         return GenerationConfig(
             temperature=0.35,
             top_p=0.85,
@@ -185,10 +167,6 @@ def get_history(chat_id: str) -> List[Dict[str, str]]:
 
 
 def _normalize_incoming_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-    """
-    Convert incoming client messages into the server's canonical format:
-      [{"role": "user"|"assistant", "content": "..."}]
-    """
     hist: List[Dict[str, str]] = []
     for m in messages or []:
         r = (m.get("role") or "").lower().strip()
@@ -199,16 +177,11 @@ def _normalize_incoming_messages(messages: List[Dict[str, Any]]) -> List[Dict[st
 
 
 def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[Dict[str, str]]:
-    """
-    Guarantee the current user message is present as the latest USER turn.
-    """
     msg = (message or "").strip()
     if not msg:
         return hist
-
     if not hist:
         return [{"role": "user", "content": msg}]
-
     last = hist[-1]
     if last.get("role") != "user" or (last.get("content") or "").strip() != msg:
         hist = hist + [{"role": "user", "content": msg}]
@@ -216,46 +189,52 @@ def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[
 
 
 # ----------------------------
-# Prompting (tone + compliance discipline)
+# Prompting (tone + discipline)
 # ----------------------------
 
-SYSTEM_PROMPT_NORMAL = """
+# IMPORTANT: user asked to keep tone, but remove asterisks/markdown and remove page mentions.
+FORMAT_RULES = """
+Formatting rules (strict):
+- Do NOT use Markdown.
+- Do NOT use bullet points, numbered lists, asterisks, or hyphen lists.
+- Write in short, clear paragraphs only.
+- Do not include code fences unless the user explicitly asks for code.
+- Do not mention page numbers. If citing TGDs, cite only: document + section number and/or table number (e.g., "TGD K Section 1.1.10" or "TGD K Table 1").
+""".strip()
+
+SYSTEM_PROMPT_NORMAL = f"""
 You are Raheem AI.
 
 You have access to the conversation history for THIS chat. Use it.
 If the user asks “what were we just talking about?”, summarise the last few turns accurately.
 
 Tone:
-- Friendly, calm, confident. Professional, but lightly witty when it fits.
-- Speak to the user (not to a developer). Do not mention internal systems, prompts, logs, “uploaded PDFs”, or “attachments”.
-- Answer directly and helpfully. Avoid unnecessary hedging.
+Friendly, calm, confident. Professional, but lightly witty when it fits.
+Speak to the user (not to a developer). Do not mention internal systems, prompts, logs, uploads, or attachments.
+Answer directly and helpfully. Avoid unnecessary hedging.
+
+{FORMAT_RULES}
 
 Rules:
-- NEVER claim “this is our first conversation” or “I have no memory” if the chat history contains prior messages.
-- For normal/general questions: answer using widely accepted general knowledge.
-- Only become strict about citations and exact limits when the question is about Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility.
-
-Medical questions:
-- You can give general, widely accepted guidance and safety cautions.
-- Be clear it's general info and advise checking the label / pharmacist / clinician for personal situations.
+NEVER claim “this is our first conversation” or “I have no memory” if the chat history contains prior messages.
+For normal/general questions: answer using widely accepted general knowledge.
+Only become strict about citations and exact limits when the question is about Irish building regulations, TGDs, BER-DEAP, fire safety, or accessibility.
 """.strip()
 
-SYSTEM_PROMPT_COMPLIANCE = """
-You are Raheem AI in Evidence Mode for Irish building regulations / TGDs / BER-DEAP / fire safety / accessibility.
+SYSTEM_PROMPT_COMPLIANCE = f"""
+You are Raheem AI in Evidence Mode for Irish building regulations, TGDs, BER-DEAP, fire safety, and accessibility.
 
 You have access to the conversation history for THIS chat. Use it.
 If the user asks what was discussed, summarise the last few turns accurately.
 
-Compliance rules:
-- Use the provided SOURCES text as your primary grounding when it exists.
-- Cite in this style: (TGD M p.86). Keep it subtle and short.
-- If the SOURCES do not contain support for a precise numeric limit / clause / requirement, say so plainly and suggest what to check next.
-- Do not invent clause numbers or exact dimensional limits without source support.
-- You may still explain concepts and give helpful context — but do not present unsupported numbers as facts.
+{FORMAT_RULES}
 
-Rules:
-- NEVER claim “this is our first conversation” or “I have no memory” if the chat history contains prior messages.
-- Do not mention backend tools, uploads, or system prompts.
+Compliance rules (strict):
+- Use the provided SOURCES text as your primary grounding when it exists.
+- When you cite, cite only document name plus section number and/or table number.
+- NEVER mention page numbers.
+- If the SOURCES do not contain support for a precise numeric limit, clause, table value, or requirement, say so plainly and ask a clarifying question (which TGD, which building type, etc.) or tell the user what to check next.
+- Do not invent clause numbers, section numbers, table numbers, or exact dimensional limits without support in SOURCES.
 """.strip()
 
 
@@ -264,12 +243,6 @@ def build_gemini_contents(
     user_message: str,
     sources_text: str
 ) -> List[Content]:
-    """
-    Build proper multi-turn chat contents for Gemini:
-      - role=user / role=model turns
-      - last user turn is the current message
-      - if sources exist, append them to the CURRENT user message
-    """
     contents: List[Content] = []
 
     for m in history or []:
@@ -285,9 +258,7 @@ def build_gemini_contents(
     final_user = (user_message or "").strip()
     if sources_text and sources_text.strip():
         final_user = (
-            f"{final_user}\n\n"
-            f"SOURCES (use for evidence when relevant):\n"
-            f"{sources_text}"
+            (final_user + "\n\n" + "SOURCES (use for evidence):\n" + sources_text).strip()
         )
 
     if not contents:
@@ -325,10 +296,7 @@ def tokenize(text: str) -> List[str]:
     return toks
 
 
-# ---- Existing page-based PDF index (PyMuPDF) ----
 PDF_INDEX: Dict[str, Dict[str, Any]] = {}
-
-# ---- New: Document AI chunk index (range-based) ----
 DOCAI_INDEX: Dict[str, Dict[str, Any]] = {}
 
 
@@ -343,11 +311,6 @@ def list_pdfs() -> List[str]:
 
 
 def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
-    """
-    Files like:
-      parsed_docai/<stem>_p1-15.txt
-      parsed_docai/<stem>_p16-30.txt
-    """
     stem = Path(pdf_name).stem
     out = []
     if DOCAI_DIR.exists():
@@ -359,7 +322,6 @@ def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
 
 
 def _parse_range_from_chunk_filename(path: Path) -> Optional[Tuple[int, int]]:
-    # stem_p1-15.txt
     m = re.search(r"_p(\d+)\-(\d+)\.txt$", path.name)
     if not m:
         return None
@@ -367,10 +329,6 @@ def _parse_range_from_chunk_filename(path: Path) -> Optional[Tuple[int, int]]:
 
 
 def ensure_docai_indexed(pdf_name: str) -> None:
-    """
-    Builds a BM25-ish index over Document AI chunk files (page ranges).
-    This improves extraction quality for multi-column text and tables.
-    """
     if pdf_name in DOCAI_INDEX:
         return
 
@@ -396,9 +354,8 @@ def ensure_docai_indexed(pdf_name: str) -> None:
         df.update(set(tf.keys()))
 
         chunks.append({
-            "range": rng,                 # (start_page, end_page) 1-based
+            "range": rng,
             "text": txt,
-            "text_lower": low,
             "tf": tf,
             "len": len(toks),
         })
@@ -431,9 +388,6 @@ def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int,
 
 
 def search_docai_chunks(pdf_name: str, question: str, k: int = 3) -> List[Dict[str, Any]]:
-    """
-    Returns best Document AI chunks: [{"range": (a,b), "text": "..."}]
-    """
     ensure_docai_indexed(pdf_name)
     idx = DOCAI_INDEX.get(pdf_name)
     if not idx:
@@ -461,9 +415,6 @@ def search_docai_chunks(pdf_name: str, question: str, k: int = 3) -> List[Dict[s
 
 
 def index_pdf(pdf_path: Path) -> None:
-    """
-    Existing PyMuPDF full-page index (used as fallback and for page-precise citations).
-    """
     name = pdf_path.name
     doc = fitz.open(pdf_path)
     try:
@@ -543,24 +494,18 @@ def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int
             txt = clean_text(page.get_text("text") or "")
             if len(txt) > max_chars_per_page:
                 txt = txt[:max_chars_per_page] + "..."
-            chunks.append(f"[{pdf_path.name} p.{p+1}]\n{txt}")
+            # IMPORTANT: No page labels in sources text.
+            chunks.append(f"[{pdf_path.name} excerpt]\n{txt}")
         return "\n\n".join(chunks).strip()
     finally:
         doc.close()
 
 
-# --- unified sources selection ---
-# cites: list of (doc_name, page_or_range_str)
-Cite = Tuple[str, str]
+# Unified sources selection
+Cite = Tuple[str, str]  # kept for internal debug (no pages exposed)
 
 
 def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]) -> Tuple[str, List[Cite]]:
-    """
-    selected entries are:
-      (pdf_name, pages_or_ranges, mode)
-        mode="docai" and pages_or_ranges is list[(a,b)]
-        mode="pymupdf" and pages_or_ranges is list[int] 0-based page numbers
-    """
     pieces = []
     cites: List[Cite] = []
 
@@ -570,16 +515,13 @@ def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[i
             continue
 
         if mode == "docai":
-            # items: list of (a,b) 1-based page ranges
             ensure_docai_indexed(pdf_name)
             idx = DOCAI_INDEX.get(pdf_name)
             if not idx:
                 continue
 
-            # Pull chunk texts matching ranges
             for rng in items:  # type: ignore
                 a, b = rng
-                # Find matching chunk
                 txt = ""
                 for ch in idx["chunks"]:
                     if ch["range"] == (a, b):
@@ -589,14 +531,14 @@ def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[i
                     clipped = txt.strip()
                     if len(clipped) > 4500:
                         clipped = clipped[:4500] + "..."
-                    pieces.append(f"[{pdf_name} p.{a}-{b}]\n{clipped}")
-                    cites.append((pdf_name, f"p.{a}-{b}"))
+                    # IMPORTANT: No page labels in sources text.
+                    pieces.append(f"[{pdf_name} excerpt]\n{clipped}")
+                    cites.append((pdf_name, f"range:{a}-{b}"))
         else:
-            # mode="pymupdf"
             pages = items  # type: ignore
             pieces.append(extract_pages_text(pdf_path, pages))
             for p in pages:
-                cites.append((pdf_name, f"p.{p+1}"))
+                cites.append((pdf_name, f"page_index:{p}"))
 
     return ("\n\n".join([p for p in pieces if p]).strip(), cites)
 
@@ -608,25 +550,24 @@ def select_sources(
     pages_per_doc: int = 3,
     docai_chunks_per_doc: int = 2,
 ) -> List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
-    """
-    Prefer Document AI chunk retrieval if chunk files exist for a pdf.
-    Fallback to PyMuPDF pages otherwise.
-    """
     pdfs = list_pdfs()
     if not pdfs:
         return []
 
     chosen: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
 
+    know_docai = set()
+    for name in pdfs:
+        if _docai_chunk_files_for(name):
+            know_docai.add(name)
+
     def pick_for_pdf(pdf_name: str) -> Optional[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
-        # If docai chunks exist, prefer them
-        if _docai_chunk_files_for(pdf_name):
+        if pdf_name in know_docai:
             chunks = search_docai_chunks(pdf_name, question, k=docai_chunks_per_doc)
             if chunks:
-                ranges = [c["range"] for c in chunks]  # [(a,b)]
+                ranges = [c["range"] for c in chunks]
                 return (pdf_name, ranges, "docai")
 
-        # Fallback to pymupdf page search
         pages = search_pages(pdf_name, question, k=pages_per_doc)
         if pages:
             return (pdf_name, pages, "pymupdf")
@@ -636,17 +577,12 @@ def select_sources(
         picked = pick_for_pdf(pdf_pin)
         return [picked] if picked else []
 
-    # Score docs by proxy relevance
     doc_scores = []
     for pdf_name in pdfs:
         picked = pick_for_pdf(pdf_name)
         if not picked:
             continue
-        mode = picked[2]
-        if mode == "docai":
-            score = 10.0
-        else:
-            score = 5.0
+        score = 10.0 if picked[2] == "docai" else 5.0
         doc_scores.append((pdf_name, picked, score))
 
     doc_scores.sort(key=lambda x: x[2], reverse=True)
@@ -671,7 +607,6 @@ COMPLIANCE_KEYWORDS = [
 ]
 
 PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
-
 TECH_PATTERN = re.compile(
     r"\b(tgd|technical guidance|building regulations|building regs|ber|deap|fire cert|dac|means of escape)\b",
     re.I
@@ -682,13 +617,10 @@ def should_use_docs(q: str, force_docs: bool = False) -> bool:
     if force_docs:
         return True
     ql = (q or "").lower()
-
     if PART_PATTERN.search(ql):
         return True
-
     if TECH_PATTERN.search(ql):
         return True
-
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
 
 
@@ -724,16 +656,10 @@ def pdfs():
 
 
 def _split_docai_combined_to_chunks(combined: str) -> List[Tuple[Tuple[int, int], str]]:
-    """
-    Parses combined text produced by docai_ingest.py which includes markers:
-      --- DOC_AI_PAGES a-b ---
-    Returns list of ((a,b), chunk_text).
-    """
     if not combined:
         return []
     pattern = re.compile(r"---\s*DOC_AI_PAGES\s+(\d+)\-(\d+)\s*---", re.IGNORECASE)
     parts = pattern.split(combined)
-    # split() returns: [pre, a, b, text, a, b, text, ...]
     out: List[Tuple[Tuple[int, int], str]] = []
     if len(parts) < 4:
         return out
@@ -773,30 +699,23 @@ def upload_pdf(file: UploadFile = File(...)):
     with open(dest, "wb") as f:
         f.write(raw)
 
-    # Clear indexes for this file
     PDF_INDEX.pop(dest.name, None)
     DOCAI_INDEX.pop(dest.name, None)
 
-    # ---- NEW: Document AI parse (optional, never blocks upload) ----
     docai_ok = False
     docai_chunks_saved = 0
     docai_error = None
 
     try:
-        # Only attempt if helper exists AND env vars are present
         if _DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text:
             if (os.getenv("DOCAI_PROCESSOR_ID") or "").strip() and (os.getenv("DOCAI_LOCATION") or "").strip():
-                # Process from saved path (docai_ingest slices the pdf itself)
-                combined_text, chunk_ranges = docai_extract_pdf_to_text(str(dest), chunk_pages=15)
-
-                # Save chunk files so retrieval can cite "p.a-b"
+                combined_text, _chunk_ranges = docai_extract_pdf_to_text(str(dest), chunk_pages=15)
                 chunks = _split_docai_combined_to_chunks(combined_text)
                 stem = dest.stem
                 for (a, b), txt in chunks:
                     out_path = DOCAI_DIR / f"{stem}_p{a}-{b}.txt"
                     out_path.write_text(txt, encoding="utf-8", errors="ignore")
                     docai_chunks_saved += 1
-
                 docai_ok = docai_chunks_saved > 0
     except Exception as e:
         docai_error = repr(e)
@@ -815,7 +734,7 @@ def upload_pdf(file: UploadFile = File(...)):
 
 
 # ----------------------------
-# STREAMING — GET (EventSource) + POST (optional)
+# Streaming core
 # ----------------------------
 
 def _stream_answer(
@@ -826,11 +745,6 @@ def _stream_answer(
     page_hint: Optional[int],
     messages: Optional[List[Dict[str, Any]]] = None
 ):
-    """
-    Core SSE generator.
-    If messages is provided, we build history from it and sync server memory.
-    Else we rely on server memory keyed by chat_id.
-    """
     try:
         if not message.strip():
             yield "event: error\ndata: No message provided.\n\n"
@@ -840,17 +754,13 @@ def _stream_answer(
         chat_id = (chat_id or "").strip()
         user_msg = (message or "").strip()
 
-        # ----------------------------
-        # Build canonical history (server truth)
-        # ----------------------------
+        # Build canonical history
         if isinstance(messages, list) and messages:
             hist = _normalize_incoming_messages(messages)
             hist = _ensure_last_user_message(hist, user_msg)
-
             if chat_id:
                 CHAT_STORE[chat_id] = hist[-CHAT_MAX_MESSAGES:]
                 _trim_chat(chat_id)
-
             history_for_prompt = CHAT_STORE.get(chat_id, hist)
         else:
             history_for_prompt = get_history(chat_id) if chat_id else []
@@ -858,12 +768,12 @@ def _stream_answer(
                 remember(chat_id, "user", user_msg)
                 history_for_prompt = get_history(chat_id)
 
-        # Decide whether we SHOULD search docs
+        # Decide compliance intent
         use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
 
         selected_sources: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
         sources_text = ""
-        cites: List[Cite] = []
+        _cites: List[Cite] = []
 
         if use_docs_intent and list_pdfs():
             selected_sources = select_sources(
@@ -873,34 +783,23 @@ def _stream_answer(
                 pages_per_doc=3,
                 docai_chunks_per_doc=2
             )
-            sources_text, cites = build_sources_bundle(selected_sources)
+            sources_text, _cites = build_sources_bundle(selected_sources)
 
-        # If user intent is compliance, ALWAYS use the compliance system rules
-        # We only attach SOURCES when we have them — but we never "guess" numbers without them.
         used_docs_flag = bool(sources_text and sources_text.strip())
 
-        use_compliance_rules = use_docs_intent  # <-- key change
-        model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
-        system_prompt = SYSTEM_PROMPT_COMPLIANCE if used_docs_flag else SYSTEM_PROMPT_NORMAL
+        # Compliance mode should be applied by INTENT (not only by whether sources exist)
+        is_compliance = use_docs_intent
 
-        # If compliance intent but no sources were retrieved, force the assistant to be honest.
-        if use_compliance_rules and not used_docs_flag:
-            # This note goes into the user's message so the model follows it,
-            # without changing your normal tone.
+        model_name = MODEL_COMPLIANCE if is_compliance else MODEL_CHAT
+        system_prompt = SYSTEM_PROMPT_COMPLIANCE if is_compliance else SYSTEM_PROMPT_NORMAL
+
+        # If compliance intent but no sources, force refusal for exact numeric requirements
+        if is_compliance and not used_docs_flag:
             sources_text = (
                 "NO_RELEVANT_SOURCES_FOUND.\n"
                 "If the user asks for an exact numeric requirement (distances, widths, U-values, tables, clauses), "
-                "do NOT guess. Say you can't confirm it from the uploaded TGDs and ask what TGD/section or request the relevant PDF."
-                )
-                 
-        # meta (not shown on UI, but useful for debugging)
-        yield f"event: meta\ndata: model={model_name};used_docs={used_docs_flag}\n\n"
-        if chat_id:
-            yield f"event: meta\ndata: chat_id={chat_id}\n\n"
-        yield f"event: meta\ndata: hist_len={len(history_for_prompt)}\n\n"
-        if cites:
-            short = ",".join([f"{d}:{p}" for d, p in cites[:12]])
-            yield f"event: meta\ndata: sources={short}\n\n"
+                "do not guess. Say you cannot confirm it from the TGDs currently available and ask for the specific TGD/section or request the relevant document."
+            )
 
         ensure_vertex_ready()
         if not _VERTEX_READY:
@@ -909,12 +808,12 @@ def _stream_answer(
             yield "event: done\ndata: ok\n\n"
             return
 
-        model = get_model(use_docs=used_docs_flag, system_prompt=system_prompt)
+        model = get_model(model_name=model_name, system_prompt=system_prompt)
         contents = build_gemini_contents(history_for_prompt, user_msg, sources_text)
 
         stream = model.generate_content(
             contents,
-            generation_config=get_generation_config(used_docs_flag),
+            generation_config=get_generation_config(is_compliance),
             stream=True
         )
 
@@ -969,4 +868,3 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
-
