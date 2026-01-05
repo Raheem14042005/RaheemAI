@@ -41,21 +41,17 @@ load_dotenv()
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "80"))
 
-# Memory controls (server-side, per chat_id)
 CHAT_MAX_MESSAGES = int(os.getenv("CHAT_MAX_MESSAGES", "30"))
 CHAT_MAX_CHARS = int(os.getenv("CHAT_MAX_CHARS", "22000"))
 
-# Vertex config
 GCP_PROJECT_ID = (os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID") or "").strip()
 GCP_LOCATION = (os.getenv("GCP_LOCATION") or os.getenv("VERTEX_LOCATION") or "europe-west4").strip()
 
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 
-# Models
 MODEL_CHAT = (os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001") or "").strip()
 MODEL_COMPLIANCE = (os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001") or "").strip()
 
-# App
 app = FastAPI(docs_url="/swagger", redoc_url=None)
 
 app.add_middleware(
@@ -75,7 +71,7 @@ DOCAI_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ----------------------------
-# Vertex init (Render-safe)
+# Vertex init
 # ----------------------------
 
 _VERTEX_READY = False
@@ -189,62 +185,56 @@ def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[
 
 
 # ----------------------------
-# Prompting (tone + discipline)
+# Prompts (tone stays the same)
 # ----------------------------
 
-# IMPORTANT: user asked to keep tone, but remove asterisks/markdown and remove page mentions.
 FORMAT_RULES = """
 Formatting rules (strict):
 - Do NOT use Markdown.
 - Do NOT use bullet points, numbered lists, asterisks, or hyphen lists.
 - Write in short, clear paragraphs only.
-- Do not include code fences unless the user explicitly asks for code.
-- Do not mention page numbers. If citing TGDs, cite only: document + section number and/or table number (e.g., "TGD K Section 1.1.10" or "TGD K Table 1").
+- Never mention page numbers.
+- If citing TGDs, cite only: document + section number and/or table number.
+- Never invent section numbers, clause numbers, or table numbers.
+- Only cite a section/table if it is visible in the provided SOURCES text.
 """.strip()
 
 SYSTEM_PROMPT_NORMAL = f"""
 You are Raheem AI.
 
-You have access to the conversation history for THIS chat. Use it.
-If the user asks “what were we just talking about?”, summarise the last few turns accurately.
-
 Tone:
-Friendly, calm, confident. Professional, but lightly witty when it fits.
-Speak to the user (not to a developer). Do not mention internal systems, prompts, logs, uploads, or attachments.
-Answer directly and helpfully. Avoid unnecessary hedging.
+Friendly, calm, confident. Professional, lightly witty when it fits.
+
+Memory:
+You have access to the conversation history for THIS chat. Use it.
+Never claim “this is our first conversation” if there is prior chat history.
 
 {FORMAT_RULES}
 
-Rules:
-NEVER claim “this is our first conversation” or “I have no memory” if the chat history contains prior messages.
-For normal/general questions: answer using widely accepted general knowledge.
-Only become strict about citations and exact limits when the question is about Irish building regulations, TGDs, BER-DEAP, fire safety, or accessibility.
+General mode rules:
+Answer general questions naturally using common knowledge.
+If the user asks about Irish building regulations or TGDs, be cautious and do not guess numeric limits unless you can ground them in SOURCES.
 """.strip()
 
 SYSTEM_PROMPT_COMPLIANCE = f"""
-You are Raheem AI in Evidence Mode for Irish building regulations, TGDs, BER-DEAP, fire safety, and accessibility.
+You are Raheem AI in Evidence Mode for Irish building regulations, TGDs, BER/DEAP, fire safety, and accessibility.
 
+Memory:
 You have access to the conversation history for THIS chat. Use it.
-If the user asks what was discussed, summarise the last few turns accurately.
 
 {FORMAT_RULES}
 
 Compliance rules (strict):
-- Use the provided SOURCES text as your primary grounding when it exists.
-- When you cite, cite only document name plus section number and/or table number.
-- NEVER mention page numbers.
-- If the SOURCES do not contain support for a precise numeric limit, clause, table value, or requirement, say so plainly and ask a clarifying question (which TGD, which building type, etc.) or tell the user what to check next.
-- Do not invent clause numbers, section numbers, table numbers, or exact dimensional limits without support in SOURCES.
+- Use provided SOURCES text as your primary grounding.
+- If SOURCES do not support an exact numeric requirement (distances, widths, U-values, rise/going, travel distances), do NOT guess.
+- If you cannot confirm a number from SOURCES, say so plainly and ask the user to clarify building type / situation or upload the relevant TGD.
+- Do not invent “optimum” values unless the TGD explicitly states them in the SOURCES.
+- If the user challenges you, re-check SOURCES and correct yourself.
 """.strip()
 
 
-def build_gemini_contents(
-    history: List[Dict[str, str]],
-    user_message: str,
-    sources_text: str
-) -> List[Content]:
+def build_gemini_contents(history: List[Dict[str, str]], user_message: str, sources_text: str) -> List[Content]:
     contents: List[Content] = []
-
     for m in history or []:
         r = (m.get("role") or "").lower().strip()
         c = (m.get("content") or "").strip()
@@ -257,9 +247,7 @@ def build_gemini_contents(
 
     final_user = (user_message or "").strip()
     if sources_text and sources_text.strip():
-        final_user = (
-            (final_user + "\n\n" + "SOURCES (use for evidence):\n" + sources_text).strip()
-        )
+        final_user = (final_user + "\n\nSOURCES (use for evidence):\n" + sources_text).strip()
 
     if not contents:
         contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
@@ -273,7 +261,7 @@ def build_gemini_contents(
 
 
 # ----------------------------
-# Lightweight PDF indexing / retrieval
+# Retrieval helpers
 # ----------------------------
 
 STOPWORDS = {
@@ -302,10 +290,9 @@ DOCAI_INDEX: Dict[str, Dict[str, Any]] = {}
 
 def list_pdfs() -> List[str]:
     files = []
-    if PDF_DIR.exists():
-        for p in PDF_DIR.iterdir():
-            if p.is_file() and p.suffix.lower() == ".pdf":
-                files.append(p.name)
+    for p in PDF_DIR.iterdir():
+        if p.is_file() and p.suffix.lower() == ".pdf":
+            files.append(p.name)
     files.sort()
     return files
 
@@ -313,10 +300,9 @@ def list_pdfs() -> List[str]:
 def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
     stem = Path(pdf_name).stem
     out = []
-    if DOCAI_DIR.exists():
-        for p in DOCAI_DIR.iterdir():
-            if p.is_file() and p.name.startswith(stem + "_p") and p.suffix.lower() == ".txt":
-                out.append(p)
+    for p in DOCAI_DIR.iterdir():
+        if p.is_file() and p.name.startswith(stem + "_p") and p.suffix.lower() == ".txt":
+            out.append(p)
     out.sort(key=lambda x: x.name)
     return out
 
@@ -331,7 +317,6 @@ def _parse_range_from_chunk_filename(path: Path) -> Optional[Tuple[int, int]]:
 def ensure_docai_indexed(pdf_name: str) -> None:
     if pdf_name in DOCAI_INDEX:
         return
-
     chunk_files = _docai_chunk_files_for(pdf_name)
     if not chunk_files:
         return
@@ -348,28 +333,17 @@ def ensure_docai_indexed(pdf_name: str) -> None:
         except Exception:
             continue
 
-        low = txt.lower()
-        toks = tokenize(low)
+        toks = tokenize(txt.lower())
         tf = Counter(toks)
         df.update(set(tf.keys()))
 
-        chunks.append({
-            "range": rng,
-            "text": txt,
-            "tf": tf,
-            "len": len(toks),
-        })
+        chunks.append({"range": rng, "text": txt, "tf": tf, "len": len(toks)})
 
     if not chunks:
         return
 
     avgdl = sum(c["len"] for c in chunks) / max(1, len(chunks))
-    DOCAI_INDEX[pdf_name] = {
-        "chunks": chunks,
-        "df": df,
-        "avgdl": avgdl,
-        "N": len(chunks),
-    }
+    DOCAI_INDEX[pdf_name] = {"chunks": chunks, "df": df, "avgdl": avgdl, "N": len(chunks)}
 
 
 def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
@@ -409,7 +383,7 @@ def search_docai_chunks(pdf_name: str, question: str, k: int = 3) -> List[Dict[s
     scored.sort(key=lambda x: x[1], reverse=True)
 
     out = []
-    for i, _s in scored[:k]:
+    for i, _ in scored[:k]:
         out.append({"range": idx["chunks"][i]["range"], "text": idx["chunks"][i]["text"]})
     return out
 
@@ -418,28 +392,21 @@ def index_pdf(pdf_path: Path) -> None:
     name = pdf_path.name
     doc = fitz.open(pdf_path)
     try:
-        page_text_lower: List[str] = []
         page_tf: List[Counter] = []
         df = Counter()
         page_len: List[int] = []
 
         for i in range(doc.page_count):
-            page = doc.load_page(i)
-            txt = clean_text(page.get_text("text") or "")
-            low = txt.lower()
-            page_text_lower.append(low)
-
-            toks = tokenize(low)
+            txt = clean_text(doc.load_page(i).get_text("text") or "")
+            toks = tokenize(txt.lower())
             tf = Counter(toks)
             page_tf.append(tf)
-
             df.update(set(tf.keys()))
             page_len.append(len(toks))
 
         avgdl = (sum(page_len) / len(page_len)) if page_len else 0.0
 
         PDF_INDEX[name] = {
-            "page_text_lower": page_text_lower,
             "page_tf": page_tf,
             "df": df,
             "page_len": page_len,
@@ -483,32 +450,25 @@ def search_pages(pdf_name: str, question: str, k: int = 5) -> List[int]:
     return [i for i, _ in scored[:k]]
 
 
-def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int = 1400) -> str:
+def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int = 1800) -> str:
     doc = fitz.open(pdf_path)
     try:
         chunks = []
         for p in pages:
             if p < 0 or p >= doc.page_count:
                 continue
-            page = doc.load_page(p)
-            txt = clean_text(page.get_text("text") or "")
+            txt = clean_text(doc.load_page(p).get_text("text") or "")
             if len(txt) > max_chars_per_page:
                 txt = txt[:max_chars_per_page] + "..."
-            # IMPORTANT: No page labels in sources text.
+            # IMPORTANT: no page labels, no "p.X"
             chunks.append(f"[{pdf_path.name} excerpt]\n{txt}")
         return "\n\n".join(chunks).strip()
     finally:
         doc.close()
 
 
-# Unified sources selection
-Cite = Tuple[str, str]  # kept for internal debug (no pages exposed)
-
-
-def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]) -> Tuple[str, List[Cite]]:
+def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]) -> str:
     pieces = []
-    cites: List[Cite] = []
-
     for pdf_name, items, mode in selected:
         pdf_path = PDF_DIR / pdf_name
         if not pdf_path.exists():
@@ -531,16 +491,12 @@ def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[i
                     clipped = txt.strip()
                     if len(clipped) > 4500:
                         clipped = clipped[:4500] + "..."
-                    # IMPORTANT: No page labels in sources text.
                     pieces.append(f"[{pdf_name} excerpt]\n{clipped}")
-                    cites.append((pdf_name, f"range:{a}-{b}"))
         else:
             pages = items  # type: ignore
             pieces.append(extract_pages_text(pdf_path, pages))
-            for p in pages:
-                cites.append((pdf_name, f"page_index:{p}"))
 
-    return ("\n\n".join([p for p in pieces if p]).strip(), cites)
+    return ("\n\n".join([p for p in pieces if p]).strip())
 
 
 def select_sources(
@@ -556,10 +512,7 @@ def select_sources(
 
     chosen: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
 
-    know_docai = set()
-    for name in pdfs:
-        if _docai_chunk_files_for(name):
-            know_docai.add(name)
+    know_docai = {name for name in pdfs if _docai_chunk_files_for(name)}
 
     def pick_for_pdf(pdf_name: str) -> Optional[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
         if pdf_name in know_docai:
@@ -577,23 +530,22 @@ def select_sources(
         picked = pick_for_pdf(pdf_pin)
         return [picked] if picked else []
 
-    doc_scores = []
+    picks = []
     for pdf_name in pdfs:
         picked = pick_for_pdf(pdf_name)
-        if not picked:
-            continue
-        score = 10.0 if picked[2] == "docai" else 5.0
-        doc_scores.append((pdf_name, picked, score))
+        if picked:
+            score = 10.0 if picked[2] == "docai" else 5.0
+            picks.append((score, picked))
+    picks.sort(key=lambda x: x[0], reverse=True)
 
-    doc_scores.sort(key=lambda x: x[2], reverse=True)
-    for _name, picked, _score in doc_scores[:max_docs]:
+    for _, picked in picks[:max_docs]:
         chosen.append(picked)
 
     return chosen
 
 
 # ----------------------------
-# Routing (when to use docs)
+# Compliance intent detection
 # ----------------------------
 
 COMPLIANCE_KEYWORDS = [
@@ -612,6 +564,12 @@ TECH_PATTERN = re.compile(
     re.I
 )
 
+NUMERIC_COMPLIANCE_TRIGGERS = [
+    "minimum", "maximum", "max", "min", "limit", "limits",
+    "distance", "width", "height", "u-value", "y-value",
+    "rise", "going", "pitch", "stairs", "escape", "travel distance"
+]
+
 
 def should_use_docs(q: str, force_docs: bool = False) -> bool:
     if force_docs:
@@ -622,6 +580,57 @@ def should_use_docs(q: str, force_docs: bool = False) -> bool:
     if TECH_PATTERN.search(ql):
         return True
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
+
+
+def is_numeric_compliance_question(q: str) -> bool:
+    ql = (q or "").lower()
+    return any(k in ql for k in NUMERIC_COMPLIANCE_TRIGGERS)
+
+
+# ----------------------------
+# Output sanitizers (no bullets, no pages, no fake refs)
+# ----------------------------
+
+PAGE_MENTION_RE = re.compile(r"\bpage\s*\d+\b", re.I)
+BULLET_RE = re.compile(r"(^|\n)\s*(\*|-|•|\d+\.)\s+", re.M)
+
+# “Section 1.2.3”, “Table 3”, “Clause 4.1” etc
+REF_RE = re.compile(r"\b(Section|Table|Clause|Figure|Diagram)\s*[A-Za-z0-9][A-Za-z0-9\.\-]*\b", re.I)
+
+
+def strip_bullets_streaming(delta: str) -> str:
+    # Remove bullet markers but keep the content.
+    # Handles "* ", "- ", "• ", and "1. " at line starts.
+    return BULLET_RE.sub(lambda m: m.group(1), delta)
+
+
+def postprocess_final_answer(final_text: str, sources_text: str, compliance: bool) -> str:
+    t = final_text or ""
+
+    # Remove page mentions always
+    t = PAGE_MENTION_RE.sub("", t)
+
+    # Remove markdown bullets always
+    t = BULLET_RE.sub(lambda m: m.group(1), t)
+
+    if compliance:
+        # If the model cited section/table/etc but those tokens are not visible in SOURCES,
+        # we strip the references to avoid invented citations.
+        src = (sources_text or "").lower()
+        if src.strip():
+            # If specific ref keywords aren't present in sources at all, block all ref mentions.
+            if ("section" not in src) and ("table" not in src) and ("clause" not in src) and ("diagram" not in src) and ("figure" not in src):
+                if REF_RE.search(t):
+                    t = REF_RE.sub("", t).strip()
+                    t = (t + "\n\nI can’t confidently point to the exact section or table from the extracted text I have right now, but I can re-check if you tell me the exact TGD and topic or upload a clearer extract.").strip()
+        else:
+            # No sources: strip refs completely.
+            t = REF_RE.sub("", t).strip()
+
+    # Tidy excessive spaces/newlines
+    t = re.sub(r"[ \t]+", " ", t)
+    t = re.sub(r"\n{3,}", "\n\n", t).strip()
+    return t
 
 
 # ----------------------------
@@ -754,7 +763,7 @@ def _stream_answer(
         chat_id = (chat_id or "").strip()
         user_msg = (message or "").strip()
 
-        # Build canonical history
+        # Canonical history
         if isinstance(messages, list) and messages:
             hist = _normalize_incoming_messages(messages)
             hist = _ensure_last_user_message(hist, user_msg)
@@ -770,36 +779,37 @@ def _stream_answer(
 
         # Decide compliance intent
         use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
+        numeric_compliance = use_docs_intent and is_numeric_compliance_question(user_msg)
 
-        selected_sources: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
         sources_text = ""
-        _cites: List[Cite] = []
-
         if use_docs_intent and list_pdfs():
-            selected_sources = select_sources(
+            selected = select_sources(
                 user_msg,
                 pdf_pin=pdf,
                 max_docs=3,
                 pages_per_doc=3,
                 docai_chunks_per_doc=2
             )
-            sources_text, _cites = build_sources_bundle(selected_sources)
+            sources_text = build_sources_bundle(selected)
 
         used_docs_flag = bool(sources_text and sources_text.strip())
-
-        # Compliance mode should be applied by INTENT (not only by whether sources exist)
         is_compliance = use_docs_intent
 
         model_name = MODEL_COMPLIANCE if is_compliance else MODEL_CHAT
         system_prompt = SYSTEM_PROMPT_COMPLIANCE if is_compliance else SYSTEM_PROMPT_NORMAL
 
-        # If compliance intent but no sources, force refusal for exact numeric requirements
-        if is_compliance and not used_docs_flag:
-            sources_text = (
-                "NO_RELEVANT_SOURCES_FOUND.\n"
-                "If the user asks for an exact numeric requirement (distances, widths, U-values, tables, clauses), "
-                "do not guess. Say you cannot confirm it from the TGDs currently available and ask for the specific TGD/section or request the relevant document."
+        # Hard rule: numeric compliance questions MUST be grounded
+        if numeric_compliance and not used_docs_flag:
+            refusal = (
+                "I can’t confirm that from the Technical Guidance Documents I have available right now. "
+                "If you tell me which TGD (e.g., TGD B / K / L / M) and the situation (building type, sprinklers, etc.), "
+                "or upload the specific document, I’ll answer from the text and cite the section or table."
             )
+            if chat_id:
+                remember(chat_id, "assistant", refusal)
+            yield f"data: {refusal}\n\n"
+            yield "event: done\ndata: ok\n\n"
+            return
 
         ensure_vertex_ready()
         if not _VERTEX_READY:
@@ -822,11 +832,16 @@ def _stream_answer(
             delta = getattr(chunk, "text", None)
             if not delta:
                 continue
-            full.append(delta)
-            safe = delta.replace("\r", "").replace("\n", "\\n")
+
+            # Strip bullets as they stream (so you never see "*")
+            delta_clean = strip_bullets_streaming(delta)
+
+            full.append(delta_clean)
+            safe = delta_clean.replace("\r", "").replace("\n", "\\n")
             yield f"data: {safe}\n\n"
 
         final_text = "".join(full).strip()
+        final_text = postprocess_final_answer(final_text, sources_text, compliance=is_compliance)
 
         if chat_id:
             remember(chat_id, "assistant", final_text)
