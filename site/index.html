@@ -2,25 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Raheem AI</title>
+
   <style>
     :root{
-      --bg0:#050610; --bg1:#070a18; --bg2:#0a0f22;
+      --bg0:#050610;
+      --bg1:#070a18;
+      --bg2:#0a0f22;
+
       --glass: rgba(255,255,255,.08);
+      --glass2: rgba(255,255,255,.11);
       --stroke: rgba(255,255,255,.14);
-      --text:#f4f7ff; --muted: rgba(244,247,255,.72);
-      --a1:#50ffd7; --a2:#65b7ff; --a3:#c7a5ff; --hot:#ff4fd8;
+
+      --text:#f4f7ff;
+      --muted: rgba(244,247,255,.78);
+      --muted2: rgba(244,247,255,.60);
+
+      --a1:#50ffd7;
+      --a2:#65b7ff;
+      --a3:#c7a5ff;
+      --hot:#ff4fd8;
+
       --shadow: 0 28px 72px rgba(0,0,0,.58);
       --shadow2: 0 18px 48px rgba(0,0,0,.42);
-      --r:22px; --r2:16px;
+
+      --r:22px;
+      --r2:16px;
+
       --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      --mono: ui-monospace, Menlo, Consolas, monospace;
     }
+
     *{ box-sizing:border-box; }
     html,body{ height:100%; }
     body{
-      margin:0; font-family:var(--font); color:var(--text);
+      margin:0;
+      font-family: var(--font);
+      color: var(--text);
       background:
         radial-gradient(1200px 700px at 18% -10%, rgba(80,255,215,.14), transparent 60%),
         radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.14), transparent 58%),
@@ -29,14 +47,67 @@
       overflow-x:hidden;
     }
 
+    .bg-wrap{
+      position:fixed;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+      overflow:hidden;
+    }
+
+    .aurora{
+      position:absolute;
+      inset:-25%;
+      background:
+        radial-gradient(900px 520px at 12% 18%, rgba(80,255,215,.14) 0%, rgba(80,255,215,0) 65%),
+        radial-gradient(900px 520px at 88% 14%, rgba(101,183,255,.14) 0%, rgba(101,183,255,0) 62%),
+        radial-gradient(980px 560px at 50% 108%, rgba(199,165,255,.12) 0%, rgba(199,165,255,0) 60%),
+        radial-gradient(840px 520px at 45% 40%, rgba(255,79,216,.06) 0%, rgba(255,79,216,0) 60%);
+      filter: blur(22px);
+      opacity:.85;
+      transform: translate3d(0,0,0);
+      animation: auroraMove 22s ease-in-out infinite;
+    }
+
+    @keyframes auroraMove{
+      0%,100%{ transform: translate3d(0,0,0) scale(1); }
+      45%{ transform: translate3d(12px,-10px,0) scale(1.02); }
+      75%{ transform: translate3d(-12px,10px,0) scale(1.015); }
+    }
+
+    canvas#particles{
+      position:absolute;
+      inset:0;
+      opacity:.18;
+      filter: blur(.2px);
+    }
+
+    .vignette{
+      position:absolute;
+      inset:-1px;
+      background: radial-gradient(900px 520px at 50% 22%, rgba(0,0,0,0), rgba(0,0,0,.58));
+      opacity:.9;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .aurora{ animation:none; }
+      canvas#particles{ display:none; }
+    }
+
     .app{
+      position:relative;
+      z-index:1;
       min-height:100vh;
       display:grid;
       grid-template-columns: 330px 1fr;
       gap: 18px;
       padding: 18px;
     }
-    @media (max-width: 980px){ .app{ grid-template-columns: 1fr; } }
+
+    @media (max-width: 980px){
+      .app{ grid-template-columns: 1fr; }
+      .side{ position:sticky; top:0; }
+    }
 
     .side, .main{
       border: 1px solid var(--stroke);
@@ -46,33 +117,73 @@
       overflow:hidden;
       backdrop-filter: blur(10px);
     }
-    .main{ box-shadow: var(--shadow); display:flex; flex-direction:column; min-height: calc(100vh - 36px); }
+
+    .main{
+      box-shadow: var(--shadow);
+      display:flex;
+      flex-direction:column;
+      min-height: calc(100vh - 36px);
+    }
 
     .brand{
-      display:flex; align-items:center; gap: 12px;
+      display:flex;
+      align-items:center;
+      gap: 12px;
       padding: 16px 16px 12px 16px;
       border-bottom: 1px solid rgba(255,255,255,.10);
     }
-    .logo{
-      width: 46px; height: 46px; border-radius: 16px;
+
+    .logoMark{
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
       border: 1px solid rgba(255,255,255,.16);
       background: rgba(0,0,0,.18);
       box-shadow: 0 0 26px rgba(80,255,215,.10), 0 0 26px rgba(101,183,255,.08);
-      display:grid; place-items:center; font-weight: 950;
-      letter-spacing:.5px;
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+      position:relative;
     }
-    .brand h1{ margin:0; font-size: 18px; font-weight: 950; line-height:1.1; }
+
+    .logoMark svg{ width:38px; height:38px; opacity:.95; }
+
+    .brand h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing:.5px;
+      font-weight: 900;
+      line-height:1.1;
+    }
+
     .brand h1 span{
       background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
-      -webkit-background-clip:text; background-clip:text; color:transparent;
+      -webkit-background-clip: text;
+      background-clip:text;
+      color: transparent;
+      text-shadow: 0 0 18px rgba(101,183,255,.12);
     }
-    .brand .sub{ margin-top:4px; font-size: 12px; color: rgba(244,247,255,.60); }
 
-    .nav{ padding: 12px; display:flex; flex-direction:column; gap: 10px; }
-    .navbtn{
-      width:100%;
-      display:flex; align-items:center; justify-content:space-between;
+    .brand .sub{
+      margin-top:4px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.2;
+    }
+
+    .nav{
+      padding: 12px 12px 10px 12px;
+      display:flex;
+      flex-direction:column;
       gap: 10px;
+    }
+
+    .navbtn{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      width:100%;
       padding: 12px 12px;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.12);
@@ -80,38 +191,163 @@
       color: var(--text);
       cursor:pointer;
       transition: transform .15s ease, border-color .15s ease, background .15s ease;
-      text-align:left;
     }
-    .navbtn:hover{ transform: translateY(-1px); border-color: rgba(101,183,255,.34); background: rgba(0,0,0,.24); }
+    .navbtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.34);
+      background: rgba(0,0,0,.24);
+    }
+
+    .navbtn .left{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+
     .tag{
-      font-size: 11px; padding: 6px 10px; border-radius: 999px;
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
       border: 1px solid rgba(255,255,255,.14);
-      color: rgba(244,247,255,.80);
+      color: var(--muted);
       background: rgba(255,255,255,.06);
       white-space:nowrap;
     }
-    .tag.live{ border-color: rgba(80,255,215,.38); background: rgba(80,255,215,.10); }
-    .tag.new{ border-color: rgba(199,165,255,.35); background: rgba(199,165,255,.10); }
+    .tag.live{
+      border-color: rgba(80,255,215,.38);
+      color: rgba(230,255,240,.92);
+      background: rgba(80,255,215,.10);
+    }
+    .tag.new{
+      border-color: rgba(199,165,255,.35);
+      color: rgba(244,247,255,.92);
+      background: rgba(199,165,255,.10);
+    }
+
+    .chatlist{
+      display:none;
+      padding: 8px 12px 12px 12px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+    .chatlist.show{ display:block; }
+    .chatlist h3{
+      margin: 10px 4px 8px 4px;
+      font-size: 12px;
+      color: var(--muted2);
+      font-weight:800;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .chatitem{
+      width:100%;
+      text-align:left;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      color: var(--text);
+      cursor:pointer;
+      margin-bottom: 8px;
+      transition: border-color .15s ease, transform .15s ease, background .15s ease;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .chatitem:hover{
+      transform: translateY(-1px);
+      border-color: rgba(80,255,215,.26);
+      background: rgba(0,0,0,.20);
+    }
+    .chatitem.active{
+      border-color: rgba(101,183,255,.34);
+      background: rgba(0,0,0,.22);
+    }
+    .chatitem .metaWrap{ min-width:0; flex:1; }
+    .chatitem .t{ font-weight:850; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .chatitem .s{ margin-top:4px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; }
+
+    .chatActions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-shrink:0;
+      margin-top:1px;
+    }
+    .iconBtn{
+      width:30px;
+      height:30px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.92);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      font-weight: 900;
+      line-height:1;
+      user-select:none;
+    }
+    .iconBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.10);
+    }
+    .iconBtn.danger{
+      border-color: rgba(255,79,216,.30);
+      background: rgba(255,79,216,.08);
+    }
+    .iconBtn.danger:hover{
+      border-color: rgba(255,79,216,.45);
+      background: rgba(255,79,216,.12);
+    }
 
     .sideFoot{
       padding: 12px 16px 14px 16px;
       border-top: 1px solid rgba(255,255,255,.10);
-      color: rgba(244,247,255,.60);
+      color: var(--muted2);
       font-size: 12px;
       line-height:1.35;
     }
-    .mono{ font-family: var(--mono); font-size: 12px; color: rgba(244,247,255,.80); }
 
     .topbar{
       padding: 14px 16px;
-      display:flex; align-items:center; justify-content:space-between;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
       gap: 10px;
       border-bottom: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.12);
     }
-    .crumb{ display:flex; align-items:center; gap: 10px; min-width:0; }
-    .title{ font-weight: 950; font-size: 15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .hint{ font-size: 12px; color: rgba(244,247,255,.60); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .crumb{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .crumb .title{
+      font-weight: 900;
+      letter-spacing:.25px;
+      font-size: 15px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .crumb .hint{
+      font-size: 12px;
+      color: var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .actions{ display:flex; gap:10px; align-items:center; }
 
     .btn{
       padding: 10px 12px;
@@ -121,21 +357,28 @@
       color: var(--text);
       cursor:pointer;
       transition: transform .15s ease, border-color .15s ease, background .15s ease;
-      font-weight: 850;
+      font-weight: 800;
       font-size: 13px;
       white-space:nowrap;
     }
-    .btn:hover{ transform: translateY(-1px); border-color: rgba(101,183,255,.36); background: rgba(255,255,255,.10); }
+    .btn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.10);
+    }
     .btn.primary{
       border-color: rgba(80,255,215,.34);
       background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
       box-shadow: 0 0 18px rgba(80,255,215,.08);
     }
-    .btn.danger{
-      border-color: rgba(255,79,216,.28);
-      background: rgba(255,79,216,.08);
+    .btn.ghost{
+      border-color: rgba(255,255,255,.14);
+      background: rgba(0,0,0,.14);
     }
-    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none !important; }
+    .btn.danger{
+      border-color: rgba(255,79,216,.32);
+      background: rgba(255,79,216,.10);
+    }
 
     .view{ display:none; padding: 18px; }
     .view.show{ display:block; }
@@ -144,14 +387,107 @@
       padding: 16px;
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.16);
+      background:
+        radial-gradient(900px 320px at 18% 0%, rgba(80,255,215,.12), transparent 65%),
+        radial-gradient(900px 320px at 88% 0%, rgba(101,183,255,.10), transparent 62%),
+        rgba(0,0,0,.16);
       box-shadow: var(--shadow2);
     }
-    .hero h2{ margin:0; font-size: 22px; font-weight: 950; }
-    .hero p{ margin:8px 0 0 0; color: var(--muted); line-height:1.55; }
+    .hero h2{ margin:0; font-size: 22px; letter-spacing:.2px; }
+    .hero p{ margin:8px 0 0 0; color: var(--muted); max-width: 980px; line-height:1.55; }
+
+    .quote{
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,247,255,.92);
+      line-height:1.45;
+    }
+
+    .grid{
+      margin-top: 14px;
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      box-shadow: var(--shadow2);
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .cardhead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+    }
+
+    .cardtitle{
+      display:flex;
+      gap: 12px;
+      align-items:flex-start;
+    }
+
+    .icon{
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      font-weight: 900;
+      letter-spacing:.4px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10), rgba(199,165,255,.08));
+      box-shadow: 0 0 16px rgba(101,183,255,.08);
+    }
+
+    .card h4{ margin:0; font-size: 15px; }
+    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.5; }
+
+    .pill{
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--muted);
+      background: rgba(255,255,255,.06);
+      white-space:nowrap;
+      align-self:flex-start;
+    }
+
+    .cta{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-top:auto;
+    }
+
+    /* =========================
+       FIRE CERT WIZARD (NEW)
+       ========================= */
+    .fcwrap{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+      margin-top: 14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .fcwrap{ grid-template-columns: 1fr; }
+    }
 
     .panel{
-      margin-top: 14px;
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.16);
@@ -159,15 +495,146 @@
       overflow:hidden;
     }
     .panelHead{
-      padding: 12px 14px;
+      padding: 14px 14px 12px 14px;
       border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
       background: rgba(0,0,0,.12);
-      font-weight: 950;
     }
+    .panelHead h3{
+      margin:0;
+      font-size: 15px;
+      letter-spacing:.2px;
+      font-weight: 900;
+    }
+    .panelHead .sub{
+      margin-top:4px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.35;
+      max-width: 560px;
+    }
+
     .panelBody{ padding: 14px; }
 
-    input[type="text"], input[type="number"], select, textarea{
+    .stepper{
+      display:flex;
+      gap: 8px;
+      flex-wrap:wrap;
+      margin-bottom: 12px;
+    }
+    .stepChip{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.16);
+      color: rgba(244,247,255,.90);
+      cursor:pointer;
+      user-select:none;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      font-weight: 800;
+      font-size: 12px;
+      white-space:nowrap;
+    }
+    .stepChip:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(0,0,0,.20);
+    }
+    .stepChip.active{
+      border-color: rgba(80,255,215,.36);
+      background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10));
+      box-shadow: 0 0 16px rgba(80,255,215,.06);
+    }
+    .stepChip .n{
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display:grid;
+      place-items:center;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight: 900;
+    }
+    .stepChip.active .n{
+      border-color: rgba(80,255,215,.34);
+      background: rgba(80,255,215,.10);
+    }
+
+    .formGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 980px){
+      .formGrid{ grid-template-columns: 1fr; }
+    }
+
+    .field{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.14);
+      padding: 12px;
+    }
+    .field.full{ grid-column: 1 / -1; }
+
+    .labelRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    label{
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing:.25px;
+      color: rgba(244,247,255,.92);
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+
+    .help{
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      display:grid;
+      place-items:center;
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(244,247,255,.92);
+      cursor: pointer;
+      user-select:none;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .help:hover{
+      transform: translateY(-1px);
+      border-color: rgba(199,165,255,.38);
+      background: rgba(255,255,255,.10);
+    }
+
+    .hintBox{
+      margin-top: 10px;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      line-height:1.45;
+      font-size: 12px;
+      display:none;
+    }
+    .hintBox.show{ display:block; }
+
+    input[type="text"], input[type="number"], select, textarea.fcText{
       width:100%;
       padding: 11px 11px;
       border-radius: 14px;
@@ -178,89 +645,144 @@
       line-height:1.45;
       font-size: 13px;
     }
-    textarea{ resize: vertical; }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea.fcText:focus{
+      border-color: rgba(101,183,255,.40);
+      box-shadow: 0 0 0 3px rgba(101,183,255,.12);
+    }
 
-    .row{ display:flex; gap: 10px; flex-wrap:wrap; align-items:center; }
-    .row > *{ flex:1; min-width: 200px; }
-    .row.tight > *{ min-width: 150px; }
+    .seg{
+      display:flex;
+      gap: 8px;
+      flex-wrap:wrap;
+      margin-top: 8px;
+    }
+    .seg button{
+      padding: 10px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.92);
+      cursor:pointer;
+      font-weight: 900;
+      font-size: 12px;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .seg button:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.10);
+    }
+    .seg button.active{
+      border-color: rgba(80,255,215,.34);
+      background: rgba(80,255,215,.10);
+      color: rgba(230,255,240,.92);
+    }
+    .seg button.na{
+      border-color: rgba(255,79,216,.34);
+      background: rgba(255,79,216,.10);
+    }
 
-    /* Chat */
-    .chatBox{
-      height: min(62vh, 620px);
-      overflow:auto;
-      padding: 12px;
+    .miniRow{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-top: 12px;
+    }
+
+    .progress{
+      margin-top: 8px;
+      width:100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .progress > div{
+      height:100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(80,255,215,.75), rgba(101,183,255,.70), rgba(199,165,255,.60));
+      border-radius: 999px;
+      transition: width .18s ease;
+    }
+
+    .summary{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .sumCard{
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.14);
+      background: rgba(0,0,0,.16);
+      box-shadow: var(--shadow2);
+      padding: 14px;
     }
-    .msg{ display:flex; gap: 10px; margin-bottom: 12px; }
-    .bubble{
-      padding: 10px 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: rgba(244,247,255,.92);
-      white-space: pre-wrap;
-      line-height:1.55;
-      max-width: 980px;
-    }
-    .bubble.user{ background: rgba(80,255,215,.10); border-color: rgba(80,255,215,.22); }
-    .bubble.assistant{ background: rgba(101,183,255,.08); border-color: rgba(101,183,255,.20); }
-    .metaLine{ font-size: 12px; color: rgba(244,247,255,.60); margin-top: 6px; }
-    .small{ font-size:12px; color: rgba(244,247,255,.60); line-height:1.45; }
-
-    /* Fire cert */
-    .split{
-      display:grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap: 14px;
-      margin-top: 14px;
-      align-items:start;
-    }
-    @media (max-width: 980px){ .split{ grid-template-columns: 1fr; } }
-
-    .field{
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.14);
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-    .labelRow{
+    .sumCard h4{
+      margin:0;
+      font-size: 13px;
+      letter-spacing:.2px;
+      font-weight: 950;
       display:flex;
-      align-items:flex-start;
+      align-items:center;
       justify-content:space-between;
       gap: 10px;
-      margin-bottom: 8px;
     }
-    label{
+    .sumCard p{
+      margin:8px 0 0 0;
+      color: var(--muted);
+      line-height:1.5;
       font-size: 12px;
-      font-weight: 950;
-      letter-spacing:.25px;
-      color: rgba(244,247,255,.92);
     }
-    .helpBtn{
-      width: 26px; height: 26px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.06);
-      display:grid; place-items:center;
-      font-size: 12px; font-weight: 950;
-      cursor:pointer;
-      user-select:none;
-    }
-    .helpText{
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
-      color: rgba(244,247,255,.75);
+    .tiny{
+      font-size: 11px;
+      color: var(--muted2);
+      margin-top: 8px;
       line-height:1.45;
-      font-size: 12px;
-      display:none;
     }
-    .helpText.show{ display:block; }
+
+    .chipRow{
+      display:flex;
+      gap: 8px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+    }
+    .chip{
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.86);
+      white-space:nowrap;
+    }
+    .chip.good{ border-color: rgba(80,255,215,.34); background: rgba(80,255,215,.10); }
+    .chip.warn{ border-color: rgba(255,199,80,.30); background: rgba(255,199,80,.10); }
+    .chip.bad{ border-color: rgba(255,79,216,.34); background: rgba(255,79,216,.10); }
+
+    .footer{
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted2);
+      font-size: 12px;
+      line-height:1.35;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
+      background: rgba(0,0,0,.10);
+    }
+    .copy{ color: rgba(244,247,255,.78); }
+
+    .smallHint{
+      margin-top:10px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.45;
+    }
 
     .toast{
       position: fixed;
@@ -288,54 +810,102 @@
 </head>
 
 <body>
+  <div class="bg-wrap">
+    <div class="aurora"></div>
+    <canvas id="particles"></canvas>
+    <div class="vignette"></div>
+  </div>
+
   <div class="app">
     <aside class="side">
       <div class="brand">
-        <div class="logo">R</div>
+        <div class="logoMark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <defs>
+              <linearGradient id="g1" x1="6" y1="10" x2="58" y2="54" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#50FFD7"/>
+                <stop offset="0.55" stop-color="#65B7FF"/>
+                <stop offset="1" stop-color="#C7A5FF"/>
+              </linearGradient>
+              <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="2.4" result="b"/>
+                <feMerge>
+                  <feMergeNode in="b"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <path filter="url(#glow)" d="M14 50V14h18c8 0 14 6 14 14 0 6-3 10-8 12l10 10h-10l-9-9H24v9H14Zm10-27h8c3 0 5 2 5 5s-2 5-5 5h-8V23Z" fill="url(#g1)" opacity="0.95"/>
+            <path filter="url(#glow)" d="M48 50l-5-12h8l5 12h-8Z" fill="#FF4FD8" opacity="0.7"/>
+          </svg>
+        </div>
         <div>
           <h1><span>Raheem AI</span></h1>
-          <div class="sub">TGD Chat (unchanged) + Fire Cert workflow</div>
+          <div class="sub">Compliance-first chat and document reasoning</div>
         </div>
       </div>
 
       <div class="nav">
         <button class="navbtn" id="navHome" type="button">
-          <div style="display:flex; gap:10px; align-items:center;">
+          <div class="left">
             <span class="tag">Home</span>
-            <div>
-              <div style="font-weight:950">Overview</div>
-              <div style="font-size:12px;color:rgba(244,247,255,.60);margin-top:2px">Quick start</div>
+            <div style="min-width:0">
+              <div style="font-weight:900">Overview</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Product summary and quick start</div>
             </div>
           </div>
           <span class="tag">↗</span>
         </button>
 
         <button class="navbtn" id="navChat" type="button">
-          <div style="display:flex; gap:10px; align-items:center;">
+          <div class="left">
             <span class="tag live">Live</span>
-            <div>
-              <div style="font-weight:950">Chat</div>
-              <div style="font-size:12px;color:rgba(244,247,255,.60);margin-top:2px">Your regulation assistant</div>
+            <div style="min-width:0">
+              <div style="font-weight:900">Chat</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved sessions and continuous context</div>
             </div>
           </div>
           <span class="tag">↗</span>
         </button>
 
+        <!-- NEW: Fire Cert is LIVE -->
         <button class="navbtn" id="navFireCert" type="button">
-          <div style="display:flex; gap:10px; align-items:center;">
+          <div class="left">
             <span class="tag new">New</span>
-            <div>
-              <div style="font-weight:950">Fire Cert</div>
-              <div style="font-size:12px;color:rgba(244,247,255,.60);margin-top:2px">Questions → report</div>
+            <div style="min-width:0">
+              <div style="font-weight:900">Fire Cert</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Guided Fire Safety Report workflow</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+
+        <button class="navbtn" id="navFuture" type="button">
+          <div class="left">
+            <span class="tag">Roadmap</span>
+            <div style="min-width:0">
+              <div style="font-weight:900">Future Features</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, integrations</div>
             </div>
           </div>
           <span class="tag">↗</span>
         </button>
       </div>
 
+      <div class="chatlist" id="chatList">
+        <h3>
+          <span>Saved chats</span>
+          <button class="iconBtn danger" id="btnDeleteAllChats" type="button" title="Delete all chats">!</button>
+        </h3>
+        <div id="chatItems"></div>
+        <button class="btn" id="btnNewChat" type="button" style="width:100%; margin-top:6px;">New chat</button>
+      </div>
+
       <div class="sideFoot">
-        Backend: <span class="mono" id="apiBaseLabel"></span><br/>
-        If Chat shows HTTP 404, that’s the backend missing <span class="mono">/chat_stream</span>.
+        <div style="font-weight:850;color:rgba(244,247,255,.86)">Usage tip</div>
+        <div style="margin-top:6px">
+          Use <b>Evidence mode</b> for stricter answers and citations where available.
+        </div>
       </div>
     </aside>
 
@@ -343,219 +913,301 @@
       <div class="topbar">
         <div class="crumb">
           <div class="title" id="viewTitle">Overview</div>
-          <div class="hint" id="viewHint">Quick start</div>
+          <div class="hint" id="viewHint">Product summary and quick start</div>
         </div>
-        <div class="row tight" style="justify-content:flex-end; flex:0; min-width:unset;">
-          <button class="btn" id="btnStatus" type="button">Status</button>
-          <button class="btn" id="btnTestChat" type="button">Test Chat</button>
-          <button class="btn primary" id="btnDocs" type="button">Docs</button>
+        <div class="actions">
+          <button class="btn" id="btnStatus" type="button" title="Check backend health">Status</button>
+          <button class="btn primary" id="btnDocs" type="button" title="Open API documentation">Docs</button>
         </div>
       </div>
 
-      <!-- HOME -->
       <section class="view show" id="viewHome">
         <div class="hero">
-          <h2>Overview</h2>
+          <h2>AI chat for compliance, specifications and technical workflows</h2>
           <p>
-            Chat is wired to your existing backend endpoint <span class="mono">POST /chat_stream</span>.
-            Fire Cert collects answers and generates a report via <span class="mono">/firecert</span> endpoints.
+            Ask questions in plain language. When you need higher confidence, enable Evidence mode to nudge the assistant
+            toward traceable, structured replies.
           </p>
+          <div class="quote">
+            Designed for practical building workflows: clear outputs, consistent structure, and faster review cycles.
+          </div>
         </div>
 
-        <div class="panel">
-          <div class="panelHead">Quick actions</div>
-          <div class="panelBody">
-            <div class="row">
-              <button class="btn primary" id="goChat" type="button">Open Chat</button>
-              <button class="btn primary" id="goFire" type="button">Open Fire Cert</button>
+        <div class="grid">
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">AI</div>
+                <div>
+                  <h4>Chat</h4>
+                  <p>Continue conversations, keep context, and retrieve past work by session.</p>
+                </div>
+              </div>
+              <span class="pill" style="border-color: rgba(80,255,215,.38); background: rgba(80,255,215,.10); color: rgba(230,255,240,.92)">Live</span>
             </div>
-            <div class="small" style="margin-top:10px;">
-              Tip: If Chat returns 404, click <b>Test Chat</b> — it will tell you if the backend route exists.
+            <div class="cta">
+              <span class="pill">Session memory</span>
+              <button class="btn primary" id="btnStartChat" type="button">Open chat</button>
             </div>
-          </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">FCS</div>
+                <div>
+                  <h4>Fire Cert</h4>
+                  <p>Answer guided questions, attach diagrams, and generate a Fire Safety Report draft in one click.</p>
+                </div>
+              </div>
+              <span class="pill" style="border-color: rgba(199,165,255,.35); background: rgba(199,165,255,.10); color: rgba(244,247,255,.92)">New</span>
+            </div>
+            <div class="cta">
+              <span class="pill">TGD B Volume 1</span>
+              <button class="btn primary" id="btnStartFireCert" type="button">Start Fire Cert</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Built By Abdulraheem Hayder Ahmed</div>
         </div>
       </section>
 
-      <!-- CHAT -->
       <section class="view" id="viewChat">
         <div class="hero">
           <h2>Chat</h2>
           <p>
-            This does not change your model behaviour. It only sends your message to the backend.
-            Evidence mode is a simple flag (<span class="mono">force_docs</span>).
+            Select a saved chat on the left to continue. Start a new chat to keep topics separated.
           </p>
+          <div class="smallHint">
+            If you see a connection error, click <b>Status</b> to verify the backend is online. If Status fails,
+            the issue is typically backend availability or CORS configuration.
+          </div>
         </div>
 
-        <div class="panel">
-          <div class="panelHead">Controls</div>
-          <div class="panelBody">
+        <div class="chatwrap">
+          <div class="row" style="justify-content:space-between;">
             <div class="row">
-              <div class="field" style="margin:0;">
-                <div class="labelRow">
-                  <label>Evidence mode</label>
-                  <span class="helpBtn" data-help="helpEvidence">i</span>
-                </div>
-                <select id="forceDocs">
-                  <option value="false">Off</option>
-                  <option value="true">On</option>
-                </select>
-                <div class="helpText" id="helpEvidence">
-                  If On, the backend can require answers to be grounded in uploaded docs.
-                  This UI does not modify your prompts or strictness.
-                </div>
-              </div>
-
-              <div class="field" style="margin:0;">
-                <div class="labelRow">
-                  <label>Choose a PDF (optional)</label>
-                  <span class="helpBtn" data-help="helpPdf">i</span>
-                </div>
-                <select id="pdfSelect">
-                  <option value="">Auto-pick</option>
-                </select>
-                <div class="helpText" id="helpPdf">
-                  Optional: pick a specific uploaded PDF for grounding.
-                </div>
-              </div>
+              <label class="toggle" title="Prefer stricter, evidence-oriented responses">
+                <input type="checkbox" id="forceDocs"/>
+                Evidence mode
+              </label>
             </div>
-
-            <div class="row" style="margin-top:10px;">
-              <div class="field" style="margin:0;">
-                <div class="labelRow">
-                  <label>Upload PDF (TGD / guidance)</label>
-                  <span class="helpBtn" data-help="helpUpload">i</span>
-                </div>
-                <input id="pdfUpload" type="file" accept="application/pdf" />
-                <div class="helpText" id="helpUpload">
-                  Upload TGDs or guidance PDFs you want the backend to use.
-                </div>
-                <div class="row tight" style="margin-top:10px;">
-                  <button class="btn" id="btnUploadPdf" type="button">Upload</button>
-                  <button class="btn" id="btnRefreshPdfs" type="button">Refresh PDF list</button>
-                </div>
-                <div class="small" id="uploadStatus" style="margin-top:8px;">No upload yet.</div>
-              </div>
-
-              <div class="field" style="margin:0;">
-                <div class="labelRow">
-                  <label>Chat session (optional)</label>
-                  <span class="helpBtn" data-help="helpChatId">i</span>
-                </div>
-                <input id="chatId" type="text" placeholder="auto-generated chat id" />
-                <div class="helpText" id="helpChatId">
-                  Keeps backend conversation memory. Leave it alone unless you want a new thread.
-                </div>
-                <div class="row tight" style="margin-top:10px;">
-                  <button class="btn" id="btnNewChat" type="button">New chat</button>
-                  <button class="btn danger" id="btnClearChatUI" type="button">Clear UI</button>
-                </div>
-              </div>
+            <div class="row">
+              <button class="btn" id="btnClear" type="button">Clear chat</button>
             </div>
+          </div>
+
+          <div class="chatbox" id="chatBox"></div>
+
+          <div class="composer">
+            <textarea id="msg" placeholder="Type your message... (Shift + Enter for a new line)"></textarea>
+            <button class="btn primary" id="send" type="button">Send</button>
           </div>
         </div>
 
-        <div class="panel">
-          <div class="panelHead">Conversation</div>
-          <div class="panelBody">
-            <div class="chatBox" id="chatBox"></div>
-
-            <div class="row" style="margin-top:12px;">
-              <div style="flex:1; min-width:240px;">
-                <textarea id="chatInput" rows="3" placeholder="Ask a question… (Shift+Enter for new line)"></textarea>
-                <div class="metaLine" id="chatMeta">Ready.</div>
-              </div>
-              <div style="flex:0; min-width:200px; display:flex; gap:10px; align-items:flex-start; justify-content:flex-end;">
-                <button class="btn primary" id="btnSend" type="button">Send</button>
-                <button class="btn" id="btnStop" type="button" disabled>Stop</button>
-              </div>
-            </div>
-
-            <div class="small" style="margin-top:10px;">
-              If you see “HTTP 404”, that is the backend missing <span class="mono">/chat_stream</span> or the API base is wrong.
-            </div>
-          </div>
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Tip: Evidence mode is best for technical checks.</div>
         </div>
       </section>
 
-      <!-- FIRE CERT -->
+      <!-- =========================
+           NEW: FIRE CERT VIEW
+           ========================= -->
       <section class="view" id="viewFireCert">
         <div class="hero">
-          <h2>Fire Cert</h2>
+          <h2>Fire Cert — Fire Safety Report Generator</h2>
           <p>
-            A guided Fire Safety Report workflow. This UI stores answers and generates a professional draft.
-            It never prints JSON to the page.
+            A guided workflow aligned to <b>TGD B 2024 Volume 1</b>. Answer only what applies. Add diagrams where helpful.
+            Hard terms have an <b>i</b> icon with a plain-language explanation.
           </p>
+          <div class="quote">
+            Tip: you can mark items <b>Not assessed</b> for early drafts. This helps keep the report honest while inputs are still pending.
+          </div>
         </div>
 
-        <div class="split">
+        <div class="fcwrap">
+          <!-- LEFT: Wizard -->
           <div class="panel">
             <div class="panelHead">
-              Wizard
-              <span class="tag" id="fcProjectTag">Project: not started</span>
+              <div>
+                <h3>Fire Cert Wizard</h3>
+                <div class="sub">Step-by-step. Saved locally in your browser while you work.</div>
+              </div>
+              <div class="chipRow" style="margin-top:0">
+                <span class="chip good" id="chipAutoNA">Auto-NA enabled</span>
+                <span class="chip warn" id="chipDraftState">Draft</span>
+              </div>
             </div>
+
             <div class="panelBody">
-              <div class="row tight">
-                <button class="btn primary" id="fcBtnInit" type="button">Start / Resume Project</button>
-                <button class="btn" id="fcBtnRefresh" type="button">Refresh</button>
-                <button class="btn danger" id="fcBtnReset" type="button">Reset Project</button>
-              </div>
+              <div class="stepper" id="fcStepper"></div>
 
-              <div class="field" style="margin-top:12px;">
-                <div class="labelRow">
-                  <label>Purpose group</label>
-                  <span class="helpBtn" data-help="helpPG">i</span>
+              <div class="formGrid" id="fcForm"></div>
+
+              <div class="miniRow">
+                <div style="min-width:220px; flex:1;">
+                  <div class="progress" aria-label="Progress"><div id="fcProgress"></div></div>
+                  <div class="tiny" id="fcProgressText">Progress: 0%</div>
                 </div>
-                <select id="fcPurposeGroup">
-                  <option value="pg1c">Purpose Group 1(c) — Flats / Apartments</option>
-                  <option value="pg3">Purpose Group 3 — Office</option>
-                  <option value="pg5a">Purpose Group 5(a) — Café / Restaurant / Pub</option>
-                  <option value="pg4b">Purpose Group 4(b) — Shopping Centre</option>
-                  <option value="pg7c">Purpose Group 7(c) — Car Park</option>
-                  <option value="pg6b">Purpose Group 6(b) — High Hazard Industrial</option>
-                </select>
-                <div class="helpText" id="helpPG">
-                  This changes which questions apply and what gets written in the final Fire Safety Report.
+
+                <div class="row" style="justify-content:flex-end;">
+                  <button class="btn ghost" id="fcBack" type="button">Back</button>
+                  <button class="btn primary" id="fcNext" type="button">Next</button>
                 </div>
               </div>
 
-              <div class="panel" style="margin-top:12px;">
-                <div class="panelHead" id="fcStepTitle">Step</div>
-                <div class="panelBody" id="fcFormArea">
-                  <div class="mono">Click “Start / Resume Project”.</div>
+              <div class="miniRow" style="margin-top:10px; justify-content:space-between;">
+                <div class="row">
+                  <button class="btn" id="fcSave" type="button">Save</button>
+                  <button class="btn danger" id="fcReset" type="button">Reset</button>
+                </div>
+
+                <div class="row">
+                  <button class="btn" id="fcExportJson" type="button">Export JSON</button>
+                  <button class="btn primary" id="fcGenerate" type="button">Generate Report (later)</button>
                 </div>
               </div>
 
-              <div class="row tight" style="margin-top:12px;">
-                <button class="btn" id="fcBack" type="button">Back</button>
-                <button class="btn primary" id="fcNext" type="button">Next</button>
-              </div>
-
-              <div class="row tight" style="margin-top:10px;">
-                <button class="btn primary" id="fcGenerateText" type="button">Generate Report (Preview)</button>
-                <button class="btn primary" id="fcGenerateDocx" type="button">Generate DOCX</button>
-              </div>
-
-              <div class="small" style="margin-top:10px;">
-                Preview calls <span class="mono">POST /firecert/generate-report</span>. DOCX calls <span class="mono">POST /firecert/generate</span>.
+              <div class="smallHint">
+                <b>Generate Report (later)</b> is a placeholder button for now (HTML-only stage). When we wire the backend,
+                it will call a single endpoint and return a DOCX/PDF draft.
               </div>
             </div>
           </div>
 
-          <div class="panel">
-            <div class="panelHead">Report Preview</div>
-            <div class="panelBody">
-              <textarea id="fcReportPreview" rows="22" placeholder="Your report will appear here…"></textarea>
-              <div class="row tight" style="margin-top:10px;">
-                <button class="btn" id="fcCopyReport" type="button">Copy</button>
-              </div>
-              <div class="small" style="margin-top:10px;">
-                If DOCX download fails, your backend may not have python-docx installed or the endpoint may be erroring.
+          <!-- RIGHT: Summary -->
+          <div class="summary">
+            <div class="sumCard">
+              <h4>
+                Project Summary
+                <span class="tag">Auto</span>
+              </h4>
+              <p id="sumProject">Start by selecting the purpose group and completing Step 0. This panel updates as you go.</p>
+              <div class="chipRow" id="sumChips"></div>
+              <div class="tiny" id="sumTips">Plain-language help is available on every field via the <b>i</b> icon.</div>
+            </div>
+
+            <div class="sumCard">
+              <h4>
+                Completion & Flags
+                <span class="tag">Live</span>
+              </h4>
+              <p id="sumFlags">No flags yet. As you fill details, we’ll show likely triggers (e.g., smoke control, existing building).</p>
+              <div class="tiny">
+                Outcome states used in the final report:
+                ✅ Compliant • ⚠️ Compensatory • ❌ Alternative solution • ⏳ Not assessed
               </div>
             </div>
+
+            <div class="sumCard">
+              <h4>
+                Attachments
+                <span class="tag">Later</span>
+              </h4>
+              <p>
+                In the next build step we will add a “Diagram uploads” panel per section (escape routes, compartments, smoke zones, etc.).
+                For now, you can track what you intend to upload using the “Attachments notes” field in Step 0.
+              </p>
+            </div>
           </div>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Fire Cert Module (Live UI)</div>
         </div>
       </section>
 
+      <section class="view" id="viewFuture">
+        <div class="hero">
+          <h2>Future Features</h2>
+          <p>
+            This roadmap shows planned modules and workflows. Each feature is shipped with a focus on reliability and clarity.
+          </p>
+          <div class="quote">
+            Roadmap items are previews. Availability depends on testing, performance, and data coverage.
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">ED</div>
+                <div>
+                  <h4>Early Design</h4>
+                  <p>Capture requirements and explore options with structured prompts and refinements.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Concept workflows</span>
+              <button class="btn" data-soon="Early Design">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">DAC</div>
+                <div>
+                  <h4>DAC Report Generator</h4>
+                  <p>Generate structured report drafts aligned to guidance and project inputs, ready for review.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Access and use</span>
+              <button class="btn" data-soon="DAC Report Generator">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">MFG</div>
+                <div>
+                  <h4>Manufacturer and Spec Search</h4>
+                  <p>Search suppliers and specs using model parameters and project context.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Product discovery</span>
+              <button class="btn" data-soon="Manufacturer and Spec Search">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">BER</div>
+                <div>
+                  <h4>BER Workflow</h4>
+                  <p>Guide DEAP logic, import model data, and generate consistent reports for review.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">DEAP and BIM</span>
+              <button class="btn" data-soon="BER Workflow">Preview</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Roadmap preview</div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -567,7 +1219,6 @@
     // =========================
     const API_BASE_DEFAULT = "https://complyr.onrender.com";
     const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
-    document.getElementById("apiBaseLabel").textContent = API_BASE;
 
     function apiUrl(path){
       if(!path) path = "/";
@@ -575,9 +1226,15 @@
       return API_BASE + path;
     }
 
-    // =========================
-    // TOAST
-    // =========================
+    // Safety: prevent arbitrary API_BASE overrides (protects users and prevents broken configs)
+    if (!API_BASE.startsWith("https://complyr.onrender.com")) {
+      localStorage.removeItem("RAHEEM_API_BASE");
+      if (!navigator.userAgent.toLowerCase().includes("samsungbrowser")) {
+        location.reload();
+      }
+    }
+
+    // Toast
     const toast = document.getElementById("toast");
     let toastTimer = null;
     function showToast(msg){
@@ -587,43 +1244,56 @@
       toastTimer = setTimeout(()=>toast.classList.remove("show"), 2800);
     }
 
-    // Help toggles
-    document.querySelectorAll(".helpBtn").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const id = btn.getAttribute("data-help");
-        const el = document.getElementById(id);
-        if(el) el.classList.toggle("show");
-      });
-    });
-
-    // =========================
-    // NAV
-    // =========================
+    // Navigation
     const viewTitle = document.getElementById("viewTitle");
     const viewHint  = document.getElementById("viewHint");
-    const views = {
-      home: document.getElementById("viewHome"),
-      chat: document.getElementById("viewChat"),
-      fire: document.getElementById("viewFireCert")
-    };
+    const viewHome  = document.getElementById("viewHome");
+    const viewChat  = document.getElementById("viewChat");
+    const viewFireCert = document.getElementById("viewFireCert");
+    const viewFuture= document.getElementById("viewFuture");
+    const chatList  = document.getElementById("chatList");
 
     function showView(which){
-      Object.values(views).forEach(v=>v.classList.remove("show"));
-      views[which].classList.add("show");
-      if(which==="home"){ viewTitle.textContent="Overview"; viewHint.textContent="Quick start"; }
-      if(which==="chat"){ viewTitle.textContent="Chat"; viewHint.textContent="Regulation assistant (unchanged)"; }
-      if(which==="fire"){ viewTitle.textContent="Fire Cert"; viewHint.textContent="Questions → report"; fcInitOnce(); }
+      [viewHome, viewChat, viewFireCert, viewFuture].forEach(v=>v.classList.remove("show"));
+      chatList.classList.remove("show");
+
+      if(which==="home"){
+        viewHome.classList.add("show");
+        viewTitle.textContent = "Overview";
+        viewHint.textContent  = "Product summary and quick start";
+      }
+      if(which==="chat"){
+        viewChat.classList.add("show");
+        viewTitle.textContent = "Chat";
+        viewHint.textContent  = "Saved sessions and continuous context";
+        chatList.classList.add("show");
+        renderChatList();
+        renderChat();
+      }
+      if(which==="firecert"){
+        viewFireCert.classList.add("show");
+        viewTitle.textContent = "Fire Cert";
+        viewHint.textContent  = "Guided Fire Safety Report workflow";
+        // Fire Cert is local-only for now
+        fcInitOnce();
+      }
+      if(which==="future"){
+        viewFuture.classList.add("show");
+        viewTitle.textContent = "Future Features";
+        viewHint.textContent  = "Roadmap preview";
+      }
     }
 
-    document.getElementById("navHome").onclick = ()=>showView("home");
-    document.getElementById("navChat").onclick = ()=>showView("chat");
-    document.getElementById("navFireCert").onclick = ()=>showView("fire");
-    document.getElementById("goChat").onclick = ()=>showView("chat");
-    document.getElementById("goFire").onclick = ()=>showView("fire");
+    document.getElementById("navHome").onclick  = ()=>showView("home");
+    document.getElementById("navChat").onclick  = ()=>showView("chat");
+    document.getElementById("navFireCert").onclick = ()=>showView("firecert");
+    document.getElementById("navFuture").onclick= ()=>showView("future");
 
+    document.getElementById("btnStartChat").onclick = ()=>showView("chat");
+    document.getElementById("btnStartFireCert").onclick = ()=>showView("firecert");
+
+    // Top bar buttons
     document.getElementById("btnDocs").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
-
-    // Status: /health
     document.getElementById("btnStatus").onclick = async ()=>{
       try{
         const r = await fetch(apiUrl("/health"));
@@ -631,681 +1301,1182 @@
         let j = {};
         try{ j = JSON.parse(t); }catch(e){}
         if(!r.ok){
-          showToast("Status error " + r.status + ": " + (t || "No body"));
+          showToast("Status error " + r.status + ": " + (t || "No response body"));
           return;
         }
-        if(j && typeof j === "object"){
-          showToast(j.ok ? ("Backend OK" + (j.vertex_ready ? " • Vertex ready" : "")) : "Backend responded");
-        }else{
-          showToast("Backend responded");
-        }
+        showToast(j.vertex_ready ? "Status: Online (AI ready)" : "Status: Online (AI warming up)");
       }catch(e){
-        showToast("Status failed: network/CORS");
+        showToast("Status check failed. Backend may be offline or blocked by CORS.");
       }
     };
 
-    // Test Chat: POST /chat_stream
-    document.getElementById("btnTestChat").onclick = async ()=>{
-      try{
-        const r = await fetch(apiUrl("/chat_stream"), {
-          method:"POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ chat_id:"test", message:"ping", force_docs:false })
-        });
-        if(r.status === 404){
-          showToast("CHAT 404: backend missing /chat_stream (this is NOT a UI problem)");
-          return;
-        }
-        showToast("Chat endpoint responded: HTTP " + r.status);
-      }catch(e){
-        showToast("Chat test failed: network/CORS");
+    // Future feature buttons
+    document.querySelectorAll("[data-soon]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const name = btn.getAttribute("data-soon");
+        const lines = [
+          name + " is in development.",
+          name + " is planned for a future release.",
+          name + " is currently in testing.",
+          "Preview only: " + name
+        ];
+        showToast(lines[Math.floor(Math.random()*lines.length)]);
+      });
+    });
+
+    // Calmer particles
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    let W=0,H=0, particles=[];
+    function resize(){
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      const base = Math.floor(Math.min(80, Math.max(35, W/26)));
+      particles = Array.from({length:base}).map(()=>({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        r: Math.random()*1.4 + 0.4,
+        vx:(Math.random()*0.22+0.05)*(Math.random()<0.5?-1:1),
+        vy:(Math.random()*0.18+0.04)*(Math.random()<0.5?-1:1),
+        a: Math.random()*0.45 + 0.10
+      }));
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    function tick(){
+      ctx.clearRect(0,0,W,H);
+      for(const p of particles){
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < -20) p.x = W+20;
+        if(p.x > W+20) p.x = -20;
+        if(p.y < -20) p.y = H+20;
+        if(p.y > H+20) p.y = -20;
+
+        ctx.globalAlpha = p.a;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle = "white";
+        ctx.fill();
       }
-    };
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(tick);
+    }
+    if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      tick();
+    }
 
     // =========================
-    // CHAT (STREAMING VIA FETCH READER)
+    // CHAT STATE (unchanged)
     // =========================
-    const chatBox   = document.getElementById("chatBox");
-    const chatInput = document.getElementById("chatInput");
-    const chatMeta  = document.getElementById("chatMeta");
-    const btnSend   = document.getElementById("btnSend");
-    const btnStop   = document.getElementById("btnStop");
-
+    const chatBox = document.getElementById("chatBox");
+    const msgEl = document.getElementById("msg");
+    const sendBtn = document.getElementById("send");
     const forceDocsEl = document.getElementById("forceDocs");
-    const pdfSelect   = document.getElementById("pdfSelect");
-    const chatIdEl    = document.getElementById("chatId");
+    const btnClear = document.getElementById("btnClear");
+    const btnNewChat = document.getElementById("btnNewChat");
+    const chatItemsWrap = document.getElementById("chatItems");
+    const btnDeleteAllChats = document.getElementById("btnDeleteAllChats");
 
-    let aborter = null;
+    const STORAGE_KEY = "raheem_ai_chats_v3";
+    const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
 
-    function uid(){
-      return "chat_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+    function loadAllChats(){
+      try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+      catch(e){ return {}; }
+    }
+    function saveAllChats(obj){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
     }
 
-    function loadChatId(){
-      const k = "raheem_chat_id_v1";
-      const v = localStorage.getItem(k);
-      if(v) return v;
-      const id = uid();
-      localStorage.setItem(k, id);
-      return id;
-    }
-    function setChatId(id){
-      localStorage.setItem("raheem_chat_id_v1", id);
-      chatIdEl.value = id;
-    }
-    setChatId(loadChatId());
-
-    function addMsg(role, text){
-      const row = document.createElement("div");
-      row.className = "msg";
-      const bubble = document.createElement("div");
-      bubble.className = "bubble " + (role === "user" ? "user" : "assistant");
-      bubble.textContent = text || "";
-      row.appendChild(bubble);
-      chatBox.appendChild(row);
-      chatBox.scrollTop = chatBox.scrollHeight;
-      return bubble;
+    function newChatId(){
+      return "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
     }
 
-    function parseSseChunk(buffer){
-      // returns array of {event, data}, and remaining buffer
-      const out = [];
-      let idx;
-      while((idx = buffer.indexOf("\n\n")) !== -1){
-        const block = buffer.slice(0, idx);
-        buffer = buffer.slice(idx+2);
-        let eventName = "";
-        let data = "";
-        block.split("\n").forEach(line=>{
-          if(line.startsWith("event:")){
-            eventName = line.slice(6).trim();
-          } else if(line.startsWith("data:")){
-            data += (data ? "\n" : "") + line.slice(5).trimEnd();
-          }
-        });
-        out.push({event: eventName || "message", data});
+    function fmtTime(ts){
+      try{
+        const d = new Date(ts);
+        return d.toLocaleString(undefined, { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
+      }catch(e){
+        return "";
       }
-      return {out, buffer};
     }
 
-    async function sendChat(){
-      const msg = (chatInput.value || "").trim();
-      if(!msg) return;
+    let activeChatId = (localStorage.getItem(ACTIVE_CHAT_KEY) || "").trim() || null;
 
-      const chat_id = (chatIdEl.value || "").trim() || loadChatId();
-      setChatId(chat_id);
+    function persistActiveChatId(){
+      if(activeChatId) localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+    }
 
-      const force_docs = (forceDocsEl.value === "true");
-      const pdf = (pdfSelect.value || "").trim() || null;
+    function ensureActiveChat(){
+      const all = loadAllChats();
 
-      addMsg("user", msg);
-      chatInput.value = "";
-      chatMeta.textContent = "Thinking…";
-      btnSend.disabled = true;
-      btnStop.disabled = false;
+      if(activeChatId && all[activeChatId]){
+        persistActiveChatId();
+        return all;
+      }
 
-      const assistantBubble = addMsg("assistant", "");
-      aborter = new AbortController();
+      activeChatId = newChatId();
+      all[activeChatId] = {
+        title: "New chat",
+        updated: Date.now(),
+        messages: [
+          { role:"assistant", content:"Hello. How can I help today?" }
+        ]
+      };
+      saveAllChats(all);
+      persistActiveChatId();
+      return all;
+    }
+
+    function setChatTitleFromFirstUser(all, chatId){
+      const c = all[chatId];
+      if(!c) return;
+      const firstUser = (c.messages || []).find(m=>m.role==="user");
+      if(firstUser && (c.title==="New chat" || !c.title)){
+        const s = (firstUser.content || "").trim();
+        c.title = s.slice(0, 44) + (s.length>44 ? "..." : "");
+      }
+    }
+
+    function deleteChat(chatId){
+      const all = loadAllChats();
+      if(!all[chatId]) return;
+
+      const title = all[chatId].title || "this chat";
+      const ok = confirm("Delete chat: " + title + " ?");
+      if(!ok) return;
+
+      delete all[chatId];
+
+      if(chatId === activeChatId){
+        const remaining = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
+        activeChatId = remaining[0] || null;
+        if(!activeChatId){
+          saveAllChats(all);
+          localStorage.removeItem(ACTIVE_CHAT_KEY);
+          ensureActiveChat();
+        }else{
+          persistActiveChatId();
+          saveAllChats(all);
+        }
+      }else{
+        saveAllChats(all);
+      }
+
+      renderChatList();
+      renderChat();
+      showToast("Chat deleted.");
+    }
+
+    function escapeHtml(s){
+      return (s||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function renderChatList(){
+      const all = ensureActiveChat();
+      const ids = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
+      chatItemsWrap.innerHTML = "";
+
+      ids.forEach(id=>{
+        const c = all[id];
+
+        const row = document.createElement("button");
+        row.className = "chatitem" + (id===activeChatId ? " active" : "");
+        row.type = "button";
+
+        const title = c.title || "New chat";
+        const time = fmtTime(c.updated || Date.now());
+        const msgCount = (c.messages||[]).length;
+
+        row.innerHTML = `
+          <div class="metaWrap">
+            <div class="t">${escapeHtml(title)}</div>
+            <div class="s"><span>${escapeHtml(time)}</span><span style="opacity:.7">•</span><span>${msgCount} msgs</span></div>
+          </div>
+          <div class="chatActions">
+            <div class="iconBtn danger" title="Delete chat" aria-label="Delete chat">×</div>
+          </div>
+        `;
+
+        row.addEventListener("click", (ev)=>{
+          const target = ev.target;
+          const isDelete = target && target.classList && target.classList.contains("iconBtn");
+          if(isDelete) return;
+          activeChatId = id;
+          persistActiveChatId();
+          renderChatList();
+          renderChat();
+        });
+
+        const delBtn = row.querySelector(".iconBtn.danger");
+        delBtn.addEventListener("click", (ev)=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          deleteChat(id);
+        });
+
+        chatItemsWrap.appendChild(row);
+      });
+    }
+
+    function renderChat(){
+      const all = ensureActiveChat();
+      const c = all[activeChatId];
+      chatBox.innerHTML = "";
+      (c.messages||[]).forEach(m=>{
+        addMsg(m.role==="user" ? "user" : "ai", m.content, false);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addMsg(who, text, scroll=true){
+      const div = document.createElement("div");
+      div.className = "msg " + (who==="user" ? "user" : "ai");
+      div.textContent = text;
+      chatBox.appendChild(div);
+      if(scroll) chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
+    function addTypingIndicator(targetDiv){
+      const wrap = document.createElement("div");
+      wrap.className = "typing";
+      wrap.innerHTML = `<span>Raheem AI is responding</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+      targetDiv.appendChild(wrap);
+      return wrap;
+    }
+
+    function clearChat(){
+      const all = ensureActiveChat();
+      all[activeChatId].messages = [{ role:"assistant", content:"Cleared. What would you like to do next?" }];
+      all[activeChatId].updated = Date.now();
+      saveAllChats(all);
+      renderChat();
+      renderChatList();
+    }
+
+    btnClear.onclick = clearChat;
+
+    btnNewChat.onclick = ()=>{
+      const all = loadAllChats();
+      activeChatId = newChatId();
+      all[activeChatId] = {
+        title: "New chat",
+        updated: Date.now(),
+        messages: [{ role:"assistant", content:"Hello. How can I help today?" }]
+      };
+      saveAllChats(all);
+      persistActiveChatId();
+      renderChatList();
+      renderChat();
+      showToast("New chat created.");
+    };
+
+    btnDeleteAllChats.onclick = ()=>{
+      const ok = confirm("Delete all saved chats? This cannot be undone.");
+      if(!ok) return;
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CHAT_KEY);
+      activeChatId = null;
+      ensureActiveChat();
+      renderChatList();
+      renderChat();
+      showToast("All chats deleted.");
+    };
+
+    ensureActiveChat();
+    renderChat();
+
+    // =========================
+    // Samsung Internet fixes for streaming (unchanged)
+    // =========================
+    function isSamsungInternet(){
+      try{
+        const ua = (navigator.userAgent || "").toLowerCase();
+        return ua.includes("samsungbrowser");
+      }catch(e){
+        return false;
+      }
+    }
+
+    function parseSSETextToAnswer(sseText){
+      let out = "";
+      const frames = (sseText || "").split("\n\n");
+      for(const frame of frames){
+        const f = frame.trim();
+        if(!f) continue;
+        if(f.startsWith("event: meta")) continue;
+
+        if(f.startsWith("event: error")){
+          const line = f.split("\n").find(x => x.startsWith("data: "));
+          const msg = line ? line.slice(6) : "Error";
+          return msg.replaceAll("\\n","\n");
+        }
+
+        if(f.startsWith("data: ")){
+          const dataLine = f.slice(6);
+          out += dataLine.replaceAll("\\n","\n");
+        }
+      }
+      return out.trim();
+    }
+
+    // =========================
+    // CHAT SEND (unchanged)
+    // =========================
+    async function send(){
+      const text = (msgEl.value || "").trim();
+      if(!text) return;
+      msgEl.value = "";
+
+      const all = ensureActiveChat();
+      const c = all[activeChatId];
+
+      c.messages.push({ role:"user", content:text });
+      c.updated = Date.now();
+      setChatTitleFromFirstUser(all, activeChatId);
+      saveAllChats(all);
+
+      addMsg("user", text);
+
+      const aiDiv = addMsg("ai", "");
+      const typing = addTypingIndicator(aiDiv);
+
+      let full = "";
+      let gotAnyToken = false;
+
+      const payload = {
+        chat_id: activeChatId,
+        message: text,
+        messages: c.messages,
+        force_docs: !!forceDocsEl.checked
+      };
+
+      const runEventSourceFallback = () => {
+        try {
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+
+          fetch(apiUrl("/chat_stream"), {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify(payload)
+          }).then(() => {
+            const q = encodeURIComponent(text);
+            const chat_id = encodeURIComponent(activeChatId);
+            const force_docs = forceDocsEl.checked ? "1" : "0";
+            const esUrl = apiUrl(`/chat_stream?q=${q}&chat_id=${chat_id}&force_docs=${force_docs}`);
+
+            const es = new EventSource(esUrl);
+
+            es.onmessage = (ev) => {
+              gotAnyToken = true;
+              full += (ev.data || "").replaceAll("\\n","\n");
+              aiDiv.textContent = full;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            };
+
+            es.addEventListener("error", () => {
+              es.close();
+              if(!gotAnyToken){
+                aiDiv.textContent = "Connection error. Try again.";
+              }
+            });
+
+            es.addEventListener("done", () => {
+              es.close();
+            });
+          }).catch(e => {
+            aiDiv.textContent = "Connection error. Try again.";
+            console.error(e);
+          });
+
+        } catch(e){
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = "Connection error. Try again.";
+          console.error(e);
+        }
+      };
 
       try{
-        const payload = { chat_id, message: msg, force_docs, pdf };
-
-        const r = await fetch(apiUrl("/chat_stream"), {
+        const res = await fetch(apiUrl("/chat_stream"), {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify(payload),
-          signal: aborter.signal
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
         });
 
-        if(!r.ok){
-          assistantBubble.textContent = "Error: backend returned HTTP " + r.status;
-          chatMeta.textContent = "Error.";
+        const contentType = (res.headers.get("content-type") || "").toLowerCase();
+
+        if(!res.ok){
+          const errText = await res.text().catch(()=>"(no error body)");
+          aiDiv.textContent = "Server error " + res.status + ": " + (errText || "").slice(0, 800);
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
           return;
         }
 
-        // If backend returns JSON (non-stream), show it as text
-        const ct = (r.headers.get("content-type") || "").toLowerCase();
-        if(ct.includes("application/json")){
-          const j = await r.json().catch(()=>({}));
-          assistantBubble.textContent = (j.answer || j.reply || j.text || JSON.stringify(j, null, 2));
-          chatMeta.textContent = "Done.";
+        if(contentType.includes("application/json")){
+          const j = await res.json();
+          const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = reply;
+
+          const all2 = ensureActiveChat();
+          const c2 = all2[activeChatId];
+          c2.messages.push({ role:"assistant", content: reply });
+          c2.updated = Date.now();
+          saveAllChats(all2);
+          renderChatList();
           return;
         }
 
-        const reader = r.body.getReader();
+        if(isSamsungInternet()){
+          const raw = await res.text();
+          const reply = parseSSETextToAnswer(raw) || " ";
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = reply;
+
+          const all2 = ensureActiveChat();
+          const c2 = all2[activeChatId];
+          c2.messages.push({ role:"assistant", content: reply });
+          c2.updated = Date.now();
+          saveAllChats(all2);
+          renderChatList();
+          return;
+        }
+
+        if(!res.body || !res.body.getReader){
+          runEventSourceFallback();
+          return;
+        }
+
+        const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
-        let done = false;
 
-        while(!done){
-          const {value, done: rdDone} = await reader.read();
-          if(rdDone) break;
-          buffer += decoder.decode(value, {stream:true});
-          const parsed = parseSseChunk(buffer);
-          buffer = parsed.buffer;
+        while(true){
+          const { value, done } = await reader.read();
+          if(done) break;
 
-          for(const evt of parsed.out){
-            if(evt.event === "error"){
-              assistantBubble.textContent += (assistantBubble.textContent ? "\n" : "") + evt.data;
-              chatMeta.textContent = "Error.";
-            } else if(evt.event === "done"){
-              done = true;
-              chatMeta.textContent = "Done.";
-            } else {
-              assistantBubble.textContent += evt.data;
-              chatBox.scrollTop = chatBox.scrollHeight;
+          buffer += decoder.decode(value, { stream:true });
+
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for(const chunk of parts){
+            if(chunk.startsWith("event: meta")) continue;
+
+            if(chunk.startsWith("event: error")){
+              const line = chunk.split("\n").find(x=>x.startsWith("data: "));
+              const msg = (line ? line.replace("data: ","") : "Error");
+              aiDiv.textContent = msg;
+              continue;
+            }
+
+            if(chunk.startsWith("data: ")){
+              const dataLine = chunk.replace("data: ","");
+              const delta = dataLine.replaceAll("\\n","\n");
+
+              if(delta){
+                gotAnyToken = true;
+                if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+
+                full += delta;
+                aiDiv.textContent = full;
+                chatBox.scrollTop = chatBox.scrollHeight;
+              }
             }
           }
         }
 
-        if(!done) chatMeta.textContent = "Done.";
+        if(!gotAnyToken && typing && typing.parentNode){
+          typing.parentNode.removeChild(typing);
+        }
+
+        const finalText = full.trim() || " ";
+
+        const all2 = ensureActiveChat();
+        const c2 = all2[activeChatId];
+        c2.messages.push({ role:"assistant", content: finalText });
+        c2.updated = Date.now();
+        saveAllChats(all2);
+        renderChatList();
 
       }catch(e){
-        if(String(e).includes("AbortError")){
-          assistantBubble.textContent += "\n\nStopped.";
-          chatMeta.textContent = "Stopped.";
-        }else{
-          assistantBubble.textContent = "Network error. Check backend/CORS.";
-          chatMeta.textContent = "Error.";
-        }
-      }finally{
-        btnSend.disabled = false;
-        btnStop.disabled = true;
-        aborter = null;
+        console.error("Chat send error:", e);
+        runEventSourceFallback();
       }
     }
 
-    btnSend.onclick = sendChat;
-    btnStop.onclick = ()=>{ if(aborter) aborter.abort(); };
-    chatInput.addEventListener("keydown",(e)=>{
+    sendBtn.onclick = send;
+    msgEl.addEventListener("keydown", (e)=>{
       if(e.key==="Enter" && !e.shiftKey){
         e.preventDefault();
-        sendChat();
+        send();
       }
     });
 
-    document.getElementById("btnNewChat").onclick = ()=>{
-      setChatId(uid());
-      showToast("New chat started");
-    };
-    document.getElementById("btnClearChatUI").onclick = ()=>{
-      chatBox.innerHTML = "";
-      chatMeta.textContent = "Cleared.";
-      showToast("Chat UI cleared");
-    };
-
     // =========================
-    // PDF UPLOAD + LIST
+    // FIRE CERT WIZARD (HTML-ONLY)
     // =========================
-    async function refreshPdfs(){
-      try{
-        const r = await fetch(apiUrl("/list-pdfs"));
-        const j = await r.json().catch(()=>({}));
-        if(!r.ok || !j.ok){
-          showToast("Failed to list PDFs");
-          return;
-        }
-        const arr = j.pdfs || j.files || [];
-        pdfSelect.innerHTML = '<option value="">Auto-pick</option>';
-        arr.forEach(name=>{
-          const opt = document.createElement("option");
-          opt.value = name;
-          opt.textContent = name;
-          pdfSelect.appendChild(opt);
-        });
-        showToast("PDF list updated");
-      }catch(e){
-        showToast("PDF list failed");
-      }
-    }
-
-    document.getElementById("btnRefreshPdfs").onclick = refreshPdfs;
-
-    document.getElementById("btnUploadPdf").onclick = async ()=>{
-      const file = document.getElementById("pdfUpload").files?.[0];
-      const statusEl = document.getElementById("uploadStatus");
-      if(!file){ showToast("Choose a PDF first"); return; }
-
-      try{
-        statusEl.textContent = "Uploading…";
-        const fd = new FormData();
-        fd.append("file", file);
-        const r = await fetch(apiUrl("/upload-pdf"), { method:"POST", body: fd });
-        const j = await r.json().catch(()=>({}));
-        if(!r.ok || !j.ok){
-          statusEl.textContent = "Upload failed.";
-          showToast("Upload failed");
-          return;
-        }
-        statusEl.textContent = "Uploaded: " + (j.stored_as || file.name);
-        showToast("PDF uploaded");
-        await refreshPdfs();
-      }catch(e){
-        statusEl.textContent = "Upload error.";
-        showToast("Upload error");
-      }
-    };
-
-    // =========================
-    // FIRE CERT (NO JSON ON SCREEN)
-    // =========================
-    const FC_KEY = "raheem_firecert_project_v2";
-    let fcInited = false;
-    let fcSchema = null;
-    let fcProjectId = null;
+    const FC_KEY = "raheem_firecert_draft_v1";
+    let fcState = null;
     let fcStepIndex = 0;
+    let fcInited = false;
 
-    const fcProjectTag = document.getElementById("fcProjectTag");
-    const fcStepTitle = document.getElementById("fcStepTitle");
-    const fcFormArea = document.getElementById("fcFormArea");
-    const fcReportPreview = document.getElementById("fcReportPreview");
-    const fcPurposeGroup = document.getElementById("fcPurposeGroup");
+    const fcSteps = [
+      { id:"s0", name:"Step 0 — Setup" },
+      { id:"b1", name:"B1 — Escape" },
+      { id:"b2", name:"B2 — Linings" },
+      { id:"b3", name:"B3 — Structure" },
+      { id:"b4", name:"B4 — External" },
+      { id:"b5", name:"B5 — Fire Service" },
+      { id:"b6", name:"B6 — Smoke" },
+      { id:"b12", name:"B12 — Handover" },
+    ];
 
-    function fcLoadLocal(){
+    // Purpose groups shown to user (friendly)
+    const purposeGroups = [
+      { id:"1c", name:"1(c) Flats / Apartments", chip:"Residential" },
+      { id:"2a", name:"2(a)(ii) Residential care (non-hospital)", chip:"Care" },
+      { id:"2b", name:"2(b) Hotel / Hostel / Student Accommodation", chip:"Sleeping" },
+      { id:"3",  name:"3 Office", chip:"Office" },
+      { id:"4a", name:"4(a) Shop", chip:"Retail" },
+      { id:"4b", name:"4(b) Shopping centre", chip:"Mall" },
+      { id:"5a", name:"5(a) Assembly (incl. café/restaurant/pub)", chip:"Assembly" },
+      { id:"5b", name:"5(b) Day centre (creche/clinic)", chip:"Day" },
+      { id:"6a", name:"6(a) Industrial (normal)", chip:"Industrial" },
+      { id:"6b", name:"6(b) Industrial (high hazard)", chip:"High hazard" },
+      { id:"7a", name:"7(a) Storage (normal)", chip:"Storage" },
+      { id:"7b", name:"7(b) Storage (high hazard)", chip:"High hazard" },
+      { id:"7c", name:"7(c) Car park", chip:"Car park" },
+      { id:"8",  name:"8 Other non-residential", chip:"Other" },
+    ];
+
+    const HELP = {
+      scope_vol1: "Volume 1 applies to most buildings other than houses. If your building is very unusual or complex, a fire engineering approach may be needed.",
+      topmost_floor: "The topmost occupied floor level measured above ground. If it exceeds the scope limit, a bespoke approach may be required.",
+      building_height: "‘Height of building’ is a defined term in the guidance. Enter your project’s building height used for fire safety tables.",
+      separated_parts: "A ‘separated part’ is a part of a building separated by fire-resisting construction so it can be treated similarly to a separate building for some checks.",
+      travel_distance: "Travel distance is how far a person must travel to reach a place of relative safety (like an exit or protected stair).",
+      basis_single_dual: "Single direction means only one way out for part of the route. Dual direction means two independent directions are available.",
+      exit_capacity: "Exit capacity is the total clear width of exits/stairs needed for the number of people expected to use them.",
+      protected_lobby: "A protected lobby/corridor is enclosed in fire-resisting construction to help keep smoke out of escape stairs.",
+      notional_boundary: "A notional boundary is an assumed boundary line used for space separation checks, often on larger or shared sites.",
+      en12101: "EN 12101 is a family of standards used for smoke and heat control systems (SHEVS).",
+      b12_logbook: "A fire safety logbook records testing, maintenance and key fire safety information for building management.",
+      not_assessed: "Use Not assessed when information is not available yet. This avoids claiming compliance without evidence."
+    };
+
+    function fcLoad(){
       try{
         const raw = localStorage.getItem(FC_KEY);
-        return raw ? JSON.parse(raw) : null;
-      }catch(e){ return null; }
+        if(raw) return JSON.parse(raw);
+      }catch(e){}
+      return {
+        purpose_group: "",
+        // Step 0
+        fsc_app: "",
+        topmost_floor_le_60: "",
+        scope_vol1: "",
+        alt_solution: "",
+        alt_solution_desc: "",
+        external_standards: "",
+        external_standards_list: "",
+        works_type: "New building",
+        existing_reasonably_achievable: "",
+        building_height_m: "",
+        topmost_storey_height_m: "",
+        storeys_above: "",
+        storeys_basement: "",
+        separated_parts: "",
+        atrium: "",
+        car_park: "None",
+        building_desc: "",
+        notional_boundary: "",
+        notional_boundary_desc: "",
+        attachments_notes: "",
+
+        // B1
+        b1_design_occupancy: "",
+        b1_sleeping: "",
+        b1_strategy: "",
+        b1_max_travel_m: "",
+        b1_travel_basis: "",
+        b1_travel_ref: "",
+        b1_storey_exits: "",
+        b1_final_exits: "",
+        b1_exit_width_req_mm: "",
+        b1_exit_width_prov_mm: "",
+        b1_stairs_count: "",
+        b1_stair_width_mm: "",
+        b1_stair_persons: "",
+        b1_single_stair: "",
+        b1_stair_smoke: "",
+        b1_inner_rooms: "",
+        b1_detect_access: "",
+        b1_vision_panel: "",
+        b1_fire_doors: "",
+        b1_hold_open: "",
+        b1_elec_locks: "",
+        b1_unlock_alarm_power: "",
+        b1_refuge: "",
+        b1_refuge_location: "",
+        b1_refuge_comm: "",
+        b1_evac_lift: "",
+        b1_alarm: "",
+        b1_alarm_cat: "",
+        b1_emergency_lighting: "",
+        b1_signage: "",
+
+        // B2
+        b2_class_escape: "",
+        b2_class_rooms: "",
+        b2_class_circ: "",
+        b2_table_ref: "",
+        b2_deviation: "",
+        b2_comp_measures: "",
+        b2_special_risk: "",
+        b2_thermo_rooflights: "",
+        b2_thermo_diffusers: "",
+        b2_plastic_glazing: "",
+
+        // B3
+        b3_struct_system: "",
+        b3_req_fr_mins: "",
+        b3_req_fr_ref: "",
+        b3_prop_fr_frame: "",
+        b3_prop_fr_floors: "",
+        b3_prop_fr_comp_walls: "",
+        b3_comp_areas_heights: "",
+        b3_comp_max_perm: "",
+        b3_comp_ref: "",
+        b3_comp_compliant: "",
+        b3_separated_parts_desc: "",
+        b3_special_rooms_list: "",
+        b3_special_rooms_enclosed: "",
+        b3_junction_strategy: "",
+        b3_cavities: "",
+        b3_cavity_barriers: "",
+        b3_services_penetrate: "",
+        b3_fire_stopping: "",
+        b3_dampers: "",
+
+        // B4
+        b4_wall_system: "",
+        b4_facade_class: "",
+        b4_combustible: "",
+        b4_test_evidence: "",
+        b4_boundary_dist: "",
+        b4_unprotected_pct: "",
+        b4_table_used: "",
+        b4_attachments: "",
+        b4_roof_class: "",
+        b4_roof_req: "",
+        b4_roof_ref: "",
+        b4_rooflights: "",
+        b4_pv_plant: "",
+        b4_pv_plant_desc: "",
+
+        // B5
+        b5_appliance_route: "",
+        b5_dist_parking_m: "",
+        b5_top_storey_vs_access_m: "",
+        b5_main_required: "",
+        b5_main_type: "",
+        b5_main_locations: "",
+        b5_ff_shaft_required: "",
+        b5_ff_shaft_count_loc: "",
+        b5_ff_storeys_served: "",
+        b5_hydrants: "",
+        b5_hydrant_dist_m: "",
+        b5_flow_known: "",
+        b5_boiler_fuel: "",
+        b5_elec_isolation: "",
+
+        // B6
+        b6_basements: "",
+        b6_atria: "",
+        b6_protected_lobbies: "",
+        b6_car_parks: "",
+        b6_system_type: "",
+        b6_standard: "",
+        b6_vent_sizes_defined: "",
+        b6_zones_defined: "",
+        b6_emergency_power: "",
+        b6_fail_safe: "",
+
+        // B12
+        b12_systems: "",
+        b12_commissioning: "",
+        b12_om: "",
+        b12_as_built: "",
+        b12_logbook: "",
+        b12_standards_per_system: "",
+
+        // outcomes (per section)
+        out_b1: "Not assessed",
+        out_b2: "Not assessed",
+        out_b3: "Not assessed",
+        out_b4: "Not assessed",
+        out_b5: "Not assessed",
+        out_b6: "Not assessed",
+        out_b12:"Not assessed"
+      };
     }
-    function fcSaveLocal(obj){
-      localStorage.setItem(FC_KEY, JSON.stringify(obj));
+
+    function fcSave(){
+      localStorage.setItem(FC_KEY, JSON.stringify(fcState));
+      showToast("Fire Cert draft saved.");
+      fcUpdateSummary();
     }
-    function fcResetLocal(){
+
+    function fcReset(){
+      const ok = confirm("Reset Fire Cert draft? This clears local progress.");
+      if(!ok) return;
       localStorage.removeItem(FC_KEY);
+      fcState = fcLoad();
+      fcStepIndex = 0;
+      fcRenderAll();
+      showToast("Fire Cert draft reset.");
     }
 
-    function builtInSchemaFallback(purpose){
-      // Minimal fallback so UI works even if /firecert/schema fails.
-      // You can expand this freely later or rely on backend schema.
-      const baseStep0 = [
-        qBool("s0_fsc", "Is this a Fire Safety Certificate application under the Building Control Regulations?", "Tick Yes if you’re preparing an FSC application for Building Control. Tick No only if this is an internal check."),
-        qText("s0_tgd_edition", "TGD B edition used", "Example: “TGD B 2024 – Volume 1”. If you’re using another edition, type it here.", "TGD B 2024 – Volume 1"),
-        qBool("s0_topmost_60m", "Topmost occupied floor level ≤ 18 m? (Typical trigger check)", "This is a practical check: measure from fire service access level to the topmost occupied floor level. If you truly meant 60 m, change this in your backend schema. (You asked to double-check the 60 m question.)"),
-        qBool("s0_within_scope", "Is the building within the scope of TGD B Volume 1 (not very unusual / non-complex)?", "If it’s unusual/complex, you may need a fire engineered/performance approach."),
-        qText("s0_alt_desc", "If not within scope, describe any alternative / performance-based approach proposed", "Briefly state the approach, e.g. BS 9999, fire engineering, smoke control modelling, etc.", ""),
-        qText("s0_external_standards", "Any external standards used in addition to TGD B? (list)", "Example: BS 9999, EN 12845, etc. Leave blank if none."),
-        qSelect("s0_works_type","Works type","Select the nature of works for the application.",
-          ["New building","Extension","Material alteration","Material change of use","Combination"]),
-        qNum("s0_height_building","Height of building (Appendix C definition) (m)","Use TGD B Appendix C definition. Enter a number in metres."),
-        qNum("s0_height_top_storey","Height of topmost storey (m)","Enter the height in metres (as defined in your report basis)."),
-        qNum("s0_storeys_ag","Number of storeys above ground","Enter an integer."),
-        qNum("s0_storeys_bg","Number of basement storeys","Enter an integer (0 if none)."),
-        qBool("s0_separated_parts","Any separated parts per 3.4.2?","Yes if the building is divided into parts designed to act independently for compartmentation/means of escape."),
-        qBool("s0_atrium","Any atrium?","Yes if there is an atrium space connecting levels (often triggers smoke control considerations)."),
-        qSelect("s0_carpark","Any car park?","Select the car park type if present.",
-          ["None","Open","Enclosed"]),
-        qText("s0_desc","Brief building description","Short narrative: use, layout, risk notes, anything unusual.")
-      ];
-
-      const b1 = [
-        qText("b1_occ","Design occupancy per storey / compartment","State design occupancy and how it’s calculated (persons)."),
-        (purpose==="pg1c") ? qText("b1_sleeping","Sleeping accommodation present?","For apartments/flats, this is generally Yes (sleeping risk).","Yes") :
-          qBool("b1_sleeping_bool","Sleeping accommodation present?","Yes if any sleeping risk exists (e.g. hotel, residential)."),
-        qSelect("b1_evac","Evacuation strategy","Typical options: simultaneous or phased.",
-          ["Simultaneous","Phased"]),
-        qNum("b1_travel_max","Maximum actual travel distance per storey (m)","Measure on plans along escape routes."),
-        qText("b1_travel_basis","Travel distance basis used (single / dual direction; table ref)","Example: single direction, Table X (cite)."),
-        qNum("b1_storey_exits","Number of storey exits per storey","Count exits from each storey."),
-        qNum("b1_final_exits","Number of final exits","Count final exits to open air."),
-        qNum("b1_exit_req","Required exit width (mm)","Show how you derived required width."),
-        qNum("b1_exit_prov","Provided exit width (mm)","Sum of clear widths provided."),
-        qNum("b1_stairs_n","Number of escape stairs","Count protected escape stairs."),
-        qNum("b1_stair_w","Clear width of each stair (mm)","Provide clear width."),
-        qText("b1_stair_served","Persons served by each stair","Explain distribution / load per stair."),
-        qBool("b1_single_stair","Single stair building?","Yes if only one escape stair is provided."),
-        qBool("b1_smoke_vent","Stair smoke ventilation / control provided?","Yes if AOV/mechanical ventilation/pressurisation, etc."),
-        qBool("b1_inner_rooms","Inner rooms present?","Yes if rooms only exit through another room."),
-        qBool("b1_auto_det","Automatic detection in access room?","Yes if detection protects the access room serving an inner room."),
-        qBool("b1_vision","Vision panel / glazing provided?","Yes if required on escape route doors to avoid collision."),
-        qBool("b1_fire_doors","Fire doors on escape routes?","Yes if FD doors protect routes/shafts."),
-        qBool("b1_holdopen","Hold-open devices provided?","Yes if EM hold-open devices installed and linked to alarm."),
-        qBool("b1_elocks","Electronically locked doors on escape routes?","Yes if maglocks/controlled doors exist on escape routes."),
-        qBool("b1_unlock","Unlock on fire alarm and power failure?","Should generally be Yes if e-locks are used."),
-        qBool("b1_refuges","Refuge areas provided?","Yes if accessible refuges are required."),
-        qText("b1_ref_loc","Location of refuges","State floor/position."),
-        qBool("b1_ref_comm","Refuge communication system provided?","Yes if two-way communication is provided."),
-        qBool("b1_evac_lift","Evacuation lift provided?","Yes if an evacuation lift is included."),
-        qBool("b1_alarm","Fire detection and alarm system provided?","Yes if a fire alarm/detection system is provided."),
-        qText("b1_alarm_cat","Alarm category (if known)","Example: L1/L2/Category as specified."),
-        qBool("b1_eml","Emergency lighting provided?","Yes if emergency lighting is installed."),
-        qBool("b1_sign","Fire safety signage provided?","Yes if signs provided to relevant standards.")
-      ];
-
-      const steps = [
-        { id:"s0", title:"Step 0 — Project setup & scope", questions: baseStep0 },
-        { id:"b1", title:"Section 1 — Means of warning & escape (B1)", questions: b1 },
-      ];
-
-      // Purpose-specific add-ons
-      if(purpose==="pg5a"){
-        steps[1].questions.splice(2,0,
-          qBool("b1_kitchen","Confirm commercial kitchen present?","Yes if there is a commercial kitchen."),
-          qBool("b1_kitchen_risk","Identify kitchen as place of special fire risk","Yes if treated as special fire risk in report.")
-        );
-      }
-      if(purpose==="pg4b" || purpose==="pg7c"){
-        steps.push({ id:"b6", title:"Section 6 — Smoke control", questions: [
-          qText("b6_type","Smoke control system type","Natural / mechanical / pressurisation etc."),
-          qText("b6_standard","Design standard used","State standard/guidance used."),
-          qBool("b6_em_power","Emergency power provided?","Yes if emergency power supports smoke control.")
-        ]});
-      }
-
-      return { ok:true, schema:{ version:"fallback", steps } };
+    function setDefaultForPurposeGroup(pg){
+      // Defaults only (no magic compliance)
+      if(pg==="2b"){ fcState.b1_sleeping = "Yes"; }
+      if(pg==="1c"){ fcState.b1_sleeping = "Yes"; }
+      if(pg==="2a"){ fcState.b1_strategy = "Progressive horizontal"; }
+      if(pg==="7c"){ fcState.b6_car_parks = "Yes"; } // likely smoke control gate
+      if(pg==="4b"){ fcState.b6_atria = fcState.b6_atria || "Unknown"; } // common
     }
 
-    function qText(id,label,help,def=""){
-      return { id, type:"text", label, help, default:def };
-    }
-    function qNum(id,label,help){
-      return { id, type:"number", label, help };
-    }
-    function qBool(id,label,help){
-      return { id, type:"bool", label, help };
-    }
-    function qSelect(id,label,help,options){
-      return { id, type:"select", label, help, options };
-    }
+    function field(label, key, type="text", helpKey=null, opts=null, full=false){
+      const id = "fc_" + key;
+      const val = (fcState[key] ?? "");
+      const isSelect = type==="select";
+      const isTextArea = type==="textarea";
+      const isNumber = type==="number";
 
-    async function fcFetchSchemaOrFallback(){
-      try{
-        const r = await fetch(apiUrl("/firecert/schema"));
-        const j = await r.json().catch(()=>null);
-        if(r.ok && j && j.ok && j.schema){
-          return { ok:true, schema:j.schema };
-        }
-        return builtInSchemaFallback(fcPurposeGroup.value);
-      }catch(e){
-        return builtInSchemaFallback(fcPurposeGroup.value);
-      }
-    }
-
-    function fcEnsureProject(){
-      const local = fcLoadLocal();
-      if(local && local.project_id){
-        fcProjectId = local.project_id;
-        return local;
-      }
-      const pid = "fc_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
-      fcProjectId = pid;
-      const obj = { project_id: pid, purpose_group: fcPurposeGroup.value, step_index: 0, answers: {}, updated: Date.now() };
-      fcSaveLocal(obj);
-      return obj;
-    }
-
-    function fcSetTag(){
-      fcProjectTag.textContent = "Project: " + (fcProjectId ? fcProjectId.slice(0,10) : "not started");
-    }
-
-    function fcAnswerGet(local, qid){
-      return (local.answers && Object.prototype.hasOwnProperty.call(local.answers, qid)) ? local.answers[qid] : null;
-    }
-
-    function fcAnswerSet(local, qid, val){
-      local.answers[qid] = val;
-      local.updated = Date.now();
-      fcSaveLocal(local);
-    }
-
-    function renderQuestion(local, q){
-      const wrap = document.createElement("div");
-      wrap.className = "field";
-
-      const head = document.createElement("div");
-      head.className = "labelRow";
-
-      const lab = document.createElement("label");
-      lab.textContent = q.label || q.id;
-
-      const helpBtn = document.createElement("span");
-      helpBtn.className = "helpBtn";
-      helpBtn.textContent = "i";
-
-      const help = document.createElement("div");
-      help.className = "helpText";
-      help.textContent = (q.help || "Fill this in using the information from your drawings/spec. If unsure, leave blank for now.");
-
-      helpBtn.onclick = ()=>help.classList.toggle("show");
-
-      head.appendChild(lab);
-      head.appendChild(helpBtn);
-
-      wrap.appendChild(head);
-
-      let input;
-      const current = fcAnswerGet(local, q.id);
-
-      if(q.type === "bool"){
-        input = document.createElement("select");
-        input.innerHTML = `
-          <option value="">Select…</option>
-          <option value="true">Yes</option>
-          <option value="false">No</option>
-        `;
-        if(current === true) input.value = "true";
-        if(current === false) input.value = "false";
-        input.onchange = ()=>{
-          const v = input.value;
-          fcAnswerSet(local, q.id, v==="" ? null : (v==="true"));
-        };
-      }else if(q.type === "select"){
-        input = document.createElement("select");
-        const opts = (q.options || []);
-        input.innerHTML = `<option value="">Select…</option>` + opts.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
-        if(typeof current === "string") input.value = current;
-        input.onchange = ()=>fcAnswerSet(local, q.id, input.value || null);
-      }else if(q.type === "number"){
-        input = document.createElement("input");
-        input.type = "number";
-        input.placeholder = "Enter a number…";
-        if(typeof current === "number") input.value = String(current);
-        input.oninput = ()=>{
-          const v = input.value;
-          fcAnswerSet(local, q.id, v==="" ? null : Number(v));
-        };
+      let inputHtml = "";
+      if(isSelect){
+        inputHtml = `<select id="${id}">
+          ${(opts||[]).map(o=>`<option value="${escapeHtml(o)}" ${val===o?"selected":""}>${escapeHtml(o)}</option>`).join("")}
+        </select>`;
+      }else if(isTextArea){
+        inputHtml = `<textarea class="fcText" id="${id}" rows="4" placeholder="Type here...">${escapeHtml(val)}</textarea>`;
       }else{
-        input = document.createElement("textarea");
-        input.rows = 3;
-        input.placeholder = "Type here…";
-        if(typeof current === "string") input.value = current;
-        else if(!current && q.default) input.value = q.default;
-        input.oninput = ()=>fcAnswerSet(local, q.id, (input.value || "").trim() || null);
+        inputHtml = `<input id="${id}" type="${isNumber?"number":"text"}" value="${escapeHtml(val)}" placeholder="${isNumber?"0":"Type here..."}" />`;
       }
 
-      wrap.appendChild(input);
-      wrap.appendChild(help);
-      return wrap;
+      const helpBtn = helpKey ? `<div class="help" data-help="${escapeHtml(helpKey)}" title="Explain">i</div>` : "";
+
+      return `
+        <div class="field ${full ? "full" : ""}">
+          <div class="labelRow">
+            <label for="${id}">${escapeHtml(label)}</label>
+            ${helpBtn}
+          </div>
+          ${inputHtml}
+          <div class="hintBox" id="${id}_hint"></div>
+        </div>
+      `;
     }
 
-    function escapeHtml(s){
-      return String(s || "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+    function outcomeField(sectionKey){
+      const key = "out_" + sectionKey;
+      const id = "fc_" + key;
+      const val = fcState[key] || "Not assessed";
+      const opts = ["Not assessed","Compliant (TGD tables)","Compliant (compensatory)","Non-compliant (alt solution)"];
+      return field("Section outcome", key, "select", "not_assessed", opts, true);
     }
 
-    function fcRenderStep(){
-      const local = fcLoadLocal();
-      if(!local || !fcSchema){
-        fcFormArea.innerHTML = `<div class="mono">Click “Start / Resume Project”.</div>`;
-        return;
+    function fcStepFields(stepId){
+      // Show/Hide by gates (auto-NA not fully implemented yet - HTML-only)
+      if(stepId==="s0"){
+        return [
+          field("Purpose group (Table 1)", "purpose_group", "select", null, purposeGroups.map(p=>p.id + " — " + p.name), true),
+          field("Fire Safety Certificate application?", "fsc_app", "select", null, ["","Yes","No"], false),
+          field("Topmost floor height ≤ 60 m?", "topmost_floor_le_60", "select", "topmost_floor", ["","Yes","No","Unknown"], false),
+          field("Within TGD B Volume 1 scope?", "scope_vol1", "select", "scope_vol1", ["","Yes","No","Unknown"], false),
+          field("Alternative / performance-based approach?", "alt_solution", "select", null, ["","No","Yes"], false),
+          field("Describe alternative approach (if Yes)", "alt_solution_desc", "textarea", null, null, true),
+
+          field("External standards used in addition to TGD B?", "external_standards", "select", null, ["","No","Yes","Unknown"], false),
+          field("List standards (e.g. EN 12101, BS 9999)", "external_standards_list", "text", null, null, false),
+
+          field("Works type", "works_type", "select", null, ["New building","Extension","Material alteration","Material change of use","Combination"], false),
+          field("If existing works: Sections 1–6 reasonably achievable?", "existing_reasonably_achievable", "select", null, ["","Yes","No","Unknown"], false),
+
+          field("Height of building (m)", "building_height_m", "number", "building_height", null, false),
+          field("Height of topmost storey (m)", "topmost_storey_height_m", "number", "topmost_floor", null, false),
+          field("Storeys above ground", "storeys_above", "number", null, null, false),
+          field("Basement storeys", "storeys_basement", "number", null, null, false),
+
+          field("Separated parts (3.4.2)?", "separated_parts", "select", "separated_parts", ["","No","Yes","Unknown"], false),
+          field("Atrium present?", "atrium", "select", null, ["","No","Yes","Unknown"], false),
+          field("Car park", "car_park", "select", null, ["None","Open","Enclosed"], false),
+
+          field("Notional boundary used?", "notional_boundary", "select", "notional_boundary", ["","No","Yes","Unknown"], false),
+          field("Notional boundary description", "notional_boundary_desc", "textarea", "notional_boundary", null, true),
+
+          field("Brief building description", "building_desc", "textarea", null, null, true),
+          field("Attachments notes (what you plan to upload later)", "attachments_notes", "textarea", null, null, true),
+        ];
       }
 
-      const steps = fcSchema.steps || [];
-      fcStepIndex = Math.max(0, Math.min(local.step_index || 0, steps.length-1));
-      const step = steps[fcStepIndex];
-      if(!step){
-        fcStepTitle.textContent = "Complete";
-        fcFormArea.innerHTML = `<div class="mono">No steps available.</div>`;
-        return;
+      if(stepId==="b1"){
+        return [
+          field("Design occupancy (per storey/compartment)", "b1_design_occupancy", "text", null, null, true),
+          field("Sleeping accommodation present?", "b1_sleeping", "select", null, ["","No","Yes","Unknown"], false),
+          field("Evacuation strategy", "b1_strategy", "select", null, ["","Simultaneous","Phased","Progressive horizontal","Unknown"], false),
+
+          field("Max travel distance (m)", "b1_max_travel_m", "number", "travel_distance", null, false),
+          field("Travel distance basis", "b1_travel_basis", "select", "basis_single_dual", ["","Single direction","Dual direction","Unknown"], false),
+          field("Table reference used for travel distance", "b1_travel_ref", "text", null, null, false),
+
+          field("Number of storey exits (per storey)", "b1_storey_exits", "text", null, null, false),
+          field("Number of final exits", "b1_final_exits", "text", null, null, false),
+          field("Required exit width (mm)", "b1_exit_width_req_mm", "number", "exit_capacity", null, false),
+          field("Provided exit width (mm)", "b1_exit_width_prov_mm", "number", "exit_capacity", null, false),
+
+          field("Number of escape stairs", "b1_stairs_count", "number", null, null, false),
+          field("Clear width of each stair (mm)", "b1_stair_width_mm", "text", null, null, false),
+          field("Persons served by each stair", "b1_stair_persons", "text", null, null, false),
+          field("Single stair building?", "b1_single_stair", "select", null, ["","No","Yes","Unknown"], false),
+          field("Stair smoke ventilation/control provided?", "b1_stair_smoke", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Inner rooms present?", "b1_inner_rooms", "select", null, ["","No","Yes","Unknown"], false),
+          field("Detection in access room?", "b1_detect_access", "select", null, ["","No","Yes","Unknown"], false),
+          field("Vision panel/glazing provided?", "b1_vision_panel", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Fire doors on escape routes?", "b1_fire_doors", "select", null, ["","No","Yes","Unknown"], false),
+          field("Hold-open devices provided?", "b1_hold_open", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Electronically locked doors on escape routes?", "b1_elec_locks", "select", null, ["","No","Yes","Unknown"], false),
+          field("Unlock on fire alarm + power failure?", "b1_unlock_alarm_power", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Refuge areas provided?", "b1_refuge", "select", null, ["","No","Yes","Unknown"], false),
+          field("Refuge location", "b1_refuge_location", "text", null, null, false),
+          field("Refuge communication provided?", "b1_refuge_comm", "select", null, ["","No","Yes","Unknown"], false),
+          field("Evacuation lift provided?", "b1_evac_lift", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Fire detection & alarm provided?", "b1_alarm", "select", null, ["","No","Yes","Unknown"], false),
+          field("Alarm category (if known)", "b1_alarm_cat", "text", null, null, false),
+          field("Emergency lighting provided?", "b1_emergency_lighting", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire safety signage provided?", "b1_signage", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b1")
+        ];
       }
 
-      fcStepTitle.textContent = step.title || step.id || ("Step " + (fcStepIndex+1));
-      fcFormArea.innerHTML = "";
+      if(stepId==="b2"){
+        return [
+          field("Reaction-to-fire class (escape routes)", "b2_class_escape", "text", null, null, false),
+          field("Reaction-to-fire class (rooms)", "b2_class_rooms", "text", null, null, false),
+          field("Reaction-to-fire class (circulation)", "b2_class_circ", "text", null, null, false),
+          field("Table reference used", "b2_table_ref", "text", null, null, false),
 
-      // Render questions
-      (step.questions || []).forEach(q=>{
-        fcFormArea.appendChild(renderQuestion(local, q));
+          field("Any deviations from tabulated classes?", "b2_deviation", "select", null, ["","No","Yes","Unknown"], false),
+          field("Compensatory measures (if Yes)", "b2_comp_measures", "textarea", null, null, true),
+
+          field("Places of special fire risk present?", "b2_special_risk", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Thermoplastic rooflights present?", "b2_thermo_rooflights", "select", null, ["","No","Yes","Unknown"], false),
+          field("Thermoplastic lighting diffusers present?", "b2_thermo_diffusers", "select", null, ["","No","Yes","Unknown"], false),
+          field("Plastic glazing on escape routes?", "b2_plastic_glazing", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b2")
+        ];
+      }
+
+      if(stepId==="b3"){
+        return [
+          field("Structural system type", "b3_struct_system", "text", null, null, false),
+
+          field("Required fire resistance (mins)", "b3_req_fr_mins", "text", null, null, false),
+          field("Table reference used (required)", "b3_req_fr_ref", "text", null, null, false),
+
+          field("Proposed fire resistance — frame (mins)", "b3_prop_fr_frame", "text", null, null, false),
+          field("Proposed fire resistance — floors (mins)", "b3_prop_fr_floors", "text", null, null, false),
+          field("Proposed fire resistance — compartment walls (mins)", "b3_prop_fr_comp_walls", "text", null, null, false),
+
+          field("Compartment areas and heights", "b3_comp_areas_heights", "textarea", null, null, true),
+          field("Max permitted compartment size", "b3_comp_max_perm", "text", null, null, false),
+          field("Table reference used (compartments)", "b3_comp_ref", "text", null, null, false),
+          field("Compartment compliance achieved?", "b3_comp_compliant", "select", null, ["","Yes","No","Unknown"], false),
+
+          field("Separated parts description (if any)", "b3_separated_parts_desc", "textarea", null, null, true),
+
+          field("List special risk rooms (plant, boiler, kitchen, store)", "b3_special_rooms_list", "textarea", null, null, true),
+          field("Special risk rooms enclosed + fire doors provided?", "b3_special_rooms_enclosed", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Junction strategy (compartment floor/external wall)", "b3_junction_strategy", "text", null, null, false),
+          field("Cavities present?", "b3_cavities", "select", null, ["","No","Yes","Unknown"], false),
+          field("Cavity barriers provided?", "b3_cavity_barriers", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Services penetrate fire-resisting elements?", "b3_services_penetrate", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire stopping strategy defined?", "b3_fire_stopping", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire dampers in ducts?", "b3_dampers", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b3")
+        ];
+      }
+
+      if(stepId==="b4"){
+        return [
+          field("External wall system type", "b4_wall_system", "text", null, null, false),
+          field("Façade reaction-to-fire classification", "b4_facade_class", "text", null, null, false),
+
+          field("Combustible insulation/cladding present?", "b4_combustible", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire test / evidence available?", "b4_test_evidence", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Boundary distances per elevation (m)", "b4_boundary_dist", "textarea", null, null, true),
+          field("Unprotected area % per elevation", "b4_unprotected_pct", "textarea", null, null, true),
+          field("Table/diagram used for space separation", "b4_table_used", "text", null, null, false),
+
+          field("Elements fixed to external wall (balconies/PV/green walls)?", "b4_attachments", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Roof covering classification", "b4_roof_class", "text", null, null, false),
+          field("Required roof classification", "b4_roof_req", "text", null, null, false),
+          field("Table reference used (roof)", "b4_roof_ref", "text", null, null, false),
+
+          field("Plastic rooflights present?", "b4_rooflights", "select", null, ["","No","Yes","Unknown"], false),
+          field("Roof-mounted PV/plant present?", "b4_pv_plant", "select", null, ["","No","Yes","Unknown"], false),
+          field("PV/plant construction/fire resistance notes", "b4_pv_plant_desc", "textarea", null, null, true),
+
+          outcomeField("b4")
+        ];
+      }
+
+      if(stepId==="b5"){
+        return [
+          field("Fire appliance access route provided?", "b5_appliance_route", "select", null, ["","No","Yes","Unknown"], false),
+          field("Distance from appliance parking to access level (m)", "b5_dist_parking_m", "number", null, null, false),
+          field("Height of topmost storey relative to access (m)", "b5_top_storey_vs_access_m", "number", null, null, false),
+
+          field("Internal fire main required?", "b5_main_required", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire main type", "b5_main_type", "select", null, ["","Dry riser","Wet riser","Unknown"], false),
+          field("Fire main locations (shafts/cores)", "b5_main_locations", "textarea", null, null, true),
+
+          field("Firefighting shaft required?", "b5_ff_shaft_required", "select", null, ["","No","Yes","Unknown"], false),
+          field("Shafts: number + locations", "b5_ff_shaft_count_loc", "textarea", null, null, true),
+          field("Storeys served", "b5_ff_storeys_served", "text", null, null, false),
+
+          field("External hydrants provided?", "b5_hydrants", "select", null, ["","No","Yes","Unknown"], false),
+          field("Distance to nearest hydrant (m)", "b5_hydrant_dist_m", "number", null, null, false),
+          field("Flow/pressure known?", "b5_flow_known", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Boiler rooms/fuel stores present?", "b5_boiler_fuel", "select", null, ["","No","Yes","Unknown"], false),
+          field("Electrical isolation for firefighting provided?", "b5_elec_isolation", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b5")
+        ];
+      }
+
+      if(stepId==="b6"){
+        return [
+          field("Basements present?", "b6_basements", "select", null, ["","No","Yes","Unknown"], false),
+          field("Atria present?", "b6_atria", "select", null, ["","No","Yes","Unknown"], false),
+          field("Protected lobbies/corridors present?", "b6_protected_lobbies", "select", "protected_lobby", ["","No","Yes","Unknown"], false),
+          field("Car parks present?", "b6_car_parks", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Smoke control system type per zone", "b6_system_type", "textarea", null, null, true),
+          field("Design standard used", "b6_standard", "text", "en12101", null, false),
+          field("Vent sizes and locations defined?", "b6_vent_sizes_defined", "select", null, ["","No","Yes","Unknown"], false),
+          field("Smoke zones defined?", "b6_zones_defined", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Emergency power supply provided?", "b6_emergency_power", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fail-safe operation on power loss/alarm?", "b6_fail_safe", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b6")
+        ];
+      }
+
+      if(stepId==="b12"){
+        return [
+          field("Fire safety systems installed (list)", "b12_systems", "textarea", null, null, true),
+          field("Commissioning certificates to be provided?", "b12_commissioning", "select", null, ["","No","Yes","Unknown"], false),
+          field("O&M manuals to be provided?", "b12_om", "select", null, ["","No","Yes","Unknown"], false),
+          field("As-built fire safety drawings/report to be provided?", "b12_as_built", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire safety logbook/management plan provided?", "b12_logbook", "select", "b12_logbook", ["","No","Yes","Unknown"], false),
+          field("System design standards (optional)", "b12_standards_per_system", "textarea", null, null, true),
+          outcomeField("b12")
+        ];
+      }
+
+      return [];
+    }
+
+    function fcRenderStepper(){
+      const el = document.getElementById("fcStepper");
+      el.innerHTML = "";
+      fcSteps.forEach((s, idx)=>{
+        const b = document.createElement("div");
+        b.className = "stepChip" + (idx===fcStepIndex ? " active" : "");
+        b.innerHTML = `<span class="n">${idx+1}</span><span>${s.name}</span>`;
+        b.addEventListener("click", ()=>{
+          fcStepIndex = idx;
+          fcRenderAll();
+        });
+        el.appendChild(b);
+      });
+    }
+
+    function fcRenderForm(){
+      const step = fcSteps[fcStepIndex];
+      const fields = fcStepFields(step.id);
+      const form = document.getElementById("fcForm");
+      form.innerHTML = fields.join("");
+
+      // Hook change events
+      form.querySelectorAll("input, select, textarea").forEach(inp=>{
+        inp.addEventListener("input", ()=>{
+          const key = inp.id.replace("fc_","");
+          fcState[key] = inp.value;
+          // If purpose group changed, set defaults
+          if(key==="purpose_group"){
+            const pg = (inp.value || "").split(" — ")[0].trim();
+            fcState.purpose_group = inp.value;
+            setDefaultForPurposeGroup(pg);
+          }
+          fcUpdateSummary();
+          fcUpdateProgress();
+        });
       });
 
-      fcSetTag();
+      // Help toggles
+      form.querySelectorAll(".help").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const hk = btn.getAttribute("data-help");
+          const fieldWrap = btn.closest(".field");
+          const input = fieldWrap ? fieldWrap.querySelector("input, select, textarea") : null;
+          if(!input) return;
+          const hintEl = document.getElementById(input.id + "_hint");
+          if(!hintEl) return;
+          const msg = HELP[hk] || "Explanation not available.";
+          hintEl.textContent = msg;
+          hintEl.classList.toggle("show");
+        });
+      });
     }
 
-    async function fcInitOnce(){
+    function fcUpdateProgress(){
+      // crude progress: count non-empty fields in current step
+      const step = fcSteps[fcStepIndex];
+      const keys = (fcStepFields(step.id).join("").match(/fc_([a-z0-9_]+)/gi) || [])
+        .map(x=>x.replace("fc_","").replace(/[^a-z0-9_]/gi,""))
+        .filter((v,i,a)=>a.indexOf(v)===i);
+
+      let filled = 0;
+      keys.forEach(k=>{
+        if((fcState[k]||"").toString().trim() !== "") filled++;
+      });
+      const pct = keys.length ? Math.round((filled/keys.length)*100) : 0;
+      document.getElementById("fcProgress").style.width = pct + "%";
+      document.getElementById("fcProgressText").textContent = "Progress: " + pct + "%";
+    }
+
+    function fcUpdateSummary(){
+      // Project summary
+      const pg = (fcState.purpose_group || "").trim();
+      const desc = (fcState.building_desc || "").trim();
+      const storeys = (fcState.storeys_above || "").toString().trim();
+      const basements = (fcState.storeys_basement || "").toString().trim();
+      const carpark = (fcState.car_park || "").trim();
+
+      const sum = [];
+      if(pg) sum.push("Purpose group: " + pg);
+      if(storeys) sum.push("Storeys above ground: " + storeys);
+      if(basements) sum.push("Basements: " + basements);
+      if(carpark && carpark!=="None") sum.push("Car park: " + carpark);
+      if(desc) sum.push("Description: " + desc);
+
+      document.getElementById("sumProject").textContent = sum.length ? sum.join(" • ") : "Start by selecting the purpose group and completing Step 0. This panel updates as you go.";
+
+      // Chips
+      const chips = document.getElementById("sumChips");
+      chips.innerHTML = "";
+      const chipData = [];
+      if(fcState.scope_vol1 === "No") chipData.push({t:"Outside Vol 1 scope", c:"bad"});
+      if(fcState.alt_solution === "Yes") chipData.push({t:"Alt solution", c:"warn"});
+      if(fcState.b6_basements === "Yes" || (parseInt(fcState.storeys_basement||"0",10) > 0)) chipData.push({t:"Basement", c:"warn"});
+      if(fcState.atrium === "Yes" || fcState.b6_atria === "Yes") chipData.push({t:"Atrium", c:"warn"});
+      if(fcState.car_park !== "None" || fcState.b6_car_parks === "Yes") chipData.push({t:"Smoke control likely", c:"warn"});
+
+      chipData.forEach(x=>{
+        const sp = document.createElement("span");
+        sp.className = "chip " + (x.c==="bad"?"bad":x.c==="warn"?"warn":"good");
+        sp.textContent = x.t;
+        chips.appendChild(sp);
+      });
+
+      // Flags text
+      const flags = [];
+      if(fcState.scope_vol1 === "No") flags.push("Project may be outside Volume 1 scope → consider alternative / performance-based approach.");
+      if(fcState.alt_solution === "Yes") flags.push("Alternative approach declared → report should explicitly describe the method and standards.");
+      if(fcState.b6_car_parks === "Yes" || fcState.car_park !== "None") flags.push("Car park indicated → smoke control/ventilation section likely applicable.");
+      if(fcState.b6_basements === "Yes" || (parseInt(fcState.storeys_basement||"0",10) > 0)) flags.push("Basements indicated → smoke ventilation considerations likely.");
+      if(fcState.atrium === "Yes" || fcState.b6_atria === "Yes") flags.push("Atrium indicated → smoke zone definition and system standard required.");
+
+      document.getElementById("sumFlags").textContent = flags.length ? flags.join(" ") : "No flags yet. As you fill details, we’ll show likely triggers (e.g., smoke control, existing building).";
+    }
+
+    function fcRenderAll(){
+      fcRenderStepper();
+      fcRenderForm();
+      fcUpdateSummary();
+      fcUpdateProgress();
+
+      // Step buttons state
+      document.getElementById("fcBack").disabled = (fcStepIndex===0);
+      document.getElementById("fcNext").textContent = (fcStepIndex===fcSteps.length-1) ? "Finish" : "Next";
+    }
+
+    function fcInitOnce(){
       if(fcInited) return;
       fcInited = true;
 
-      document.getElementById("fcBtnInit").onclick = async ()=>{
-        const local = fcEnsureProject();
-        local.purpose_group = fcPurposeGroup.value;
-        local.updated = Date.now();
-        fcSaveLocal(local);
-
-        const got = await fcFetchSchemaOrFallback();
-        fcSchema = got.schema;
-        fcProjectId = local.project_id;
-        fcSetTag();
-        fcRenderStep();
-
-        showToast("Fire Cert project ready");
-      };
-
-      document.getElementById("fcBtnRefresh").onclick = async ()=>{
-        const local = fcLoadLocal();
-        if(!local){ showToast("No project yet"); return; }
-        const got = await fcFetchSchemaOrFallback();
-        fcSchema = got.schema;
-        fcProjectId = local.project_id;
-        fcSetTag();
-        fcRenderStep();
-        showToast("Refreshed");
-      };
-
-      document.getElementById("fcBtnReset").onclick = ()=>{
-        fcResetLocal();
-        fcProjectId = null;
-        fcSchema = null;
-        fcFormArea.innerHTML = `<div class="mono">Reset complete. Click “Start / Resume Project”.</div>`;
-        fcReportPreview.value = "";
-        fcProjectTag.textContent = "Project: not started";
-        showToast("Reset");
-      };
+      fcState = fcLoad();
+      fcStepIndex = 0;
+      fcRenderAll();
 
       document.getElementById("fcBack").onclick = ()=>{
-        const local = fcLoadLocal();
-        if(!local || !fcSchema) return;
-        local.step_index = Math.max(0, (local.step_index||0) - 1);
-        fcSaveLocal(local);
-        fcRenderStep();
+        if(fcStepIndex>0){ fcStepIndex--; fcRenderAll(); }
       };
-
       document.getElementById("fcNext").onclick = ()=>{
-        const local = fcLoadLocal();
-        if(!local || !fcSchema) return;
-        const steps = fcSchema.steps || [];
-        local.step_index = Math.min(steps.length-1, (local.step_index||0) + 1);
-        fcSaveLocal(local);
-        fcRenderStep();
+        if(fcStepIndex < fcSteps.length-1){ fcStepIndex++; fcRenderAll(); }
+        else showToast("Wizard complete. Export JSON or generate report (when backend is wired).");
+      };
+      document.getElementById("fcSave").onclick = fcSave;
+      document.getElementById("fcReset").onclick = fcReset;
+
+      document.getElementById("fcExportJson").onclick = ()=>{
+        const blob = new Blob([JSON.stringify(fcState, null, 2)], {type:"application/json"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "firecert_draft.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast("Exported JSON.");
       };
 
-      document.getElementById("fcCopyReport").onclick = async ()=>{
-        const txt = fcReportPreview.value || "";
-        if(!txt.trim()){ showToast("Nothing to copy"); return; }
-        try{
-          await navigator.clipboard.writeText(txt);
-          showToast("Copied");
-        }catch(e){
-          showToast("Copy failed");
-        }
+      document.getElementById("fcGenerate").onclick = ()=>{
+        showToast("Backend wiring next: /firecert/generate (DOCX/PDF).");
       };
 
-      document.getElementById("fcGenerateText").onclick = async ()=>{
-        const local = fcLoadLocal();
-        if(!local || !local.project_id){ showToast("Start a project first"); return; }
-
-        // Send only what backend needs. DO NOT display JSON response; only show report text.
-        try{
-          showToast("Generating preview…");
-          const payload = {
-            project_id: local.project_id,
-            meta: { purpose_group: fcPurposeGroup.value },
-            answers: local.answers
-          };
-
-          const r = await fetch(apiUrl("/firecert/generate-report"), {
-            method:"POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify(payload)
-          });
-
-          if(!r.ok){
-            fcReportPreview.value = "Error: backend returned HTTP " + r.status;
-            showToast("Preview failed");
-            return;
-          }
-
-          const j = await r.json().catch(()=>null);
-          const report = (j && j.report) ? String(j.report) : "No report text returned.";
-          fcReportPreview.value = report;
-          showToast("Preview ready");
-        }catch(e){
-          fcReportPreview.value = "Network error. Check backend/CORS.";
-          showToast("Preview failed");
-        }
-      };
-
-      document.getElementById("fcGenerateDocx").onclick = async ()=>{
-        const local = fcLoadLocal();
-        if(!local || !local.project_id){ showToast("Start a project first"); return; }
-
-        try{
-          showToast("Generating DOCX…");
-          const payload = {
-            project_id: local.project_id,
-            title: "Fire Safety Report (Draft)",
-            meta: { purpose_group: fcPurposeGroup.value },
-            answers: local.answers
-          };
-
-          const r = await fetch(apiUrl("/firecert/generate"), {
-            method:"POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify(payload)
-          });
-
-          if(!r.ok){
-            const t = await r.text().catch(()=>"(no body)");
-            showToast("DOCX failed: HTTP " + r.status);
-            fcReportPreview.value = "DOCX error " + r.status + ":\n" + t.slice(0,1000);
-            return;
-          }
-
-          const blob = await r.blob();
-          const cd = r.headers.get("content-disposition") || "";
-          let filename = "Fire_Safety_Report_Draft.docx";
-          const m = /filename="([^"]+)"/i.exec(cd);
-          if(m && m[1]) filename = m[1];
-
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-          showToast("DOCX downloaded");
-        }catch(e){
-          showToast("DOCX failed: network/CORS");
-        }
-      };
-
-      // If already saved locally, show tag
-      const existing = fcLoadLocal();
-      if(existing && existing.project_id){
-        fcProjectId = existing.project_id;
-        fcSetTag();
+      // initial defaults if purpose group already set
+      if(fcState.purpose_group){
+        const pg = (fcState.purpose_group || "").split(" — ")[0].trim();
+        setDefaultForPurposeGroup(pg);
+        fcUpdateSummary();
       }
     }
 
-    // Default view
+    // default view
     showView("home");
   </script>
 </body>
