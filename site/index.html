@@ -267,7 +267,6 @@
     .chatitem .t{ font-weight:850; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .chatitem .s{ margin-top:4px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; }
 
-    /* Professional chat actions (only affects saved chats area) */
     .chatActions{
       display:flex;
       gap:8px;
@@ -382,7 +381,7 @@
       box-shadow: var(--shadow2);
     }
     .hero h2{ margin:0; font-size: 22px; letter-spacing:.2px; }
-    .hero p{ margin:8px 0 0 0; color: var(--muted); max-width: 920px; line-height:1.5; }
+    .hero p{ margin:8px 0 0 0; color: var(--muted); max-width: 980px; line-height:1.55; }
 
     .quote{
       margin-top: 12px;
@@ -440,7 +439,7 @@
     }
 
     .card h4{ margin:0; font-size: 15px; }
-    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.45; }
+    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.5; }
 
     .pill{
       font-size: 11px;
@@ -483,7 +482,7 @@
       padding: 12px 12px;
       border-radius: 18px;
       margin: 10px 0;
-      line-height:1.5;
+      line-height:1.55;
       border: 1px solid rgba(255,255,255,.12);
       white-space: pre-wrap;
       word-wrap: break-word;
@@ -535,7 +534,7 @@
       background: rgba(0,0,0,.20);
       color: var(--text);
       outline:none;
-      line-height:1.4;
+      line-height:1.45;
     }
 
     textarea:focus{
@@ -578,8 +577,8 @@
       color: rgba(244,247,255,.95);
       box-shadow: var(--shadow2);
       display:none;
-      max-width: min(720px, calc(100vw - 26px));
-      line-height:1.4;
+      max-width: min(760px, calc(100vw - 26px));
+      line-height:1.45;
     }
     .toast.show{ display:block; animation: pop .18s ease; }
     @keyframes pop{
@@ -601,6 +600,13 @@
       background: rgba(0,0,0,.10);
     }
     .copy{ color: rgba(244,247,255,.78); }
+
+    .smallHint{
+      margin-top:10px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.45;
+    }
   </style>
 </head>
 
@@ -636,7 +642,7 @@
         </div>
         <div>
           <h1><span>Raheem AI</span></h1>
-          <div class="sub">Abdulraheem Hayder Ahmed · C22310933 · TU Dublin</div>
+          <div class="sub">Compliance-first chat and document reasoning</div>
         </div>
       </div>
 
@@ -646,7 +652,7 @@
             <span class="tag">Home</span>
             <div style="min-width:0">
               <div style="font-weight:900">Overview</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Start here</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Product summary and quick start</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -657,7 +663,7 @@
             <span class="tag live">Live</span>
             <div style="min-width:0">
               <div style="font-weight:900">Chat</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved chats · continuous context</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved sessions and continuous context</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -668,7 +674,7 @@
             <span class="tag">Roadmap</span>
             <div style="min-width:0">
               <div style="font-weight:900">Future Features</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, manufacturers</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, integrations</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -685,9 +691,9 @@
       </div>
 
       <div class="sideFoot">
-        <div style="font-weight:850;color:rgba(244,247,255,.86)">Quick tip</div>
+        <div style="font-weight:850;color:rgba(244,247,255,.86)">Usage tip</div>
         <div style="margin-top:6px">
-          Toggle <b>Evidence mode</b> when you want tighter answers with citations.
+          Use <b>Evidence mode</b> for stricter answers and citations where available.
         </div>
       </div>
     </aside>
@@ -696,23 +702,23 @@
       <div class="topbar">
         <div class="crumb">
           <div class="title" id="viewTitle">Overview</div>
-          <div class="hint" id="viewHint">Start here</div>
+          <div class="hint" id="viewHint">Product summary and quick start</div>
         </div>
         <div class="actions">
-          <button class="btn" id="btnStatus" type="button" title="Check service status">Status</button>
-          <button class="btn primary" id="btnDocs" type="button" title="Developer docs">Docs</button>
+          <button class="btn" id="btnStatus" type="button" title="Check backend health">Status</button>
+          <button class="btn primary" id="btnDocs" type="button" title="Open API documentation">Docs</button>
         </div>
       </div>
 
       <section class="view show" id="viewHome">
         <div class="hero">
-          <h2>Smart chat for everyday questions and serious compliance checks</h2>
+          <h2>AI chat for compliance, specifications and technical workflows</h2>
           <p>
-            Talk normally. When your question becomes technical (TGDs, BER/DEAP, fire safety, accessibility),
-            Raheem automatically shifts into evidence based answers.
+            Ask questions in plain language. When you need higher confidence, enable Evidence mode to nudge the assistant
+            toward traceable, structured replies.
           </p>
           <div class="quote">
-            Clear replies, calm tone, and when it matters: traceable evidence.
+            Designed for practical building workflows: clear outputs, consistent structure, and faster review cycles.
           </div>
         </div>
 
@@ -723,13 +729,13 @@
                 <div class="icon">AI</div>
                 <div>
                   <h4>Chat</h4>
-                  <p>Natural conversation with saved chats. Evidence mode when needed.</p>
+                  <p>Continue conversations, keep context, and retrieve past work by session.</p>
                 </div>
               </div>
               <span class="pill" style="border-color: rgba(80,255,215,.38); background: rgba(80,255,215,.10); color: rgba(230,255,240,.92)">Live</span>
             </div>
             <div class="cta">
-              <span class="pill">Memory per chat</span>
+              <span class="pill">Session memory</span>
               <button class="btn primary" id="btnStartChat" type="button">Open chat</button>
             </div>
           </article>
@@ -740,21 +746,21 @@
                 <div class="icon">+</div>
                 <div>
                   <h4>Roadmap</h4>
-                  <p>Reports, BIM review, manufacturer search, BER workflows and more.</p>
+                  <p>Structured reports, BIM review helpers, manufacturer search, and automated workflows.</p>
                 </div>
               </div>
               <span class="pill">Preview</span>
             </div>
             <div class="cta">
-              <span class="pill">Whats next</span>
+              <span class="pill">Planned modules</span>
               <button class="btn" id="btnOpenFuture" type="button">View</button>
             </div>
           </article>
         </div>
 
         <div class="footer">
-          <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
-          <div>Raheem AI</div>
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Built By Abdulraheem Hayder Ahmed</div>
         </div>
       </section>
 
@@ -762,34 +768,38 @@
         <div class="hero">
           <h2>Chat</h2>
           <p>
-            Saved chats are on the left. Pick one and continue right where you left off.
+            Select a saved chat on the left to continue. Start a new chat to keep topics separated.
           </p>
+          <div class="smallHint">
+            If you see a connection error, click <b>Status</b> to verify the backend is online. If Status fails,
+            the issue is typically backend availability or CORS configuration.
+          </div>
         </div>
 
         <div class="chatwrap">
           <div class="row" style="justify-content:space-between;">
             <div class="row">
-              <label class="toggle" title="Prefer evidence and citations when available">
+              <label class="toggle" title="Prefer stricter, evidence-oriented responses">
                 <input type="checkbox" id="forceDocs"/>
                 Evidence mode
               </label>
             </div>
             <div class="row">
-              <button class="btn" id="btnClear" type="button">Clear</button>
+              <button class="btn" id="btnClear" type="button">Clear chat</button>
             </div>
           </div>
 
           <div class="chatbox" id="chatBox"></div>
 
           <div class="composer">
-            <textarea id="msg" placeholder="Type a message... (Shift + Enter for a new line)"></textarea>
+            <textarea id="msg" placeholder="Type your message... (Shift + Enter for a new line)"></textarea>
             <button class="btn primary" id="send" type="button">Send</button>
           </div>
         </div>
 
         <div class="footer">
-          <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
-          <div>Tip: Evidence mode is best for precise technical checks.</div>
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Tip: Evidence mode is best for technical checks.</div>
         </div>
       </section>
 
@@ -797,10 +807,10 @@
         <div class="hero">
           <h2>Future Features</h2>
           <p>
-            This is the roadmap. Each feature will be built properly, not rushed.
+            This roadmap shows planned modules and workflows. Each feature is shipped with a focus on reliability and clarity.
           </p>
           <div class="quote">
-            If you click something and it is not live yet, be nice. Raheem is still cooking.
+            Roadmap items are previews. Availability depends on testing, performance, and data coverage.
           </div>
         </div>
 
@@ -811,13 +821,13 @@
                 <div class="icon">ED</div>
                 <div>
                   <h4>Early Design</h4>
-                  <p>Enter areas and requirements. Get layout directions and refine the best option.</p>
+                  <p>Capture requirements and explore options with structured prompts and refinements.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Examples inside</span>
+              <span class="pill">Concept workflows</span>
               <button class="btn" data-soon="Early Design">Preview</button>
             </div>
           </article>
@@ -828,7 +838,7 @@
                 <div class="icon">DAC</div>
                 <div>
                   <h4>DAC Report Generator</h4>
-                  <p>Draft structured DAC reports aligned to guidance and project inputs, ready for review.</p>
+                  <p>Generate structured report drafts aligned to guidance and project inputs, ready for review.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
@@ -844,15 +854,15 @@
               <div class="cardtitle">
                 <div class="icon">FCS</div>
                 <div>
-                  <h4>Fire Cert Report Generator</h4>
-                  <p>Generate structured fire safety report drafts with consistent headings and traceable checks.</p>
+                  <h4>Fire Safety Report Generator</h4>
+                  <p>Produce consistent report drafts with traceable checks and repeatable structure.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
               <span class="pill">Fire safety workflow</span>
-              <button class="btn" data-soon="Fire Cert Report Generator">Preview</button>
+              <button class="btn" data-soon="Fire Safety Report Generator">Preview</button>
             </div>
           </article>
 
@@ -862,13 +872,13 @@
                 <div class="icon">MFG</div>
                 <div>
                   <h4>Manufacturer and Spec Search</h4>
-                  <p>Auto search local manufacturers and specs using element parameters and project context.</p>
+                  <p>Search suppliers and specs using model parameters and project context.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Local sources</span>
+              <span class="pill">Product discovery</span>
               <button class="btn" data-soon="Manufacturer and Spec Search">Preview</button>
             </div>
           </article>
@@ -878,21 +888,21 @@
               <div class="cardtitle">
                 <div class="icon">BER</div>
                 <div>
-                  <h4>BER Report Generator</h4>
-                  <p>Learn DEAP logic, import a Revit model, auto fill what proves out, manual input for the rest.</p>
+                  <h4>BER Workflow</h4>
+                  <p>Guide DEAP logic, import model data, and generate consistent reports for review.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">DEAP and Revit</span>
-              <button class="btn" data-soon="BER Report Generator">Preview</button>
+              <span class="pill">DEAP and BIM</span>
+              <button class="btn" data-soon="BER Workflow">Preview</button>
             </div>
           </article>
         </div>
 
         <div class="footer">
-          <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
           <div>Roadmap preview</div>
         </div>
       </section>
@@ -907,14 +917,20 @@
     // =========================
     const API_BASE_DEFAULT = "https://complyr.onrender.com";
     const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
-    if (!API_BASE.startsWith("https://complyr.onrender.com")) {
-      localStorage.removeItem("RAHEEM_API_BASE");
-      location.reload();
-    }
 
     function apiUrl(path){
+      if(!path) path = "/";
       if(!path.startsWith("/")) path = "/" + path;
       return API_BASE + path;
+    }
+
+    // Safety: prevent arbitrary API_BASE overrides (protects users and prevents broken configs)
+    if (!API_BASE.startsWith("https://complyr.onrender.com")) {
+      localStorage.removeItem("RAHEEM_API_BASE");
+      // Samsung Internet safety: do not force reload
+      if (!navigator.userAgent.toLowerCase().includes("samsungbrowser")) {
+        location.reload();
+      }
     }
 
     // Toast
@@ -924,7 +940,7 @@
       toast.textContent = msg;
       toast.classList.add("show");
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=>toast.classList.remove("show"), 2600);
+      toastTimer = setTimeout(()=>toast.classList.remove("show"), 2800);
     }
 
     // Navigation
@@ -942,12 +958,12 @@
       if(which==="home"){
         viewHome.classList.add("show");
         viewTitle.textContent = "Overview";
-        viewHint.textContent  = "Start here";
+        viewHint.textContent  = "Product summary and quick start";
       }
       if(which==="chat"){
         viewChat.classList.add("show");
         viewTitle.textContent = "Chat";
-        viewHint.textContent  = "Saved chats · continuous context";
+        viewHint.textContent  = "Saved sessions and continuous context";
         chatList.classList.add("show");
         renderChatList();
         renderChat();
@@ -975,24 +991,24 @@
         let j = {};
         try{ j = JSON.parse(t); }catch(e){}
         if(!r.ok){
-          showToast("Status error " + r.status + ": " + (t || "No body"));
+          showToast("Status error " + r.status + ": " + (t || "No response body"));
           return;
         }
-        showToast(j.vertex_ready ? "Status: online · AI ready" : "Status: online · AI starting");
+        showToast(j.vertex_ready ? "Status: Online (AI ready)" : "Status: Online (AI warming up)");
       }catch(e){
-        showToast("Status check failed.");
+        showToast("Status check failed. Backend may be offline or blocked by CORS.");
       }
     };
 
-    // Future feature buttons (KEEP HUMOUR)
+    // Future feature buttons (professional)
     document.querySelectorAll("[data-soon]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const name = btn.getAttribute("data-soon");
         const lines = [
-          name + " is coming soon. Let it cook.",
-          "Not live yet. Patience please, this one needs to be perfect.",
-          "Soon. If you keep clicking, it still will not appear. Nice try though.",
-          "Coming soon. I am building it properly, not speed running it."
+          name + " is in development.",
+          name + " is planned for a future release.",
+          name + " is currently in testing.",
+          "Preview only: " + name
         ];
         showToast(lines[Math.floor(Math.random()*lines.length)]);
       });
@@ -1095,7 +1111,7 @@
         title: "New chat",
         updated: Date.now(),
         messages: [
-          { role:"assistant", content:"Hi. I am Raheem. What are we working on today?" }
+          { role:"assistant", content:"Hello. How can I help today?" }
         ]
       };
       saveAllChats(all);
@@ -1127,12 +1143,11 @@
       if(!all[chatId]) return;
 
       const title = all[chatId].title || "this chat";
-      const ok = confirm("Delete " + title + "?");
+      const ok = confirm("Delete chat: " + title + " ?");
       if(!ok) return;
 
       delete all[chatId];
 
-      // If we deleted the active chat, pick another or create new
       if(chatId === activeChatId){
         const remaining = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
         activeChatId = remaining[0] || null;
@@ -1179,7 +1194,6 @@
           </div>
         `;
 
-        // Selecting chat (click anywhere except delete button)
         row.addEventListener("click", (ev)=>{
           const target = ev.target;
           const isDelete = target && target.classList && target.classList.contains("iconBtn");
@@ -1190,7 +1204,6 @@
           renderChat();
         });
 
-        // Delete button
         const delBtn = row.querySelector(".iconBtn.danger");
         delBtn.addEventListener("click", (ev)=>{
           ev.preventDefault();
@@ -1224,14 +1237,14 @@
     function addTypingIndicator(targetDiv){
       const wrap = document.createElement("div");
       wrap.className = "typing";
-      wrap.innerHTML = `<span>Raheem is typing</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+      wrap.innerHTML = `<span>Raheem AI is responding</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
       targetDiv.appendChild(wrap);
       return wrap;
     }
 
     function clearChat(){
       const all = ensureActiveChat();
-      all[activeChatId].messages = [{ role:"assistant", content:"All clear. What are we doing now?" }];
+      all[activeChatId].messages = [{ role:"assistant", content:"Cleared. What would you like to do next?" }];
       all[activeChatId].updated = Date.now();
       saveAllChats(all);
       renderChat();
@@ -1246,7 +1259,7 @@
       all[activeChatId] = {
         title: "New chat",
         updated: Date.now(),
-        messages: [{ role:"assistant", content:"Hi. I am Raheem. What are we working on today?" }]
+        messages: [{ role:"assistant", content:"Hello. How can I help today?" }]
       };
       saveAllChats(all);
       persistActiveChatId();
@@ -1256,7 +1269,7 @@
     };
 
     btnDeleteAllChats.onclick = ()=>{
-      const ok = confirm("Delete all chats?");
+      const ok = confirm("Delete all saved chats? This cannot be undone.");
       if(!ok) return;
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(ACTIVE_CHAT_KEY);
@@ -1267,7 +1280,6 @@
       showToast("All chats deleted.");
     };
 
-    // Start default chat (restore last active chat)
     ensureActiveChat();
     renderChat();
 
@@ -1397,7 +1409,6 @@
           return;
         }
 
-        // JSON response support
         if(contentType.includes("application/json")){
           const j = await res.json();
           const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
@@ -1413,7 +1424,6 @@
           return;
         }
 
-        // Samsung Internet path: no streaming
         if(isSamsungInternet()){
           const raw = await res.text();
           const reply = parseSSETextToAnswer(raw) || " ";
@@ -1429,13 +1439,11 @@
           return;
         }
 
-        // If browser cannot stream body, fallback
         if(!res.body || !res.body.getReader){
           runEventSourceFallback();
           return;
         }
 
-        // Streaming reader
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
