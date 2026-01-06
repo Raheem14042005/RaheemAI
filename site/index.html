@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Raheem AI</title>
   <style>
     :root{
@@ -15,6 +15,7 @@
       --shadow2: 0 18px 48px rgba(0,0,0,.42);
       --r:22px; --r2:16px;
       --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      --mono: ui-monospace, Menlo, Consolas, monospace;
     }
     *{ box-sizing:border-box; }
     html,body{ height:100%; }
@@ -27,6 +28,7 @@
         linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
       overflow-x:hidden;
     }
+
     .app{
       min-height:100vh;
       display:grid;
@@ -98,6 +100,7 @@
       font-size: 12px;
       line-height:1.35;
     }
+    .mono{ font-family: var(--mono); font-size: 12px; color: rgba(244,247,255,.80); }
 
     .topbar{
       padding: 14px 16px;
@@ -127,6 +130,10 @@
       border-color: rgba(80,255,215,.34);
       background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
       box-shadow: 0 0 18px rgba(80,255,215,.08);
+    }
+    .btn.danger{
+      border-color: rgba(255,79,216,.28);
+      background: rgba(255,79,216,.08);
     }
     .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none !important; }
 
@@ -177,11 +184,7 @@
     .row > *{ flex:1; min-width: 200px; }
     .row.tight > *{ min-width: 150px; }
 
-    .chatWrap{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
+    /* Chat */
     .chatBox{
       height: min(62vh, 620px);
       overflow:auto;
@@ -190,11 +193,7 @@
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.14);
     }
-    .msg{
-      display:flex;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
+    .msg{ display:flex; gap: 10px; margin-bottom: 12px; }
     .bubble{
       padding: 10px 12px;
       border-radius: 16px;
@@ -203,50 +202,17 @@
       color: rgba(244,247,255,.92);
       white-space: pre-wrap;
       line-height:1.55;
-      max-width: 920px;
+      max-width: 980px;
     }
-    .bubble.user{
-      background: rgba(80,255,215,.10);
-      border-color: rgba(80,255,215,.22);
-    }
-    .bubble.assistant{
-      background: rgba(101,183,255,.08);
-      border-color: rgba(101,183,255,.20);
-    }
-    .metaLine{
-      font-size: 12px;
-      color: rgba(244,247,255,.60);
-      margin-top: 6px;
-    }
-
-    .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      z-index: 50;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.16);
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      color: rgba(244,247,255,.95);
-      box-shadow: var(--shadow2);
-      display:none;
-      max-width: min(760px, calc(100vw - 26px));
-      line-height:1.45;
-    }
-    .toast.show{ display:block; animation: pop .18s ease; }
-    @keyframes pop{
-      from{ transform: translateX(-50%) translateY(8px); opacity:0; }
-      to{ transform: translateX(-50%) translateY(0); opacity:1; }
-    }
-
+    .bubble.user{ background: rgba(80,255,215,.10); border-color: rgba(80,255,215,.22); }
+    .bubble.assistant{ background: rgba(101,183,255,.08); border-color: rgba(101,183,255,.20); }
+    .metaLine{ font-size: 12px; color: rgba(244,247,255,.60); margin-top: 6px; }
     .small{ font-size:12px; color: rgba(244,247,255,.60); line-height:1.45; }
 
+    /* Fire cert */
     .split{
       display:grid;
-      grid-template-columns: 1.1fr .9fr;
+      grid-template-columns: 1.05fr .95fr;
       gap: 14px;
       margin-top: 14px;
       align-items:start;
@@ -296,7 +262,28 @@
     }
     .helpText.show{ display:block; }
 
-    .mono{ font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: rgba(244,247,255,.80); }
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: rgba(244,247,255,.95);
+      box-shadow: var(--shadow2);
+      display:none;
+      max-width: min(760px, calc(100vw - 26px));
+      line-height:1.45;
+    }
+    .toast.show{ display:block; animation: pop .18s ease; }
+    @keyframes pop{
+      from{ transform: translateX(-50%) translateY(8px); opacity:0; }
+      to{ transform: translateX(-50%) translateY(0); opacity:1; }
+    }
   </style>
 </head>
 
@@ -307,7 +294,7 @@
         <div class="logo">R</div>
         <div>
           <h1><span>Raheem AI</span></h1>
-          <div class="sub">TGD chat (strict) + Fire Cert workflow</div>
+          <div class="sub">TGD Chat (unchanged) + Fire Cert workflow</div>
         </div>
       </div>
 
@@ -328,7 +315,7 @@
             <span class="tag live">Live</span>
             <div>
               <div style="font-weight:950">Chat</div>
-              <div style="font-size:12px;color:rgba(244,247,255,.60);margin-top:2px">Your strict TGD assistant</div>
+              <div style="font-size:12px;color:rgba(244,247,255,.60);margin-top:2px">Your regulation assistant</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -348,7 +335,7 @@
 
       <div class="sideFoot">
         Backend: <span class="mono" id="apiBaseLabel"></span><br/>
-        Chat strictness is controlled by your backend logic — this UI does not change it.
+        If Chat shows HTTP 404, that’s the backend missing <span class="mono">/chat_stream</span>.
       </div>
     </aside>
 
@@ -360,6 +347,7 @@
         </div>
         <div class="row tight" style="justify-content:flex-end; flex:0; min-width:unset;">
           <button class="btn" id="btnStatus" type="button">Status</button>
+          <button class="btn" id="btnTestChat" type="button">Test Chat</button>
           <button class="btn primary" id="btnDocs" type="button">Docs</button>
         </div>
       </div>
@@ -367,10 +355,10 @@
       <!-- HOME -->
       <section class="view show" id="viewHome">
         <div class="hero">
-          <h2>What you have right now</h2>
+          <h2>Overview</h2>
           <p>
-            Chat is back and wired to your existing strict endpoint. Fire Cert collects answers and generates a report.
-            No backend endpoints were changed by this HTML.
+            Chat is wired to your existing backend endpoint <span class="mono">POST /chat_stream</span>.
+            Fire Cert collects answers and generates a report via <span class="mono">/firecert</span> endpoints.
           </p>
         </div>
 
@@ -382,7 +370,7 @@
               <button class="btn primary" id="goFire" type="button">Open Fire Cert</button>
             </div>
             <div class="small" style="margin-top:10px;">
-              Tip: For strict compliance answers, turn on “Evidence mode” and upload TGDs.
+              Tip: If Chat returns 404, click <b>Test Chat</b> — it will tell you if the backend route exists.
             </div>
           </div>
         </div>
@@ -393,18 +381,18 @@
         <div class="hero">
           <h2>Chat</h2>
           <p>
-            This is wired to <span class="mono">POST /chat_stream</span> and will stream the answer.
-            Evidence mode forces document-grounded behaviour. Your backend still enforces strict numeric rules.
+            This does not change your model behaviour. It only sends your message to the backend.
+            Evidence mode is a simple flag (<span class="mono">force_docs</span>).
           </p>
         </div>
 
         <div class="panel">
-          <div class="panelHead">Evidence controls</div>
+          <div class="panelHead">Controls</div>
           <div class="panelBody">
             <div class="row">
               <div class="field" style="margin:0;">
                 <div class="labelRow">
-                  <label>Evidence mode (force docs)</label>
+                  <label>Evidence mode</label>
                   <span class="helpBtn" data-help="helpEvidence">i</span>
                 </div>
                 <select id="forceDocs">
@@ -412,8 +400,8 @@
                   <option value="true">On</option>
                 </select>
                 <div class="helpText" id="helpEvidence">
-                  If On, the backend will treat your question as compliance-focused and try to use uploaded TGDs as SOURCES.
-                  For numeric requirements, your backend will refuse unless the extracted text contains the numbers.
+                  If On, the backend can require answers to be grounded in uploaded docs.
+                  This UI does not modify your prompts or strictness.
                 </div>
               </div>
 
@@ -423,11 +411,10 @@
                   <span class="helpBtn" data-help="helpPdf">i</span>
                 </div>
                 <select id="pdfSelect">
-                  <option value="">Auto-pick (recommended)</option>
+                  <option value="">Auto-pick</option>
                 </select>
                 <div class="helpText" id="helpPdf">
-                  If you select a PDF, the backend will try to pull the most relevant excerpts from that document.
-                  If you leave it on Auto, it will choose based on your question.
+                  Optional: pick a specific uploaded PDF for grounding.
                 </div>
               </div>
             </div>
@@ -440,7 +427,7 @@
                 </div>
                 <input id="pdfUpload" type="file" accept="application/pdf" />
                 <div class="helpText" id="helpUpload">
-                  Upload the TGD PDFs you want the assistant to use. After upload, refresh the PDF list.
+                  Upload TGDs or guidance PDFs you want the backend to use.
                 </div>
                 <div class="row tight" style="margin-top:10px;">
                   <button class="btn" id="btnUploadPdf" type="button">Upload</button>
@@ -451,12 +438,12 @@
 
               <div class="field" style="margin:0;">
                 <div class="labelRow">
-                  <label>Chat session</label>
+                  <label>Chat session (optional)</label>
                   <span class="helpBtn" data-help="helpChatId">i</span>
                 </div>
                 <input id="chatId" type="text" placeholder="auto-generated chat id" />
                 <div class="helpText" id="helpChatId">
-                  This keeps conversation memory on the backend. Leave it as-is. If you change it, you start a new thread.
+                  Keeps backend conversation memory. Leave it alone unless you want a new thread.
                 </div>
                 <div class="row tight" style="margin-top:10px;">
                   <button class="btn" id="btnNewChat" type="button">New chat</button>
@@ -464,30 +451,27 @@
                 </div>
               </div>
             </div>
-
           </div>
         </div>
 
         <div class="panel">
           <div class="panelHead">Conversation</div>
           <div class="panelBody">
-            <div class="chatWrap">
-              <div class="chatBox" id="chatBox"></div>
+            <div class="chatBox" id="chatBox"></div>
 
-              <div class="row">
-                <div style="flex:1; min-width:240px;">
-                  <textarea id="chatInput" rows="3" placeholder="Ask a question…"></textarea>
-                  <div class="metaLine" id="chatMeta">Ready.</div>
-                </div>
-                <div style="flex:0; min-width:200px; display:flex; gap:10px; align-items:flex-start; justify-content:flex-end;">
-                  <button class="btn primary" id="btnSend" type="button">Send</button>
-                  <button class="btn" id="btnStop" type="button" disabled>Stop</button>
-                </div>
+            <div class="row" style="margin-top:12px;">
+              <div style="flex:1; min-width:240px;">
+                <textarea id="chatInput" rows="3" placeholder="Ask a question… (Shift+Enter for new line)"></textarea>
+                <div class="metaLine" id="chatMeta">Ready.</div>
               </div>
+              <div style="flex:0; min-width:200px; display:flex; gap:10px; align-items:flex-start; justify-content:flex-end;">
+                <button class="btn primary" id="btnSend" type="button">Send</button>
+                <button class="btn" id="btnStop" type="button" disabled>Stop</button>
+              </div>
+            </div>
 
-              <div class="small">
-                If you ask for a numeric requirement (e.g., travel distance, stair width), your backend will only answer if it can ground the number in extracted TGD text.
-              </div>
+            <div class="small" style="margin-top:10px;">
+              If you see “HTTP 404”, that is the backend missing <span class="mono">/chat_stream</span> or the API base is wrong.
             </div>
           </div>
         </div>
@@ -498,8 +482,8 @@
         <div class="hero">
           <h2>Fire Cert</h2>
           <p>
-            This pulls your Fire Cert schema from <span class="mono">GET /firecert/schema</span>.
-            Answers are saved to the backend per project and a report is generated.
+            A guided Fire Safety Report workflow. This UI stores answers and generates a professional draft.
+            It never prints JSON to the page.
           </p>
         </div>
 
@@ -516,14 +500,28 @@
                 <button class="btn danger" id="fcBtnReset" type="button">Reset Project</button>
               </div>
 
-              <div class="small" style="margin-top:10px;">
-                Your UI never prints JSON. It renders form fields. Everything is saved server-side.
+              <div class="field" style="margin-top:12px;">
+                <div class="labelRow">
+                  <label>Purpose group</label>
+                  <span class="helpBtn" data-help="helpPG">i</span>
+                </div>
+                <select id="fcPurposeGroup">
+                  <option value="pg1c">Purpose Group 1(c) — Flats / Apartments</option>
+                  <option value="pg3">Purpose Group 3 — Office</option>
+                  <option value="pg5a">Purpose Group 5(a) — Café / Restaurant / Pub</option>
+                  <option value="pg4b">Purpose Group 4(b) — Shopping Centre</option>
+                  <option value="pg7c">Purpose Group 7(c) — Car Park</option>
+                  <option value="pg6b">Purpose Group 6(b) — High Hazard Industrial</option>
+                </select>
+                <div class="helpText" id="helpPG">
+                  This changes which questions apply and what gets written in the final Fire Safety Report.
+                </div>
               </div>
 
               <div class="panel" style="margin-top:12px;">
-                <div class="panelHead" id="fcStepTitle">Loading…</div>
+                <div class="panelHead" id="fcStepTitle">Step</div>
                 <div class="panelBody" id="fcFormArea">
-                  <div class="mono">Loading schema…</div>
+                  <div class="mono">Click “Start / Resume Project”.</div>
                 </div>
               </div>
 
@@ -538,7 +536,7 @@
               </div>
 
               <div class="small" style="margin-top:10px;">
-                Preview uses <span class="mono">POST /firecert/generate-report</span>. DOCX uses <span class="mono">POST /firecert/generate</span> (if you added it).
+                Preview calls <span class="mono">POST /firecert/generate-report</span>. DOCX calls <span class="mono">POST /firecert/generate</span>.
               </div>
             </div>
           </div>
@@ -551,7 +549,7 @@
                 <button class="btn" id="fcCopyReport" type="button">Copy</button>
               </div>
               <div class="small" style="margin-top:10px;">
-                If you want “no JSON ever”, use the DOCX endpoint and auto-download the file.
+                If DOCX download fails, your backend may not have python-docx installed or the endpoint may be erroring.
               </div>
             </div>
           </div>
@@ -565,12 +563,17 @@
 
   <script>
     // =========================
-    // CONFIG
+    // BACKEND ROUTING
     // =========================
-    const API_BASE = "https://complyr.onrender.com";
+    const API_BASE_DEFAULT = "https://complyr.onrender.com";
+    const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
     document.getElementById("apiBaseLabel").textContent = API_BASE;
 
-    function apiUrl(path){ return API_BASE.replace(/\/+$/,"") + path; }
+    function apiUrl(path){
+      if(!path) path = "/";
+      if(!path.startsWith("/")) path = "/" + path;
+      return API_BASE + path;
+    }
 
     // =========================
     // TOAST
@@ -584,23 +587,34 @@
       toastTimer = setTimeout(()=>toast.classList.remove("show"), 2800);
     }
 
+    // Help toggles
+    document.querySelectorAll(".helpBtn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.getAttribute("data-help");
+        const el = document.getElementById(id);
+        if(el) el.classList.toggle("show");
+      });
+    });
+
     // =========================
     // NAV
     // =========================
     const viewTitle = document.getElementById("viewTitle");
-    const viewHint = document.getElementById("viewHint");
+    const viewHint  = document.getElementById("viewHint");
     const views = {
       home: document.getElementById("viewHome"),
       chat: document.getElementById("viewChat"),
       fire: document.getElementById("viewFireCert")
     };
+
     function showView(which){
       Object.values(views).forEach(v=>v.classList.remove("show"));
       views[which].classList.add("show");
       if(which==="home"){ viewTitle.textContent="Overview"; viewHint.textContent="Quick start"; }
-      if(which==="chat"){ viewTitle.textContent="Chat"; viewHint.textContent="Strict TGD assistant"; }
+      if(which==="chat"){ viewTitle.textContent="Chat"; viewHint.textContent="Regulation assistant (unchanged)"; }
       if(which==="fire"){ viewTitle.textContent="Fire Cert"; viewHint.textContent="Questions → report"; fcInitOnce(); }
     }
+
     document.getElementById("navHome").onclick = ()=>showView("home");
     document.getElementById("navChat").onclick = ()=>showView("chat");
     document.getElementById("navFireCert").onclick = ()=>showView("fire");
@@ -608,129 +622,90 @@
     document.getElementById("goFire").onclick = ()=>showView("fire");
 
     document.getElementById("btnDocs").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
+
+    // Status: /health
     document.getElementById("btnStatus").onclick = async ()=>{
       try{
         const r = await fetch(apiUrl("/health"));
-        const j = await r.json().catch(()=>({}));
-        if(!r.ok || !j.ok){ showToast("Status error"); return; }
-        showToast(j.vertex_ready ? "Backend online (AI ready)" : "Backend online (AI not ready)");
+        const t = await r.text();
+        let j = {};
+        try{ j = JSON.parse(t); }catch(e){}
+        if(!r.ok){
+          showToast("Status error " + r.status + ": " + (t || "No body"));
+          return;
+        }
+        if(j && typeof j === "object"){
+          showToast(j.ok ? ("Backend OK" + (j.vertex_ready ? " • Vertex ready" : "")) : "Backend responded");
+        }else{
+          showToast("Backend responded");
+        }
       }catch(e){
-        showToast("Backend unreachable (CORS/offline?)");
+        showToast("Status failed: network/CORS");
       }
     };
 
-    // Help toggles
-    document.addEventListener("click", (e)=>{
-      const hb = e.target.closest(".helpBtn");
-      if(!hb) return;
-      const id = hb.getAttribute("data-help");
-      if(!id) return;
-      const el = document.getElementById(id);
-      if(el) el.classList.toggle("show");
-    });
-
-    // =========================
-    // CHAT (WORKING)
-    // =========================
-    const CHAT_ID_KEY = "raheem_chat_id_v1";
-    const chatBox = document.getElementById("chatBox");
-    const chatInput = document.getElementById("chatInput");
-    const chatMeta = document.getElementById("chatMeta");
-    const btnSend = document.getElementById("btnSend");
-    const btnStop = document.getElementById("btnStop");
-    const chatIdEl = document.getElementById("chatId");
-    const forceDocsEl = document.getElementById("forceDocs");
-    const pdfSelect = document.getElementById("pdfSelect");
-
-    function newChatId(){
-      return "chat_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
-    }
-    function loadChatId(){
-      let cid = localStorage.getItem(CHAT_ID_KEY);
-      if(!cid){
-        cid = newChatId();
-        localStorage.setItem(CHAT_ID_KEY, cid);
+    // Test Chat: POST /chat_stream
+    document.getElementById("btnTestChat").onclick = async ()=>{
+      try{
+        const r = await fetch(apiUrl("/chat_stream"), {
+          method:"POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ chat_id:"test", message:"ping", force_docs:false })
+        });
+        if(r.status === 404){
+          showToast("CHAT 404: backend missing /chat_stream (this is NOT a UI problem)");
+          return;
+        }
+        showToast("Chat endpoint responded: HTTP " + r.status);
+      }catch(e){
+        showToast("Chat test failed: network/CORS");
       }
-      chatIdEl.value = cid;
-      return cid;
-    }
-    function setChatId(cid){
-      localStorage.setItem(CHAT_ID_KEY, cid);
-      chatIdEl.value = cid;
-    }
-    loadChatId();
+    };
 
-    function addMsg(role, text){
-      const wrap = document.createElement("div");
-      wrap.className = "msg";
-      const bub = document.createElement("div");
-      bub.className = "bubble " + (role==="user" ? "user" : "assistant");
-      bub.textContent = text;
-      wrap.appendChild(bub);
-      chatBox.appendChild(wrap);
-      chatBox.scrollTop = chatBox.scrollHeight;
-      return bub;
-    }
+    // =========================
+    // CHAT (STREAMING VIA FETCH READER)
+    // =========================
+    const chatBox   = document.getElementById("chatBox");
+    const chatInput = document.getElementById("chatInput");
+    const chatMeta  = document.getElementById("chatMeta");
+    const btnSend   = document.getElementById("btnSend");
+    const btnStop   = document.getElementById("btnStop");
+
+    const forceDocsEl = document.getElementById("forceDocs");
+    const pdfSelect   = document.getElementById("pdfSelect");
+    const chatIdEl    = document.getElementById("chatId");
 
     let aborter = null;
 
-    async function refreshPdfs(){
-      try{
-        const r = await fetch(apiUrl("/pdfs"));
-        const j = await r.json().catch(()=>({}));
-        const list = (j.pdfs || []);
-        // rebuild select
-        pdfSelect.innerHTML = `<option value="">Auto-pick (recommended)</option>`;
-        list.forEach(name=>{
-          const opt = document.createElement("option");
-          opt.value = name;
-          opt.textContent = name;
-          pdfSelect.appendChild(opt);
-        });
-        showToast("PDF list updated (" + list.length + ")");
-      }catch(e){
-        showToast("Failed to load PDFs");
-      }
+    function uid(){
+      return "chat_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
     }
-    document.getElementById("btnRefreshPdfs").onclick = refreshPdfs;
-    refreshPdfs();
 
-    document.getElementById("btnNewChat").onclick = ()=>{
-      const cid = newChatId();
-      setChatId(cid);
-      showToast("New chat created");
-    };
+    function loadChatId(){
+      const k = "raheem_chat_id_v1";
+      const v = localStorage.getItem(k);
+      if(v) return v;
+      const id = uid();
+      localStorage.setItem(k, id);
+      return id;
+    }
+    function setChatId(id){
+      localStorage.setItem("raheem_chat_id_v1", id);
+      chatIdEl.value = id;
+    }
+    setChatId(loadChatId());
 
-    document.getElementById("btnClearChatUI").onclick = ()=>{
-      chatBox.innerHTML = "";
-      showToast("Chat UI cleared (backend memory stays)");
-    };
-
-    // PDF upload
-    document.getElementById("btnUploadPdf").onclick = async ()=>{
-      const file = document.getElementById("pdfUpload").files?.[0];
-      const statusEl = document.getElementById("uploadStatus");
-      if(!file){ showToast("Choose a PDF first"); return; }
-
-      try{
-        statusEl.textContent = "Uploading…";
-        const fd = new FormData();
-        fd.append("file", file);
-        const r = await fetch(apiUrl("/upload-pdf"), { method:"POST", body: fd });
-        const j = await r.json().catch(()=>({}));
-        if(!r.ok || !j.ok){
-          statusEl.textContent = "Upload failed.";
-          showToast("Upload failed");
-          return;
-        }
-        statusEl.textContent = "Uploaded: " + (j.stored_as || file.name);
-        showToast("PDF uploaded");
-        await refreshPdfs();
-      }catch(e){
-        statusEl.textContent = "Upload error.";
-        showToast("Upload error");
-      }
-    };
+    function addMsg(role, text){
+      const row = document.createElement("div");
+      row.className = "msg";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble " + (role === "user" ? "user" : "assistant");
+      bubble.textContent = text || "";
+      row.appendChild(bubble);
+      chatBox.appendChild(row);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return bubble;
+    }
 
     function parseSseChunk(buffer){
       // returns array of {event, data}, and remaining buffer
@@ -745,7 +720,6 @@
           if(line.startsWith("event:")){
             eventName = line.slice(6).trim();
           } else if(line.startsWith("data:")){
-            // server sends "data: xxx"
             data += (data ? "\n" : "") + line.slice(5).trimEnd();
           }
         });
@@ -771,16 +745,10 @@
       btnStop.disabled = false;
 
       const assistantBubble = addMsg("assistant", "");
-
       aborter = new AbortController();
 
       try{
-        const payload = {
-          chat_id,
-          message: msg,
-          force_docs,
-          pdf
-        };
+        const payload = { chat_id, message: msg, force_docs, pdf };
 
         const r = await fetch(apiUrl("/chat_stream"), {
           method: "POST",
@@ -792,6 +760,15 @@
         if(!r.ok){
           assistantBubble.textContent = "Error: backend returned HTTP " + r.status;
           chatMeta.textContent = "Error.";
+          return;
+        }
+
+        // If backend returns JSON (non-stream), show it as text
+        const ct = (r.headers.get("content-type") || "").toLowerCase();
+        if(ct.includes("application/json")){
+          const j = await r.json().catch(()=>({}));
+          assistantBubble.textContent = (j.answer || j.reply || j.text || JSON.stringify(j, null, 2));
+          chatMeta.textContent = "Done.";
           return;
         }
 
@@ -815,12 +792,14 @@
               done = true;
               chatMeta.textContent = "Done.";
             } else {
-              // normal streamed data tokens come as event "message" with data
               assistantBubble.textContent += evt.data;
               chatBox.scrollTop = chatBox.scrollHeight;
             }
           }
         }
+
+        if(!done) chatMeta.textContent = "Done.";
+
       }catch(e){
         if(String(e).includes("AbortError")){
           assistantBubble.textContent += "\n\nStopped.";
@@ -837,9 +816,7 @@
     }
 
     btnSend.onclick = sendChat;
-    btnStop.onclick = ()=>{
-      if(aborter) aborter.abort();
-    };
+    btnStop.onclick = ()=>{ if(aborter) aborter.abort(); };
     chatInput.addEventListener("keydown",(e)=>{
       if(e.key==="Enter" && !e.shiftKey){
         e.preventDefault();
@@ -847,10 +824,72 @@
       }
     });
 
+    document.getElementById("btnNewChat").onclick = ()=>{
+      setChatId(uid());
+      showToast("New chat started");
+    };
+    document.getElementById("btnClearChatUI").onclick = ()=>{
+      chatBox.innerHTML = "";
+      chatMeta.textContent = "Cleared.";
+      showToast("Chat UI cleared");
+    };
+
     // =========================
-    // FIRE CERT (BASIC WORKING UI)
+    // PDF UPLOAD + LIST
     // =========================
-    const FC_KEY = "raheem_firecert_project_v1";
+    async function refreshPdfs(){
+      try{
+        const r = await fetch(apiUrl("/list-pdfs"));
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok || !j.ok){
+          showToast("Failed to list PDFs");
+          return;
+        }
+        const arr = j.pdfs || j.files || [];
+        pdfSelect.innerHTML = '<option value="">Auto-pick</option>';
+        arr.forEach(name=>{
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          pdfSelect.appendChild(opt);
+        });
+        showToast("PDF list updated");
+      }catch(e){
+        showToast("PDF list failed");
+      }
+    }
+
+    document.getElementById("btnRefreshPdfs").onclick = refreshPdfs;
+
+    document.getElementById("btnUploadPdf").onclick = async ()=>{
+      const file = document.getElementById("pdfUpload").files?.[0];
+      const statusEl = document.getElementById("uploadStatus");
+      if(!file){ showToast("Choose a PDF first"); return; }
+
+      try{
+        statusEl.textContent = "Uploading…";
+        const fd = new FormData();
+        fd.append("file", file);
+        const r = await fetch(apiUrl("/upload-pdf"), { method:"POST", body: fd });
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok || !j.ok){
+          statusEl.textContent = "Upload failed.";
+          showToast("Upload failed");
+          return;
+        }
+        statusEl.textContent = "Uploaded: " + (j.stored_as || file.name);
+        showToast("PDF uploaded");
+        await refreshPdfs();
+      }catch(e){
+        statusEl.textContent = "Upload error.";
+        showToast("Upload error");
+      }
+    };
+
+    // =========================
+    // FIRE CERT (NO JSON ON SCREEN)
+    // =========================
+    const FC_KEY = "raheem_firecert_project_v2";
     let fcInited = false;
     let fcSchema = null;
     let fcProjectId = null;
@@ -860,306 +899,413 @@
     const fcStepTitle = document.getElementById("fcStepTitle");
     const fcFormArea = document.getElementById("fcFormArea");
     const fcReportPreview = document.getElementById("fcReportPreview");
+    const fcPurposeGroup = document.getElementById("fcPurposeGroup");
 
-    function fcSaveLocal(){
-      localStorage.setItem(FC_KEY, JSON.stringify({project_id: fcProjectId, step: fcStepIndex}));
-    }
     function fcLoadLocal(){
-      try{ return JSON.parse(localStorage.getItem(FC_KEY) || "{}"); }catch(e){ return {}; }
+      try{
+        const raw = localStorage.getItem(FC_KEY);
+        return raw ? JSON.parse(raw) : null;
+      }catch(e){ return null; }
+    }
+    function fcSaveLocal(obj){
+      localStorage.setItem(FC_KEY, JSON.stringify(obj));
+    }
+    function fcResetLocal(){
+      localStorage.removeItem(FC_KEY);
     }
 
-    async function fcFetchSchema(){
-      const r = await fetch(apiUrl("/firecert/schema"));
-      const j = await r.json().catch(()=>({}));
-      if(!r.ok || !j.ok || !j.schema) throw new Error("Schema load failed");
-      fcSchema = j.schema;
-    }
+    function builtInSchemaFallback(purpose){
+      // Minimal fallback so UI works even if /firecert/schema fails.
+      // You can expand this freely later or rely on backend schema.
+      const baseStep0 = [
+        qBool("s0_fsc", "Is this a Fire Safety Certificate application under the Building Control Regulations?", "Tick Yes if you’re preparing an FSC application for Building Control. Tick No only if this is an internal check."),
+        qText("s0_tgd_edition", "TGD B edition used", "Example: “TGD B 2024 – Volume 1”. If you’re using another edition, type it here.", "TGD B 2024 – Volume 1"),
+        qBool("s0_topmost_60m", "Topmost occupied floor level ≤ 18 m? (Typical trigger check)", "This is a practical check: measure from fire service access level to the topmost occupied floor level. If you truly meant 60 m, change this in your backend schema. (You asked to double-check the 60 m question.)"),
+        qBool("s0_within_scope", "Is the building within the scope of TGD B Volume 1 (not very unusual / non-complex)?", "If it’s unusual/complex, you may need a fire engineered/performance approach."),
+        qText("s0_alt_desc", "If not within scope, describe any alternative / performance-based approach proposed", "Briefly state the approach, e.g. BS 9999, fire engineering, smoke control modelling, etc.", ""),
+        qText("s0_external_standards", "Any external standards used in addition to TGD B? (list)", "Example: BS 9999, EN 12845, etc. Leave blank if none."),
+        qSelect("s0_works_type","Works type","Select the nature of works for the application.",
+          ["New building","Extension","Material alteration","Material change of use","Combination"]),
+        qNum("s0_height_building","Height of building (Appendix C definition) (m)","Use TGD B Appendix C definition. Enter a number in metres."),
+        qNum("s0_height_top_storey","Height of topmost storey (m)","Enter the height in metres (as defined in your report basis)."),
+        qNum("s0_storeys_ag","Number of storeys above ground","Enter an integer."),
+        qNum("s0_storeys_bg","Number of basement storeys","Enter an integer (0 if none)."),
+        qBool("s0_separated_parts","Any separated parts per 3.4.2?","Yes if the building is divided into parts designed to act independently for compartmentation/means of escape."),
+        qBool("s0_atrium","Any atrium?","Yes if there is an atrium space connecting levels (often triggers smoke control considerations)."),
+        qSelect("s0_carpark","Any car park?","Select the car park type if present.",
+          ["None","Open","Enclosed"]),
+        qText("s0_desc","Brief building description","Short narrative: use, layout, risk notes, anything unusual.")
+      ];
 
-    async function fcInitProject(){
-      const local = fcLoadLocal();
-      if(local.project_id){
-        fcProjectId = local.project_id;
-        fcStepIndex = Number.isFinite(local.step) ? local.step : 0;
-        fcProjectTag.textContent = "Project: " + fcProjectId.slice(0,8) + "…";
-        return;
+      const b1 = [
+        qText("b1_occ","Design occupancy per storey / compartment","State design occupancy and how it’s calculated (persons)."),
+        (purpose==="pg1c") ? qText("b1_sleeping","Sleeping accommodation present?","For apartments/flats, this is generally Yes (sleeping risk).","Yes") :
+          qBool("b1_sleeping_bool","Sleeping accommodation present?","Yes if any sleeping risk exists (e.g. hotel, residential)."),
+        qSelect("b1_evac","Evacuation strategy","Typical options: simultaneous or phased.",
+          ["Simultaneous","Phased"]),
+        qNum("b1_travel_max","Maximum actual travel distance per storey (m)","Measure on plans along escape routes."),
+        qText("b1_travel_basis","Travel distance basis used (single / dual direction; table ref)","Example: single direction, Table X (cite)."),
+        qNum("b1_storey_exits","Number of storey exits per storey","Count exits from each storey."),
+        qNum("b1_final_exits","Number of final exits","Count final exits to open air."),
+        qNum("b1_exit_req","Required exit width (mm)","Show how you derived required width."),
+        qNum("b1_exit_prov","Provided exit width (mm)","Sum of clear widths provided."),
+        qNum("b1_stairs_n","Number of escape stairs","Count protected escape stairs."),
+        qNum("b1_stair_w","Clear width of each stair (mm)","Provide clear width."),
+        qText("b1_stair_served","Persons served by each stair","Explain distribution / load per stair."),
+        qBool("b1_single_stair","Single stair building?","Yes if only one escape stair is provided."),
+        qBool("b1_smoke_vent","Stair smoke ventilation / control provided?","Yes if AOV/mechanical ventilation/pressurisation, etc."),
+        qBool("b1_inner_rooms","Inner rooms present?","Yes if rooms only exit through another room."),
+        qBool("b1_auto_det","Automatic detection in access room?","Yes if detection protects the access room serving an inner room."),
+        qBool("b1_vision","Vision panel / glazing provided?","Yes if required on escape route doors to avoid collision."),
+        qBool("b1_fire_doors","Fire doors on escape routes?","Yes if FD doors protect routes/shafts."),
+        qBool("b1_holdopen","Hold-open devices provided?","Yes if EM hold-open devices installed and linked to alarm."),
+        qBool("b1_elocks","Electronically locked doors on escape routes?","Yes if maglocks/controlled doors exist on escape routes."),
+        qBool("b1_unlock","Unlock on fire alarm and power failure?","Should generally be Yes if e-locks are used."),
+        qBool("b1_refuges","Refuge areas provided?","Yes if accessible refuges are required."),
+        qText("b1_ref_loc","Location of refuges","State floor/position."),
+        qBool("b1_ref_comm","Refuge communication system provided?","Yes if two-way communication is provided."),
+        qBool("b1_evac_lift","Evacuation lift provided?","Yes if an evacuation lift is included."),
+        qBool("b1_alarm","Fire detection and alarm system provided?","Yes if a fire alarm/detection system is provided."),
+        qText("b1_alarm_cat","Alarm category (if known)","Example: L1/L2/Category as specified."),
+        qBool("b1_eml","Emergency lighting provided?","Yes if emergency lighting is installed."),
+        qBool("b1_sign","Fire safety signage provided?","Yes if signs provided to relevant standards.")
+      ];
+
+      const steps = [
+        { id:"s0", title:"Step 0 — Project setup & scope", questions: baseStep0 },
+        { id:"b1", title:"Section 1 — Means of warning & escape (B1)", questions: b1 },
+      ];
+
+      // Purpose-specific add-ons
+      if(purpose==="pg5a"){
+        steps[1].questions.splice(2,0,
+          qBool("b1_kitchen","Confirm commercial kitchen present?","Yes if there is a commercial kitchen."),
+          qBool("b1_kitchen_risk","Identify kitchen as place of special fire risk","Yes if treated as special fire risk in report.")
+        );
       }
-      const r = await fetch(apiUrl("/firecert/project/init"), {
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({meta:{}})
-      });
-      const j = await r.json().catch(()=>({}));
-      if(!r.ok || !j.ok || !j.project) throw new Error("Init failed");
-      fcProjectId = j.project.project_id;
-      fcStepIndex = 0;
-      fcProjectTag.textContent = "Project: " + fcProjectId.slice(0,8) + "…";
-      fcSaveLocal();
+      if(purpose==="pg4b" || purpose==="pg7c"){
+        steps.push({ id:"b6", title:"Section 6 — Smoke control", questions: [
+          qText("b6_type","Smoke control system type","Natural / mechanical / pressurisation etc."),
+          qText("b6_standard","Design standard used","State standard/guidance used."),
+          qBool("b6_em_power","Emergency power provided?","Yes if emergency power supports smoke control.")
+        ]});
+      }
+
+      return { ok:true, schema:{ version:"fallback", steps } };
     }
 
-    async function fcGetProject(){
-      if(!fcProjectId) return null;
-      const r = await fetch(apiUrl("/firecert/project?project_id="+encodeURIComponent(fcProjectId)));
-      const j = await r.json().catch(()=>({}));
-      if(!r.ok || !j.ok || !j.project) return null;
-      return j.project;
+    function qText(id,label,help,def=""){
+      return { id, type:"text", label, help, default:def };
+    }
+    function qNum(id,label,help){
+      return { id, type:"number", label, help };
+    }
+    function qBool(id,label,help){
+      return { id, type:"bool", label, help };
+    }
+    function qSelect(id,label,help,options){
+      return { id, type:"select", label, help, options };
     }
 
-    function fcMakeField(q, project){
-      const qid = q.id;
-      const label = q.label || qid;
-      const help = q.help || "Fill in the value for your project.";
+    async function fcFetchSchemaOrFallback(){
+      try{
+        const r = await fetch(apiUrl("/firecert/schema"));
+        const j = await r.json().catch(()=>null);
+        if(r.ok && j && j.ok && j.schema){
+          return { ok:true, schema:j.schema };
+        }
+        return builtInSchemaFallback(fcPurposeGroup.value);
+      }catch(e){
+        return builtInSchemaFallback(fcPurposeGroup.value);
+      }
+    }
 
-      const ans = project?.answers?.[qid] || null;
-      const na = !!ans?.na;
-      const value = ans?.value ?? null;
-      const notes = ans?.notes ?? "";
-      const refs = ans?.refs ?? "";
+    function fcEnsureProject(){
+      const local = fcLoadLocal();
+      if(local && local.project_id){
+        fcProjectId = local.project_id;
+        return local;
+      }
+      const pid = "fc_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+      fcProjectId = pid;
+      const obj = { project_id: pid, purpose_group: fcPurposeGroup.value, step_index: 0, answers: {}, updated: Date.now() };
+      fcSaveLocal(obj);
+      return obj;
+    }
 
-      const field = document.createElement("div");
-      field.className = "field";
+    function fcSetTag(){
+      fcProjectTag.textContent = "Project: " + (fcProjectId ? fcProjectId.slice(0,10) : "not started");
+    }
 
-      const helpId = "fc_help_" + qid;
+    function fcAnswerGet(local, qid){
+      return (local.answers && Object.prototype.hasOwnProperty.call(local.answers, qid)) ? local.answers[qid] : null;
+    }
 
-      const labelRow = document.createElement("div");
-      labelRow.className = "labelRow";
-      labelRow.innerHTML = `
-        <label>${label}</label>
-        <span class="helpBtn" data-help="${helpId}">i</span>
-      `;
-      field.appendChild(labelRow);
+    function fcAnswerSet(local, qid, val){
+      local.answers[qid] = val;
+      local.updated = Date.now();
+      fcSaveLocal(local);
+    }
 
-      const helpBox = document.createElement("div");
-      helpBox.className = "helpText";
-      helpBox.id = helpId;
-      helpBox.textContent = help;
-      field.appendChild(helpBox);
+    function renderQuestion(local, q){
+      const wrap = document.createElement("div");
+      wrap.className = "field";
+
+      const head = document.createElement("div");
+      head.className = "labelRow";
+
+      const lab = document.createElement("label");
+      lab.textContent = q.label || q.id;
+
+      const helpBtn = document.createElement("span");
+      helpBtn.className = "helpBtn";
+      helpBtn.textContent = "i";
+
+      const help = document.createElement("div");
+      help.className = "helpText";
+      help.textContent = (q.help || "Fill this in using the information from your drawings/spec. If unsure, leave blank for now.");
+
+      helpBtn.onclick = ()=>help.classList.toggle("show");
+
+      head.appendChild(lab);
+      head.appendChild(helpBtn);
+
+      wrap.appendChild(head);
 
       let input;
+      const current = fcAnswerGet(local, q.id);
+
       if(q.type === "bool"){
         input = document.createElement("select");
-        input.innerHTML = `<option value=""></option><option value="true">Yes</option><option value="false">No</option>`;
-        input.value = (value === true) ? "true" : (value === false) ? "false" : "";
-      } else if(q.type === "select"){
+        input.innerHTML = `
+          <option value="">Select…</option>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        `;
+        if(current === true) input.value = "true";
+        if(current === false) input.value = "false";
+        input.onchange = ()=>{
+          const v = input.value;
+          fcAnswerSet(local, q.id, v==="" ? null : (v==="true"));
+        };
+      }else if(q.type === "select"){
         input = document.createElement("select");
         const opts = (q.options || []);
-        input.innerHTML = `<option value=""></option>` + opts.map(o=>`<option value="${o}">${o}</option>`).join("");
-        input.value = (value ?? "");
-      } else if(q.type === "multiselect"){
-        input = document.createElement("select");
-        input.multiple = true;
-        input.size = Math.min(8, Math.max(4, (q.options||[]).length || 4));
-        input.innerHTML = (q.options || []).map(o=>`<option value="${o}">${o}</option>`).join("");
-        const arr = Array.isArray(value) ? value : [];
-        [...input.options].forEach(opt=> opt.selected = arr.includes(opt.value));
-      } else if(q.type === "number"){
+        input.innerHTML = `<option value="">Select…</option>` + opts.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+        if(typeof current === "string") input.value = current;
+        input.onchange = ()=>fcAnswerSet(local, q.id, input.value || null);
+      }else if(q.type === "number"){
         input = document.createElement("input");
         input.type = "number";
-        input.value = (value ?? "");
-      } else {
-        input = document.createElement("input");
-        input.type = "text";
-        input.value = (value ?? "");
+        input.placeholder = "Enter a number…";
+        if(typeof current === "number") input.value = String(current);
+        input.oninput = ()=>{
+          const v = input.value;
+          fcAnswerSet(local, q.id, v==="" ? null : Number(v));
+        };
+      }else{
+        input = document.createElement("textarea");
+        input.rows = 3;
+        input.placeholder = "Type here…";
+        if(typeof current === "string") input.value = current;
+        else if(!current && q.default) input.value = q.default;
+        input.oninput = ()=>fcAnswerSet(local, q.id, (input.value || "").trim() || null);
       }
 
-      input.disabled = na;
-      field.appendChild(input);
-
-      // NA + notes + refs + save
-      const row = document.createElement("div");
-      row.className = "row tight";
-      row.style.marginTop = "10px";
-      row.innerHTML = `
-        <label class="small" style="display:flex; gap:8px; align-items:center; flex:0; min-width:180px;">
-          <input type="checkbox" id="fc_na_${qid}" ${na ? "checked" : ""}/> Not applicable
-        </label>
-        <button class="btn" type="button" id="fc_save_${qid}">Save</button>
-      `;
-      field.appendChild(row);
-
-      const extra = document.createElement("div");
-      extra.style.marginTop = "10px";
-      extra.innerHTML = `
-        <div class="small" style="margin-bottom:6px;">Notes (optional)</div>
-        <textarea id="fc_notes_${qid}" rows="2" placeholder="Assumptions / pending info…">${String(notes||"")}</textarea>
-        <div class="small" style="margin:10px 0 6px 0;">Refs (optional)</div>
-        <input id="fc_refs_${qid}" type="text" placeholder="e.g. TGD B Vol 1 Section X Table Y" value="${String(refs||"")}"/>
-      `;
-      field.appendChild(extra);
-
-      // wiring
-      field.querySelector("#fc_na_"+qid).addEventListener("change", (e)=>{
-        const isNA = e.target.checked;
-        input.disabled = isNA;
-      });
-
-      field.querySelector("#fc_save_"+qid).onclick = async ()=>{
-        if(!fcProjectId){ showToast("Start a project first"); return; }
-
-        const isNA = field.querySelector("#fc_na_"+qid).checked;
-        let val = null;
-
-        if(!isNA){
-          if(q.type === "bool"){
-            const v = String(input.value||"").trim();
-            val = (v==="true") ? true : (v==="false") ? false : null;
-          } else if(q.type === "multiselect"){
-            val = [...input.selectedOptions].map(o=>o.value);
-          } else if(q.type === "number"){
-            const v = String(input.value||"").trim();
-            val = v==="" ? null : Number(v);
-            if(Number.isNaN(val)) val = null;
-          } else {
-            const v = String(input.value||"");
-            val = v.trim()==="" ? null : v;
-          }
-        }
-
-        const notesV = String(field.querySelector("#fc_notes_"+qid).value||"").trim();
-        const refsV = String(field.querySelector("#fc_refs_"+qid).value||"").trim();
-
-        const payload = { project_id: fcProjectId, qid, value: val, na: isNA, notes: notesV, refs: refsV };
-        const r = await fetch(apiUrl("/firecert/answer"), {
-          method:"POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify(payload)
-        });
-        const j = await r.json().catch(()=>({}));
-        if(!r.ok || !j.ok){
-          showToast("Save failed");
-          return;
-        }
-        showToast("Saved");
-      };
-
-      return field;
+      wrap.appendChild(input);
+      wrap.appendChild(help);
+      return wrap;
     }
 
-    async function fcRenderStep(){
-      if(!fcSchema){ return; }
-      const steps = fcSchema.steps || [];
-      const step = steps[fcStepIndex] || steps[0];
-      if(!step){
-        fcStepTitle.textContent = "No steps";
-        fcFormArea.innerHTML = `<div class="mono">No schema steps found.</div>`;
+    function escapeHtml(s){
+      return String(s || "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+    }
+
+    function fcRenderStep(){
+      const local = fcLoadLocal();
+      if(!local || !fcSchema){
+        fcFormArea.innerHTML = `<div class="mono">Click “Start / Resume Project”.</div>`;
         return;
       }
-      fcStepTitle.textContent = step.title || step.id;
 
-      const project = await fcGetProject();
+      const steps = fcSchema.steps || [];
+      fcStepIndex = Math.max(0, Math.min(local.step_index || 0, steps.length-1));
+      const step = steps[fcStepIndex];
+      if(!step){
+        fcStepTitle.textContent = "Complete";
+        fcFormArea.innerHTML = `<div class="mono">No steps available.</div>`;
+        return;
+      }
 
+      fcStepTitle.textContent = step.title || step.id || ("Step " + (fcStepIndex+1));
       fcFormArea.innerHTML = "";
+
+      // Render questions
       (step.questions || []).forEach(q=>{
-        fcFormArea.appendChild(fcMakeField(q, project));
+        fcFormArea.appendChild(renderQuestion(local, q));
       });
+
+      fcSetTag();
     }
 
     async function fcInitOnce(){
       if(fcInited) return;
       fcInited = true;
 
-      try{
-        await fcFetchSchema();
+      document.getElementById("fcBtnInit").onclick = async ()=>{
+        const local = fcEnsureProject();
+        local.purpose_group = fcPurposeGroup.value;
+        local.updated = Date.now();
+        fcSaveLocal(local);
+
+        const got = await fcFetchSchemaOrFallback();
+        fcSchema = got.schema;
+        fcProjectId = local.project_id;
+        fcSetTag();
+        fcRenderStep();
+
+        showToast("Fire Cert project ready");
+      };
+
+      document.getElementById("fcBtnRefresh").onclick = async ()=>{
         const local = fcLoadLocal();
-        if(local.project_id){
-          fcProjectId = local.project_id;
-          fcStepIndex = Number.isFinite(local.step) ? local.step : 0;
-          fcProjectTag.textContent = "Project: " + fcProjectId.slice(0,8) + "…";
+        if(!local){ showToast("No project yet"); return; }
+        const got = await fcFetchSchemaOrFallback();
+        fcSchema = got.schema;
+        fcProjectId = local.project_id;
+        fcSetTag();
+        fcRenderStep();
+        showToast("Refreshed");
+      };
+
+      document.getElementById("fcBtnReset").onclick = ()=>{
+        fcResetLocal();
+        fcProjectId = null;
+        fcSchema = null;
+        fcFormArea.innerHTML = `<div class="mono">Reset complete. Click “Start / Resume Project”.</div>`;
+        fcReportPreview.value = "";
+        fcProjectTag.textContent = "Project: not started";
+        showToast("Reset");
+      };
+
+      document.getElementById("fcBack").onclick = ()=>{
+        const local = fcLoadLocal();
+        if(!local || !fcSchema) return;
+        local.step_index = Math.max(0, (local.step_index||0) - 1);
+        fcSaveLocal(local);
+        fcRenderStep();
+      };
+
+      document.getElementById("fcNext").onclick = ()=>{
+        const local = fcLoadLocal();
+        if(!local || !fcSchema) return;
+        const steps = fcSchema.steps || [];
+        local.step_index = Math.min(steps.length-1, (local.step_index||0) + 1);
+        fcSaveLocal(local);
+        fcRenderStep();
+      };
+
+      document.getElementById("fcCopyReport").onclick = async ()=>{
+        const txt = fcReportPreview.value || "";
+        if(!txt.trim()){ showToast("Nothing to copy"); return; }
+        try{
+          await navigator.clipboard.writeText(txt);
+          showToast("Copied");
+        }catch(e){
+          showToast("Copy failed");
         }
-        await fcRenderStep();
-      }catch(e){
-        fcFormArea.innerHTML = `<div class="mono">Fire Cert schema load failed. Check backend.</div>`;
+      };
+
+      document.getElementById("fcGenerateText").onclick = async ()=>{
+        const local = fcLoadLocal();
+        if(!local || !local.project_id){ showToast("Start a project first"); return; }
+
+        // Send only what backend needs. DO NOT display JSON response; only show report text.
+        try{
+          showToast("Generating preview…");
+          const payload = {
+            project_id: local.project_id,
+            meta: { purpose_group: fcPurposeGroup.value },
+            answers: local.answers
+          };
+
+          const r = await fetch(apiUrl("/firecert/generate-report"), {
+            method:"POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
+          });
+
+          if(!r.ok){
+            fcReportPreview.value = "Error: backend returned HTTP " + r.status;
+            showToast("Preview failed");
+            return;
+          }
+
+          const j = await r.json().catch(()=>null);
+          const report = (j && j.report) ? String(j.report) : "No report text returned.";
+          fcReportPreview.value = report;
+          showToast("Preview ready");
+        }catch(e){
+          fcReportPreview.value = "Network error. Check backend/CORS.";
+          showToast("Preview failed");
+        }
+      };
+
+      document.getElementById("fcGenerateDocx").onclick = async ()=>{
+        const local = fcLoadLocal();
+        if(!local || !local.project_id){ showToast("Start a project first"); return; }
+
+        try{
+          showToast("Generating DOCX…");
+          const payload = {
+            project_id: local.project_id,
+            title: "Fire Safety Report (Draft)",
+            meta: { purpose_group: fcPurposeGroup.value },
+            answers: local.answers
+          };
+
+          const r = await fetch(apiUrl("/firecert/generate"), {
+            method:"POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
+          });
+
+          if(!r.ok){
+            const t = await r.text().catch(()=>"(no body)");
+            showToast("DOCX failed: HTTP " + r.status);
+            fcReportPreview.value = "DOCX error " + r.status + ":\n" + t.slice(0,1000);
+            return;
+          }
+
+          const blob = await r.blob();
+          const cd = r.headers.get("content-disposition") || "";
+          let filename = "Fire_Safety_Report_Draft.docx";
+          const m = /filename="([^"]+)"/i.exec(cd);
+          if(m && m[1]) filename = m[1];
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showToast("DOCX downloaded");
+        }catch(e){
+          showToast("DOCX failed: network/CORS");
+        }
+      };
+
+      // If already saved locally, show tag
+      const existing = fcLoadLocal();
+      if(existing && existing.project_id){
+        fcProjectId = existing.project_id;
+        fcSetTag();
       }
     }
 
-    document.getElementById("fcBtnInit").onclick = async ()=>{
-      try{
-        await fcInitProject();
-        await fcRenderStep();
-        showToast("Project ready");
-      }catch(e){
-        showToast("Init failed");
-      }
-    };
-
-    document.getElementById("fcBtnRefresh").onclick = async ()=>{
-      await fcRenderStep();
-      showToast("Refreshed");
-    };
-
-    document.getElementById("fcBtnReset").onclick = ()=>{
-      localStorage.removeItem(FC_KEY);
-      fcProjectId = null;
-      fcStepIndex = 0;
-      fcProjectTag.textContent = "Project: not started";
-      showToast("Reset done");
-    };
-
-    document.getElementById("fcBack").onclick = async ()=>{
-      if(!fcSchema) return;
-      fcStepIndex = Math.max(0, fcStepIndex - 1);
-      fcSaveLocal();
-      await fcRenderStep();
-    };
-
-    document.getElementById("fcNext").onclick = async ()=>{
-      if(!fcSchema) return;
-      const max = (fcSchema.steps || []).length - 1;
-      fcStepIndex = Math.min(max, fcStepIndex + 1);
-      fcSaveLocal();
-      await fcRenderStep();
-    };
-
-    document.getElementById("fcGenerateText").onclick = async ()=>{
-      if(!fcProjectId){ showToast("Start a project first"); return; }
-      try{
-        showToast("Generating…");
-        const r = await fetch(apiUrl("/firecert/generate-report"), {
-          method:"POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ project_id: fcProjectId })
-        });
-        const j = await r.json().catch(()=>({}));
-        if(!r.ok || !j.ok){ showToast("Generate failed"); return; }
-        fcReportPreview.value = (j.report || "");
-        showToast("Report ready");
-      }catch(e){
-        showToast("Generate error");
-      }
-    };
-
-    // DOCX: only works if your backend has POST /firecert/generate returning a file
-    document.getElementById("fcGenerateDocx").onclick = async ()=>{
-      if(!fcProjectId){ showToast("Start a project first"); return; }
-      try{
-        showToast("Generating DOCX…");
-        const r = await fetch(apiUrl("/firecert/generate"), {
-          method:"POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ project_id: fcProjectId })
-        });
-        if(!r.ok){
-          showToast("DOCX endpoint missing or error");
-          return;
-        }
-        const blob = await r.blob();
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "Fire_Safety_Report_Draft.docx";
-        a.click();
-        URL.revokeObjectURL(a.href);
-        showToast("Downloaded");
-      }catch(e){
-        showToast("DOCX error");
-      }
-    };
-
-    document.getElementById("fcCopyReport").onclick = ()=>{
-      const t = fcReportPreview.value || "";
-      if(!t.trim()){ showToast("No report to copy"); return; }
-      navigator.clipboard.writeText(t).then(()=>showToast("Copied")).catch(()=>showToast("Copy failed"));
-    };
-
-    // default
+    // Default view
     showView("home");
   </script>
 </body>
