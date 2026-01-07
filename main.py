@@ -4,13 +4,15 @@ import os
 import re
 import math
 import json
+import time
 import tempfile
 import hashlib
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
-from collections import Counter
+from collections import Counter, defaultdict
 
 import httpx
 import fitz  # PyMuPDF
@@ -21,16 +23,21 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from dotenv import load_dotenv
 
 import vertexai
-from vertexai.generative_models import (
-    GenerativeModel,
-    Part,
-    Content,
-    GenerationConfig,
-)
+from vertexai.generative_models import GenerativeModel, Part, Content, GenerationConfig
+
+# Optional: Vertex Embeddings (no extra deps)
+try:
+    from vertexai.language_models import TextEmbeddingModel  # type: ignore
+
+    _VERTEX_EMBEDDINGS_AVAILABLE = True
+except Exception:
+    TextEmbeddingModel = None  # type: ignore
+    _VERTEX_EMBEDDINGS_AVAILABLE = False
 
 # Optional: Document AI ingest helper
 try:
     from docai_ingest import docai_extract_pdf_to_text
+
     _DOCAI_HELPER_AVAILABLE = True
 except Exception:
     docai_extract_pdf_to_text = None
@@ -44,11 +51,18 @@ except Exception:
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
+
 PDF_DIR = BASE_DIR / "pdfs"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
 
 DOCAI_DIR = BASE_DIR / "parsed_docai"
 DOCAI_DIR.mkdir(parents=True, exist_ok=True)
+
+CACHE_DIR = BASE_DIR / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+WEB_CACHE_DIR = CACHE_DIR / "web"
+WEB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "80"))
 
@@ -62,18 +76,66 @@ GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 MODEL_CHAT = (os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001") or "").strip()
 MODEL_COMPLIANCE = (os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001") or "").strip()
 
-# Web search (optional but recommended)
+# Web search (Serper)
 SERPER_API_KEY = (os.getenv("SERPER_API_KEY") or "").strip()  # https://serper.dev
 WEB_ENABLED = (os.getenv("WEB_ENABLED", "true").lower() in ("1", "true", "yes", "on")) and bool(SERPER_API_KEY)
 
-# Behavior
+# Evidence defaults
 DEFAULT_EVIDENCE_MODE = os.getenv("DEFAULT_EVIDENCE_MODE", "false").lower() in ("1", "true", "yes", "on")
 
 # Retrieval sizing
-CHUNK_TARGET_CHARS = int(os.getenv("CHUNK_TARGET_CHARS", "1200"))  # ~ a few paragraphs
+CHUNK_TARGET_CHARS = int(os.getenv("CHUNK_TARGET_CHARS", "1200"))
 CHUNK_OVERLAP_CHARS = int(os.getenv("CHUNK_OVERLAP_CHARS", "150"))
-TOP_K_CHUNKS = int(os.getenv("TOP_K_CHUNKS", "6"))  # how many snippets we feed to model
+TOP_K_CHUNKS = int(os.getenv("TOP_K_CHUNKS", "6"))
 TOP_K_WEB = int(os.getenv("TOP_K_WEB", "5"))
+
+# Vector embeddings (optional)
+EMBED_ENABLED = os.getenv("EMBED_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+EMBED_MODEL_NAME = (os.getenv("VERTEX_EMBED_MODEL", "text-embedding-004") or "").strip()
+EMBED_TOPK = int(os.getenv("EMBED_TOPK", "24"))  # candidate pool for rerank
+EMBED_BATCH = int(os.getenv("EMBED_BATCH", "64"))
+
+# Rerank (LLM reranker)
+RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+RERANK_TOPK = int(os.getenv("RERANK_TOPK", str(TOP_K_CHUNKS)))
+
+# Broad vs precise answering controls
+BROAD_DOC_DIVERSITY_K = int(os.getenv("BROAD_DOC_DIVERSITY_K", "3"))  # broad questions: cover up to N docs
+BROAD_TOPIC_HITS_K = int(os.getenv("BROAD_TOPIC_HITS_K", "2"))        # broad questions: hits per doc/topic bucket
+BROAD_MAX_SUBQUERIES = int(os.getenv("BROAD_MAX_SUBQUERIES", "6"))    # cost limiter for topic expansion
+
+# Web allowlist (safe + higher trust)
+WEB_ALLOWLIST_DEFAULT = [
+    "irishstatutebook.ie",
+    "gov.ie",
+    "housing.gov.ie",
+    "nsai.ie",
+    "dublincity.ie",
+    "dlrcoco.ie",
+    "corkcity.ie",
+    "kildarecoco.ie",
+    "galwaycity.ie",
+]
+WEB_ALLOWLIST = [d.strip().lower() for d in (os.getenv("WEB_ALLOWLIST", "") or "").split(",") if d.strip()]
+if not WEB_ALLOWLIST:
+    WEB_ALLOWLIST = WEB_ALLOWLIST_DEFAULT
+
+# Hard numeric verification
+VERIFY_NUMERIC = os.getenv("VERIFY_NUMERIC", "true").lower() in ("1", "true", "yes", "on")
+
+# Rules layer
+RULES_FILE = Path(os.getenv("RULES_FILE", str(BASE_DIR / "rules.json")))
+RULES_ENABLED = os.getenv("RULES_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+
+# Eval harness
+EVAL_FILE = Path(os.getenv("EVAL_FILE", str(BASE_DIR / "eval_tests.json")))
+
+# Timeouts
+HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "18"))
+
+# Web cache
+WEB_CACHE_TTL_SECONDS = int(os.getenv("WEB_CACHE_TTL_SECONDS", str(12 * 60 * 60)))  # 12h
+
 
 # ============================================================
 # APP
@@ -103,10 +165,11 @@ app.add_middleware(
 
 _VERTEX_READY = False
 _VERTEX_ERR: Optional[str] = None
+_EMBED_MODEL: Any = None
 
 
 def ensure_vertex_ready() -> None:
-    global _VERTEX_READY, _VERTEX_ERR
+    global _VERTEX_READY, _VERTEX_ERR, _EMBED_MODEL
     if _VERTEX_READY:
         return
     try:
@@ -123,6 +186,15 @@ def ensure_vertex_ready() -> None:
             raise RuntimeError("Missing VERTEX_LOCATION (or GCP_LOCATION)")
 
         vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
+
+        # Lazy init embeddings model (optional)
+        _EMBED_MODEL = None
+        if EMBED_ENABLED and _VERTEX_EMBEDDINGS_AVAILABLE and TextEmbeddingModel is not None:
+            try:
+                _EMBED_MODEL = TextEmbeddingModel.from_pretrained(EMBED_MODEL_NAME)
+            except Exception:
+                _EMBED_MODEL = None
+
         _VERTEX_READY = True
         _VERTEX_ERR = None
     except Exception as e:
@@ -136,11 +208,10 @@ def get_model(model_name: str, system_prompt: str) -> GenerativeModel:
 
 
 def get_generation_config(is_evidence: bool) -> GenerationConfig:
-    # Evidence mode: lower temperature for precision
+    # More ChatGPT-like: stable, paragraphy
     if is_evidence:
-        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=1200)
-    # Normal chat
-    return GenerationConfig(temperature=0.8, top_p=0.9, max_output_tokens=1200)
+        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=1400)
+    return GenerationConfig(temperature=0.6, top_p=0.9, max_output_tokens=1400)
 
 
 # ============================================================
@@ -209,10 +280,20 @@ def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[
 # ============================================================
 
 STOPWORDS = {
-    "the","and","or","of","to","in","a","an","for","on","with","is","are","be","as","at","from","by",
-    "that","this","it","your","you","we","they","their","there","what","which","when","where","how",
-    "can","shall","should","must","may","not","than","then","into","onto","also","such"
+    "the", "and", "or", "of", "to", "in", "a", "an", "for", "on", "with", "is", "are", "be", "as", "at", "from", "by",
+    "that", "this", "it", "your", "you", "we", "they", "their", "there", "what", "which", "when", "where", "how",
+    "can", "shall", "should", "must", "may", "not", "than", "then", "into", "onto", "also", "such"
 }
+
+NUM_WITH_UNIT_RE = re.compile(
+    r"\b\d+(\.\d+)?\s*(mm|m|metre|meter|w/m²k|w\/m2k|%|kwh|kwh\/m2\/yr|kwh\/m²\/yr|lux|lm|lumen|lumens)\b",
+    re.I
+)
+ANY_NUMBER_RE = re.compile(r"\b\d+(\.\d+)?\b")
+
+SECTION_RE = re.compile(r"^\s*(?:section\s+)?(\d+(?:\.\d+){0,4})\b", re.I)
+TABLE_RE = re.compile(r"\btable\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
+DIAGRAM_RE = re.compile(r"\bdiagram\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 
 
 def clean_text(s: str) -> str:
@@ -230,8 +311,118 @@ def tokenize(text: str) -> List[str]:
     return toks
 
 
+def _hash_id(s: str) -> str:
+    return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
+
+
+def _safe_url(url: str) -> bool:
+    u = (url or "").strip().lower()
+    return u.startswith("http://") or u.startswith("https://")
+
+
+def _host_from_url(url: str) -> str:
+    try:
+        if not _safe_url(url):
+            return ""
+        m = re.match(r"^https?://([^/]+)", url.strip(), re.I)
+        host = (m.group(1).lower() if m else "")
+        host = host.split("@")[-1]  # userinfo
+        host = host.split(":")[0]   # port
+        return host
+    except Exception:
+        return ""
+
+
+def _allowed_url(url: str) -> bool:
+    host = _host_from_url(url)
+    if not host:
+        return False
+    return any(host == d or host.endswith("." + d) for d in WEB_ALLOWLIST)
+
+
 # ============================================================
-# CHUNK INDEX (BM25) — THIS IS THE BIG FIX
+# BROAD vs PRECISE + TOPIC COVERAGE
+# ============================================================
+
+BROAD_HINTS = ["tell me about", "explain", "overview", "what about", "guidance on", "info on", "general"]
+PRECISE_HINTS = ["minimum", "maximum", "min", "max", "required", "shall", "must", "limit", "section", "table", "clause"]
+
+PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
+
+
+def question_precision(q: str) -> str:
+    ql = (q or "").lower().strip()
+    if not ql:
+        return "broad"
+    if PART_PATTERN.search(ql):
+        return "precise"
+    if re.search(r"\b(section|table|diagram|clause)\b", ql):
+        return "precise"
+    if NUM_WITH_UNIT_RE.search(ql) or ANY_NUMBER_RE.search(ql):
+        return "precise"
+    if any(h in ql for h in PRECISE_HINTS):
+        return "precise"
+    if any(h in ql for h in BROAD_HINTS):
+        return "broad"
+    if len(ql.split()) <= 6:
+        return "broad"
+    return "mixed"
+
+
+TOPIC_MAP: Dict[str, List[str]] = {
+    "lighting_emergency": ["emergency lighting", "escape lighting", "emergency illumination"],
+    "lighting_daylight": ["daylight", "natural light", "daylighting", "rooflight", "skylight"],
+    "lighting_controls": ["lighting controls", "occupancy sensor", "presence detector", "automatic lighting"],
+    "lighting_energy": ["lighting efficiency", "luminaire efficacy", "lamp efficacy", "controls energy"],
+    "fire_escape": ["means of escape", "escape route", "travel distance", "fire safety"],
+    "access": ["accessible", "wheelchair", "part m", "ramp"],
+}
+
+
+def detect_topic_keys(user_msg: str) -> List[str]:
+    ql = (user_msg or "").lower()
+    hits: List[str] = []
+    for topic, keys in TOPIC_MAP.items():
+        if any(k in ql for k in keys):
+            hits.append(topic)
+
+    # If user says "lighting" without subtype: try a few likely subtopics
+    if "lighting" in ql and not any(t.startswith("lighting_") for t in hits):
+        hits.extend(["lighting_emergency", "lighting_controls", "lighting_daylight", "lighting_energy"])
+
+    seen = set()
+    out = []
+    for h in hits:
+        if h in seen:
+            continue
+        seen.add(h)
+        out.append(h)
+    return out
+
+
+def intent_queries_for_topics(user_msg: str, topics: List[str]) -> List[str]:
+    base = (user_msg or "").strip()
+    out: List[str] = []
+    for t in topics:
+        if t == "lighting_emergency":
+            out.append(base + " emergency lighting escape routes requirements")
+        elif t == "lighting_daylight":
+            out.append(base + " daylight natural lighting requirement guidance")
+        elif t == "lighting_controls":
+            out.append(base + " lighting controls automatic controls occupancy sensor")
+        elif t == "lighting_energy":
+            out.append(base + " lighting energy efficiency requirements")
+        elif t == "fire_escape":
+            out.append(base + " means of escape fire safety travel distance")
+        elif t == "access":
+            out.append(base + " accessibility part m ramp")
+        else:
+            out.append(base + " " + t.replace("_", " "))
+    return out
+
+
+# ============================================================
+# CHUNK INDEX (BM25 + METADATA + OPTIONAL EMBEDDINGS)
 # ============================================================
 
 @dataclass
@@ -242,54 +433,14 @@ class Chunk:
     text: str
     tf: Counter
     length: int
+    section: str = ""
+    heading: str = ""
+    table: str = ""
+    diagram: str = ""
 
 
 CHUNK_INDEX: Dict[str, Dict[str, Any]] = {}
-# structure:
-# CHUNK_INDEX[pdf_name] = {
-#   "chunks": List[Chunk],
-#   "df": Counter,
-#   "avgdl": float,
-#   "N": int
-# }
-
-def _hash_id(s: str) -> str:
-    return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
-
-
-def _split_into_chunks(text: str, target: int, overlap: int) -> List[str]:
-    """
-    Sliding-window chunking on paragraph boundaries.
-    """
-    text = clean_text(text)
-    if not text:
-        return []
-    paras = [p.strip() for p in text.split("\n\n") if p.strip()]
-    out: List[str] = []
-    buff = ""
-
-    def flush():
-        nonlocal buff
-        if buff.strip():
-            out.append(buff.strip())
-        buff = ""
-
-    for p in paras:
-        if not buff:
-            buff = p
-        elif len(buff) + 2 + len(p) <= target:
-            buff = buff + "\n\n" + p
-        else:
-            flush()
-            # overlap: keep last overlap chars from previous chunk as prefix
-            if overlap > 0 and out:
-                tail = out[-1][-overlap:]
-                buff = (tail + "\n\n" + p).strip()
-            else:
-                buff = p
-
-    flush()
-    return out
+EMBED_INDEX: Dict[str, Dict[str, Any]] = {}  # pdf_name -> {"vectors": {chunk_id: [..]}, "dim": int}
 
 
 def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
@@ -307,6 +458,12 @@ def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int,
     return score
 
 
+def _pdf_fingerprint(pdf_path: Path) -> str:
+    st = pdf_path.stat()
+    s = f"{pdf_path.name}|{st.st_size}|{int(st.st_mtime)}"
+    return hashlib.sha1(s.encode("utf-8")).hexdigest()[:16]
+
+
 def list_pdfs() -> List[str]:
     files = []
     for p in PDF_DIR.iterdir():
@@ -316,14 +473,208 @@ def list_pdfs() -> List[str]:
     return files
 
 
-def index_pdf_to_chunks(pdf_path: Path) -> None:
+def looks_like_table_block(text: str) -> bool:
+    if not text:
+        return False
+    lines = [ln.rstrip() for ln in text.split("\n") if ln.strip()]
+    if len(lines) < 4:
+        return False
+
+    multi_gap = sum(1 for ln in lines if re.search(r"\s{2,}", ln))
+    pipes = sum(1 for ln in lines if "|" in ln)
+    many_numbers = sum(1 for ln in lines if ANY_NUMBER_RE.search(ln))
+
+    return (multi_gap >= 3) or (pipes >= 3) or (many_numbers >= 4 and len(lines) >= 6)
+
+
+def _split_into_chunks(text: str, target: int, overlap: int) -> List[str]:
     """
-    Reads each page and creates paragraph chunks. Stores BM25 stats.
+    Table-aware chunker:
+    - keeps table-like blocks as standalone chunks
+    - avoids smearing tables into paragraph chunks
     """
+    text = clean_text(text)
+    if not text:
+        return []
+
+    paras = [p.strip() for p in text.split("\n\n") if p.strip()]
+    out: List[str] = []
+    buff = ""
+
+    def flush():
+        nonlocal buff
+        if buff.strip():
+            out.append(buff.strip())
+        buff = ""
+
+    for p in paras:
+        if looks_like_table_block(p):
+            flush()
+            out.append(p.strip())
+            continue
+
+        if not buff:
+            buff = p
+        elif len(buff) + 2 + len(p) <= target:
+            buff = buff + "\n\n" + p
+        else:
+            flush()
+            if overlap > 0 and out:
+                tail = out[-1][-overlap:]
+                buff = (tail + "\n\n" + p).strip()
+            else:
+                buff = p
+
+    flush()
+    return out
+
+
+def _detect_context_lines(page_text: str) -> Tuple[str, str, str, str]:
+    section = ""
+    table = ""
+    diagram = ""
+
+    lines = [ln.strip() for ln in (page_text or "").split("\n") if ln.strip()]
+    for ln in lines[:100]:
+        m = SECTION_RE.match(ln)
+        if m:
+            section = m.group(1).strip()
+        mt = TABLE_RE.search(ln)
+        if mt:
+            table = mt.group(1).strip()
+        md = DIAGRAM_RE.search(ln)
+        if md:
+            diagram = md.group(1).strip()
+
+    heading = ""
+    for ln in lines[:120]:
+        if len(ln) < 6:
+            continue
+        if SECTION_RE.match(ln):
+            continue
+        if re.fullmatch(r"[\d\.\-]+", ln):
+            continue
+        heading = ln[:140]
+        break
+
+    return section, table, diagram, heading
+
+
+def _index_cache_paths(pdf_path: Path) -> Dict[str, Path]:
+    fp = _pdf_fingerprint(pdf_path)
+    return {
+        "meta": CACHE_DIR / f"meta_{fp}.json",
+        "chunks": CACHE_DIR / f"chunks_{fp}.jsonl",
+        "emb": CACHE_DIR / f"embed_{fp}.jsonl",
+    }
+
+
+def _load_index_from_cache(pdf_path: Path) -> bool:
     pdf_name = pdf_path.name
+    paths = _index_cache_paths(pdf_path)
+    meta_path = paths["meta"]
+    chunks_path = paths["chunks"]
+
+    if not meta_path.exists() or not chunks_path.exists():
+        return False
+
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if meta.get("pdf_name") != pdf_name:
+            return False
+
+        df = Counter(meta.get("df", {}))
+        avgdl = float(meta.get("avgdl", 0.0))
+        pages = int(meta.get("pages", 0))
+
+        chunks: List[Chunk] = []
+        with chunks_path.open("r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                obj = json.loads(line)
+                chunks.append(
+                    Chunk(
+                        doc=obj["doc"],
+                        page=int(obj["page"]),
+                        chunk_id=obj["chunk_id"],
+                        text=obj["text"],
+                        tf=Counter(obj.get("tf", {})),
+                        length=int(obj.get("length", 0)),
+                        section=obj.get("section", "") or "",
+                        heading=obj.get("heading", "") or "",
+                        table=obj.get("table", "") or "",
+                        diagram=obj.get("diagram", "") or "",
+                    )
+                )
+
+        CHUNK_INDEX[pdf_name] = {
+            "chunks": chunks,
+            "df": df,
+            "avgdl": avgdl,
+            "N": len(chunks),
+            "pages": pages,
+            "fingerprint": meta.get("fingerprint", ""),
+        }
+        return True
+    except Exception:
+        return False
+
+
+def _save_index_to_cache(pdf_path: Path, idx: Dict[str, Any]) -> None:
+    paths = _index_cache_paths(pdf_path)
+    meta_path = paths["meta"]
+    chunks_path = paths["chunks"]
+
+    try:
+        df: Counter = idx["df"]
+        meta = {
+            "pdf_name": pdf_path.name,
+            "fingerprint": _pdf_fingerprint(pdf_path),
+            "pages": int(idx.get("pages", 0)),
+            "avgdl": float(idx.get("avgdl", 0.0)),
+            "df": dict(df),
+        }
+        meta_path.write_text(json.dumps(meta), encoding="utf-8")
+
+        with chunks_path.open("w", encoding="utf-8") as f:
+            for c in idx["chunks"]:
+                f.write(
+                    json.dumps(
+                        {
+                            "doc": c.doc,
+                            "page": c.page,
+                            "chunk_id": c.chunk_id,
+                            "text": c.text,
+                            "tf": dict(c.tf),
+                            "length": c.length,
+                            "section": c.section,
+                            "heading": c.heading,
+                            "table": c.table,
+                            "diagram": c.diagram,
+                        }
+                    )
+                    + "\n"
+                )
+    except Exception:
+        pass
+
+
+def index_pdf_to_chunks(pdf_path: Path) -> None:
+    pdf_name = pdf_path.name
+
+    if _load_index_from_cache(pdf_path):
+        return
+
     doc = fitz.open(pdf_path)
     chunks: List[Chunk] = []
     df = Counter()
+
+    last_section = ""
+    last_table = ""
+    last_diagram = ""
+    last_heading = ""
 
     try:
         for i in range(doc.page_count):
@@ -331,21 +682,36 @@ def index_pdf_to_chunks(pdf_path: Path) -> None:
             raw = doc.load_page(i).get_text("text") or ""
             raw = clean_text(raw)
 
-            # Split page into smaller chunks
+            section, table, diagram, heading = _detect_context_lines(raw)
+            if section:
+                last_section = section
+            if table:
+                last_table = table
+            if diagram:
+                last_diagram = diagram
+            if heading:
+                last_heading = heading
+
             page_chunks = _split_into_chunks(raw, CHUNK_TARGET_CHARS, CHUNK_OVERLAP_CHARS)
             for j, ch in enumerate(page_chunks):
                 toks = tokenize(ch)
                 tf = Counter(toks)
                 df.update(set(tf.keys()))
-                cid = _hash_id(f"{pdf_name}|p{page_no}|{j}|{ch[:80]}")
-                chunks.append(Chunk(
-                    doc=pdf_name,
-                    page=page_no,
-                    chunk_id=cid,
-                    text=ch,
-                    tf=tf,
-                    length=len(toks)
-                ))
+                cid = _hash_id(f"{pdf_name}|p{page_no}|{j}|{ch[:100]}")
+                chunks.append(
+                    Chunk(
+                        doc=pdf_name,
+                        page=page_no,
+                        chunk_id=cid,
+                        text=ch,
+                        tf=tf,
+                        length=len(toks),
+                        section=last_section,
+                        heading=last_heading,
+                        table=last_table,
+                        diagram=last_diagram,
+                    )
+                )
 
         avgdl = (sum(c.length for c in chunks) / len(chunks)) if chunks else 0.0
         CHUNK_INDEX[pdf_name] = {
@@ -353,8 +719,12 @@ def index_pdf_to_chunks(pdf_path: Path) -> None:
             "df": df,
             "avgdl": avgdl,
             "N": len(chunks),
-            "pages": doc.page_count
+            "pages": doc.page_count,
+            "fingerprint": _pdf_fingerprint(pdf_path),
         }
+
+        _save_index_to_cache(pdf_path, CHUNK_INDEX[pdf_name])
+
     finally:
         doc.close()
 
@@ -367,7 +737,136 @@ def ensure_chunk_indexed(pdf_name: str) -> None:
         index_pdf_to_chunks(p)
 
 
+def _cosine(a: List[float], b: List[float]) -> float:
+    dot = 0.0
+    na = 0.0
+    nb = 0.0
+    L = min(len(a), len(b))
+    for i in range(L):
+        x = float(a[i])
+        y = float(b[i])
+        dot += x * y
+        na += x * x
+        nb += y * y
+    if na <= 0.0 or nb <= 0.0:
+        return 0.0
+    return dot / ((na ** 0.5) * (nb ** 0.5))
+
+
+def _embed_cache_path(pdf_name: str) -> Path:
+    p = PDF_DIR / pdf_name
+    fp = _pdf_fingerprint(p) if p.exists() else _hash_id(pdf_name)
+    return CACHE_DIR / f"embed_{fp}.jsonl"
+
+
+def _load_embeddings(pdf_name: str) -> None:
+    if pdf_name in EMBED_INDEX:
+        return
+    path = _embed_cache_path(pdf_name)
+    if not path.exists():
+        return
+    try:
+        vectors: Dict[str, List[float]] = {}
+        dim = 0
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                obj = json.loads(line)
+                cid = obj["chunk_id"]
+                vec = obj["vec"]
+                if isinstance(vec, list) and vec:
+                    vectors[cid] = vec
+                    dim = max(dim, len(vec))
+        if vectors:
+            EMBED_INDEX[pdf_name] = {"vectors": vectors, "dim": dim}
+    except Exception:
+        return
+
+
+def _save_embeddings(pdf_name: str, vectors: Dict[str, List[float]]) -> None:
+    try:
+        path = _embed_cache_path(pdf_name)
+        with path.open("w", encoding="utf-8") as f:
+            for cid, vec in vectors.items():
+                f.write(json.dumps({"chunk_id": cid, "vec": vec}) + "\n")
+    except Exception:
+        pass
+
+
+def _ensure_embeddings(pdf_name: str) -> None:
+    ensure_vertex_ready()
+    if not _VERTEX_READY:
+        return
+    if not EMBED_ENABLED or _EMBED_MODEL is None:
+        return
+
+    ensure_chunk_indexed(pdf_name)
+    _load_embeddings(pdf_name)
+    if pdf_name in EMBED_INDEX and EMBED_INDEX[pdf_name].get("vectors"):
+        return
+
+    idx = CHUNK_INDEX.get(pdf_name)
+    if not idx:
+        return
+
+    chunks: List[Chunk] = idx["chunks"]
+    texts = [c.text[:1800] for c in chunks]
+    vectors: Dict[str, List[float]] = {}
+
+    try:
+        for start in range(0, len(texts), EMBED_BATCH):
+            batch = texts[start:start + EMBED_BATCH]
+            embs = _EMBED_MODEL.get_embeddings(batch)  # type: ignore
+            for j, e in enumerate(embs):
+                vec = list(getattr(e, "values", []) or [])
+                if vec:
+                    cid = chunks[start + j].chunk_id
+                    vectors[cid] = vec
+    except Exception:
+        return
+
+    if vectors:
+        EMBED_INDEX[pdf_name] = {"vectors": vectors, "dim": len(next(iter(vectors.values())))}
+        _save_embeddings(pdf_name, vectors)
+
+
+def _vector_candidates(question: str, pdf_name: str, top_k: int = EMBED_TOPK) -> List[str]:
+    ensure_vertex_ready()
+    if not _VERTEX_READY:
+        return []
+    if not EMBED_ENABLED or _EMBED_MODEL is None:
+        return []
+
+    _ensure_embeddings(pdf_name)
+    _load_embeddings(pdf_name)
+
+    vstore = EMBED_INDEX.get(pdf_name, {}).get("vectors", {})
+    if not vstore:
+        return []
+
+    try:
+        qv = _EMBED_MODEL.get_embeddings([question])[0]  # type: ignore
+        qvec = list(getattr(qv, "values", []) or [])
+        if not qvec:
+            return []
+    except Exception:
+        return []
+
+    scored: List[Tuple[float, str]] = []
+    for cid, vec in vstore.items():
+        scored.append((_cosine(qvec, vec), cid))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [cid for _, cid in scored[:top_k]]
+
+
 def search_chunks(question: str, top_k: int = TOP_K_CHUNKS, pinned_pdf: Optional[str] = None) -> List[Chunk]:
+    """
+    Retrieval:
+      - BM25 everywhere
+      - If embeddings exist: boost vector candidates so they rise naturally
+    """
     pdfs = list_pdfs()
     if not pdfs:
         return []
@@ -376,15 +875,19 @@ def search_chunks(question: str, top_k: int = TOP_K_CHUNKS, pinned_pdf: Optional
     if not qt:
         return []
 
-    candidates: List[Chunk] = []
-
     search_space = [pinned_pdf] if pinned_pdf and pinned_pdf in pdfs else pdfs
+    candidates: List[Tuple[float, Chunk]] = []
 
     for pdf_name in search_space:
         ensure_chunk_indexed(pdf_name)
         idx = CHUNK_INDEX.get(pdf_name)
         if not idx:
             continue
+
+        vector_ids: List[str] = []
+        if EMBED_ENABLED and _VERTEX_EMBEDDINGS_AVAILABLE:
+            vector_ids = _vector_candidates(question, pdf_name, top_k=EMBED_TOPK)
+        vector_set = set(vector_ids)
 
         df = idx["df"]
         N = idx["N"]
@@ -393,34 +896,72 @@ def search_chunks(question: str, top_k: int = TOP_K_CHUNKS, pinned_pdf: Optional
         scored: List[Tuple[float, Chunk]] = []
         for ch in idx["chunks"]:
             s = bm25_score(qt, ch.tf, df, N, ch.length, avgdl)
+            if vector_set and ch.chunk_id in vector_set:
+                s += 2.5
             if s > 0:
                 scored.append((s, ch))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        candidates.extend([c for _, c in scored[: max(2, top_k)]])
 
-        # If pinned, don’t search other PDFs
+        take = max(24, top_k * 6)
+        candidates.extend(scored[:take])
+
         if pinned_pdf and pdf_name == pinned_pdf:
             break
 
-    # Global re-rank (simple): prefer higher BM25 + shorter chunks (more precise)
-    # We don’t have the scores here, so re-score quickly on a merged df is overkill.
-    # Instead: keep doc-local tops already; then just trim.
-    # (Good enough in practice with paragraph chunking.)
-    # De-dup by chunk_id.
+    candidates.sort(key=lambda x: x[0], reverse=True)
     seen = set()
-    uniq: List[Chunk] = []
-    for c in candidates:
+    out: List[Chunk] = []
+    for _, c in candidates:
         if c.chunk_id in seen:
             continue
         seen.add(c.chunk_id)
-        uniq.append(c)
+        out.append(c)
+        if len(out) >= max(24, top_k * 4):
+            break
+    return out
 
-    return uniq[:top_k]
+
+def dedupe_chunks_keep_order(chunks: List[Chunk]) -> List[Chunk]:
+    seen = set()
+    out: List[Chunk] = []
+    for c in chunks:
+        if c.chunk_id in seen:
+            continue
+        seen.add(c.chunk_id)
+        out.append(c)
+    return out
+
+
+def diversify_chunks(chunks: List[Chunk], max_docs: int, per_doc: int) -> List[Chunk]:
+    """
+    For broad questions, avoid one doc dominating. Keep up to max_docs and per_doc each.
+    """
+    by_doc: Dict[str, List[Chunk]] = defaultdict(list)
+    for c in chunks:
+        by_doc[c.doc].append(c)
+
+    doc_order = []
+    seen_docs = set()
+    for c in chunks:
+        if c.doc not in seen_docs:
+            seen_docs.add(c.doc)
+            doc_order.append(c.doc)
+
+    out: List[Chunk] = []
+    used_docs = 0
+    for d in doc_order:
+        if used_docs >= max_docs:
+            break
+        picked = by_doc[d][:per_doc]
+        if picked:
+            out.extend(picked)
+            used_docs += 1
+    return out
 
 
 # ============================================================
-# DOCAI SUPPORT (kept, but used as an extra source)
+# DOCAI SUPPORT
 # ============================================================
 
 def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
@@ -441,9 +982,6 @@ def _parse_range_from_chunk_filename(path: Path) -> Optional[Tuple[int, int]]:
 
 
 def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[str, str]]:
-    """
-    Returns list of (label, excerpt)
-    """
     files = _docai_chunk_files_for(pdf_name)
     if not files:
         return []
@@ -458,7 +996,6 @@ def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[st
         txt = f.read_text(encoding="utf-8", errors="ignore")
         toks = tokenize(txt)
         tf = Counter(toks)
-        # naive score
         overlap = sum(tf.get(t, 0) for t in qt)
         if overlap <= 0:
             continue
@@ -472,30 +1009,34 @@ def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[st
 
 
 # ============================================================
-# INTENT DETECTION
+# INTENT DETECTION + DOC TYPE SANITY
 # ============================================================
 
 COMPLIANCE_KEYWORDS = [
     "tgd", "technical guidance", "building regulations", "building regs",
-    "part a","part b","part c","part d","part e","part f","part g","part h",
-    "part j","part k","part l","part m",
-    "fire","escape","travel distance","compartment","smoke","fire cert",
-    "access","accessible","wheelchair","dac",
-    "ber","deap","u-value","y-value","airtight","thermal bridge",
+    "part a", "part b", "part c", "part d", "part e", "part f", "part g", "part h",
+    "part j", "part k", "part l", "part m",
+    "fire", "escape", "travel distance", "compartment", "smoke", "fire cert",
+    "access", "accessible", "wheelchair", "dac",
+    "ber", "deap", "u-value", "y-value", "airtight", "thermal bridge",
     "means of escape"
 ]
 
-PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
-
-NUMERIC_TRIGGERS = [
-    "minimum","maximum","min","max","limit",
-    "distance","width","height",
-    "u-value","y-value","rise","riser","going","pitch",
-    "stairs","stair","staircase","landing","headroom",
-    "travel distance"
+PLANNING_KEYWORDS = [
+    "planning", "planning permission", "part 8", "development plan", "planning and development",
+    "exempted development", "regulations", "statutory instrument", "s.i.", "site notice", "newspaper notice"
 ]
 
-NUM_WITH_UNIT_RE = re.compile(r"\b\d+(\.\d+)?\s*(mm|m|metre|meter|w/m²k|w\/m2k|%)\b", re.I)
+BER_KEYWORDS = ["ber", "deap", "primary energy", "renewable", "u-value", "y-value", "airtight", "thermal bridge", "mpep"]
+
+NUMERIC_TRIGGERS = [
+    "minimum", "maximum", "min", "max", "limit",
+    "distance", "width", "height",
+    "u-value", "y-value", "rise", "riser", "going", "pitch",
+    "stairs", "stair", "staircase", "landing", "headroom",
+    "travel distance",
+    "lux", "lumen", "lumens"
+]
 
 
 def is_compliance_question(q: str) -> bool:
@@ -503,6 +1044,16 @@ def is_compliance_question(q: str) -> bool:
     if PART_PATTERN.search(ql):
         return True
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
+
+
+def is_planning_question(q: str) -> bool:
+    ql = (q or "").lower()
+    return any(k in ql for k in PLANNING_KEYWORDS)
+
+
+def is_ber_question(q: str) -> bool:
+    ql = (q or "").lower()
+    return any(k in ql for k in BER_KEYWORDS)
 
 
 def is_numeric_compliance(q: str) -> bool:
@@ -520,23 +1071,49 @@ def auto_pin_pdf(question: str) -> Optional[str]:
                 return c
         return None
 
-    if any(w in q for w in ["stairs","stair","staircase","riser","going","pitch","headroom","handrail","balustrade","landing"]):
+    if is_planning_question(q):
+        return pick(["Planning and Development Regulations_June24.pdf"])
+
+    if any(w in q for w in ["stairs", "stair", "staircase", "riser", "going", "pitch", "headroom", "handrail", "balustrade", "landing"]):
         return pick(["Technical Guidance Document K.pdf", "TGD K.pdf"])
 
-    if any(w in q for w in ["access","accessible","wheelchair","ramp","dac","part m"]):
+    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac", "part m"]):
         return pick(["Technical Guidance Document M.pdf", "TGD M.pdf"])
 
-    if any(w in q for w in ["fire","escape","travel distance","means of escape","compartment","smoke"]):
+    if any(w in q for w in ["fire", "escape", "travel distance", "means of escape", "compartment", "smoke", "emergency lighting"]):
         return pick(["Technical Guidance Document B Dwellings.pdf", "Technical Guidance Document B Non Dwellings.pdf"])
 
-    if any(w in q for w in ["u-value","y-value","thermal","ber","deap","energy","nzeb","primary energy"]):
+    if any(w in q for w in ["u-value", "y-value", "thermal", "ber", "deap", "energy", "nzeb", "primary energy", "lighting controls"]):
         return pick(["Technical Guidance Document L Dwellings.pdf", "Technical Guidance Document L Non Dwellings.pdf"])
 
     return None
 
 
+def _doc_type_from_pdfname(name: str) -> str:
+    n = (name or "").lower()
+    if "planning and development" in n or "regulation" in n:
+        return "planning"
+    if "tgd" in n or "technical guidance" in n:
+        return "building_regs"
+    if "deap" in n or "ber" in n:
+        return "ber"
+    if any(x in n for x in ["part l", "part m", "part k", "part b"]):
+        return "building_regs"
+    return "general"
+
+
+def _question_family(q: str) -> str:
+    if is_planning_question(q):
+        return "planning"
+    if is_ber_question(q):
+        return "ber"
+    if is_compliance_question(q):
+        return "building_regs"
+    return "general"
+
+
 # ============================================================
-# WEB SEARCH (SERPER) — makes it “ChatGPT-like”
+# WEB SEARCH + FETCH + EXCERPT (allowlist + evidence) + CACHE
 # ============================================================
 
 async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, str]]:
@@ -544,9 +1121,9 @@ async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, st
         return []
     url = "https://google.serper.dev/search"
     headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
-    payload = {"q": query, "num": max(3, min(10, k))}
+    payload = {"q": query, "num": max(3, min(10, k * 2))}
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             r = await client.post(url, headers=headers, json=payload)
             r.raise_for_status()
             data = r.json()
@@ -554,26 +1131,212 @@ async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, st
         return []
 
     out: List[Dict[str, str]] = []
-    for item in (data.get("organic") or [])[:k]:
+    for item in (data.get("organic") or [])[: max(5, k * 2)]:
         title = (item.get("title") or "").strip()
         link = (item.get("link") or "").strip()
         snippet = (item.get("snippet") or "").strip()
         if link:
             out.append({"title": title, "url": link, "snippet": snippet})
+    return out[: max(5, k * 2)]
+
+
+def _html_to_text(html: str) -> str:
+    html = html or ""
+    html = re.sub(r"(?is)<script.*?>.*?</script>", " ", html)
+    html = re.sub(r"(?is)<style.*?>.*?</style>", " ", html)
+    html = re.sub(r"(?is)<[^>]+>", " ", html)
+    html = html.replace("&nbsp;", " ").replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
+    html = re.sub(r"\s+", " ", html).strip()
+    return html
+
+
+def _best_excerpts_from_text(q: str, text: str, max_paras: int = 4, max_chars: int = 2200) -> str:
+    text = clean_text(text)
+    if not text:
+        return ""
+
+    blocks: List[str] = []
+    buff = ""
+    for sentence in re.split(r"(?<=[\.\?\!])\s+", text):
+        if not sentence:
+            continue
+        if len(buff) + 1 + len(sentence) <= 700:
+            buff = (buff + " " + sentence).strip()
+        else:
+            if buff:
+                blocks.append(buff.strip())
+            buff = sentence.strip()
+        if len(blocks) >= 60:
+            break
+    if buff and len(blocks) < 60:
+        blocks.append(buff.strip())
+
+    qt = set(tokenize(q))
+    scored: List[Tuple[int, str]] = []
+    for b in blocks:
+        toks = tokenize(b)
+        overlap = sum(1 for t in toks if t in qt)
+        if overlap > 0:
+            scored.append((overlap, b))
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    picks = [b for _, b in scored[:max_paras]]
+    out = "\n\n".join(picks).strip()
+    if len(out) > max_chars:
+        out = out[:max_chars] + "..."
     return out
 
 
+def _web_cache_key(url: str) -> str:
+    return hashlib.sha1(url.encode("utf-8", errors="ignore")).hexdigest()[:16]
+
+
+def _web_cache_path(url: str) -> Path:
+    return WEB_CACHE_DIR / f"{_web_cache_key(url)}.json"
+
+
+def _load_web_cache(url: str) -> Optional[Dict[str, Any]]:
+    try:
+        p = _web_cache_path(url)
+        if not p.exists():
+            return None
+        obj = json.loads(p.read_text(encoding="utf-8"))
+        ts = float(obj.get("ts", 0))
+        if time.time() - ts > WEB_CACHE_TTL_SECONDS:
+            return None
+        return obj
+    except Exception:
+        return None
+
+
+def _save_web_cache(url: str, content_type: str, text: str) -> None:
+    try:
+        p = _web_cache_path(url)
+        p.write_text(json.dumps({"ts": time.time(), "content_type": content_type, "text": text}), encoding="utf-8")
+    except Exception:
+        pass
+
+
+async def _fetch_one_web(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str, str]:
+    # Never throw; always return a tuple.
+    try:
+        if not _safe_url(url) or not _allowed_url(url):
+            return ("SKIP", url, "", "")
+        resp = await client.get(url, headers={"User-Agent": "RaheemAI/1.0"})
+        if resp.status_code >= 400:
+            return ("HTTP", url, "", "")
+        ct = (resp.headers.get("content-type") or "")
+        return ("FETCH", url, ct, resp.text or "")
+    except Exception:
+        return ("ERR", url, "", "")
+
+
+async def web_fetch_and_excerpt(query: str, results: List[Dict[str, str]], max_items: int = TOP_K_WEB) -> List[Dict[str, str]]:
+    if not WEB_ENABLED:
+        return []
+
+    allowed = [r for r in results if _allowed_url(r.get("url", ""))]
+    allowed = allowed[:max_items]
+
+    out: List[Dict[str, str]] = []
+    if not allowed:
+        return out
+
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=True) as client:
+        tasks = []
+        for r in allowed:
+            url = r["url"]
+            cached = _load_web_cache(url)
+            if cached and isinstance(cached.get("text"), str):
+                tasks.append(asyncio.sleep(0, result=("CACHED", url, cached.get("content_type", ""), cached["text"])))
+            else:
+                tasks.append(_fetch_one_web(client, url))
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for r, resp in zip(allowed, responses):
+        if isinstance(resp, Exception):
+            continue
+        try:
+            kind, url, ct, raw_text = resp
+            if not raw_text:
+                continue
+            if "text/html" not in (ct or "").lower() and "text/plain" not in (ct or "").lower():
+                continue
+
+            txt = _html_to_text(raw_text) if "text/html" in (ct or "").lower() else clean_text(raw_text)
+            excerpt = _best_excerpts_from_text(query, txt)
+            if not excerpt:
+                continue
+
+            out.append({"title": r.get("title", "").strip(), "url": url.strip(), "excerpt": excerpt})
+
+            if kind != "CACHED":
+                _save_web_cache(url, ct, raw_text)
+
+        except Exception:
+            continue
+
+    return out[:max_items]
+
+
 # ============================================================
-# PROMPTS — rebuilt to behave like “ChatGPT + citations”
+# RULES LAYER (top checks)
+# ============================================================
+
+_RULES: List[Dict[str, Any]] = []
+
+
+def _load_rules() -> None:
+    global _RULES
+    if _RULES:
+        return
+    if not RULES_ENABLED:
+        _RULES = []
+        return
+    try:
+        if RULES_FILE.exists():
+            _RULES = json.loads(RULES_FILE.read_text(encoding="utf-8"))
+        else:
+            _RULES = []
+    except Exception:
+        _RULES = []
+
+
+def _match_rules(user_msg: str) -> List[Dict[str, Any]]:
+    _load_rules()
+    if not _RULES:
+        return []
+
+    q = (user_msg or "").lower()
+    hits: List[Tuple[int, Dict[str, Any]]] = []
+    for rule in _RULES:
+        kws = [str(k).lower() for k in (rule.get("keywords") or []) if str(k).strip()]
+        if not kws:
+            continue
+        score = 0
+        for k in kws:
+            if k in q:
+                score += 1
+        if score > 0:
+            hits.append((score, rule))
+
+    hits.sort(key=lambda x: x[0], reverse=True)
+    return [r for _, r in hits[:3]]
+
+
+# ============================================================
+# PROMPTS (ChatGPT-like style + broad/precise controller)
 # ============================================================
 
 SYSTEM_PROMPT_NORMAL = """
 You are Raheem AI.
 
-Write like a top-tier assistant:
-- Clear, direct, and helpful.
-- Use Markdown when it improves readability (headings, bullets, short tables).
-- If you are unsure, say so and explain what would confirm it.
+Write like ChatGPT:
+- Default to natural paragraphs (not bullet points).
+- Start with a direct answer sentence.
+- Use bullets only when listing is clearly needed.
+- If the user's question is broad or ambiguous: cover the main interpretations *that match the user's words*,
+  and end with ONE focused follow-up question.
 
 If the user asks about Irish building regulations / TGDs, prefer evidence from supplied SOURCES.
 If web sources are used, cite them as URLs.
@@ -582,21 +1345,48 @@ If web sources are used, cite them as URLs.
 SYSTEM_PROMPT_EVIDENCE = """
 You are Raheem AI in Evidence Mode.
 
-Rules:
-1) You MUST only assert numeric compliance limits (mm, m, %, W/m²K, etc.) if the exact number + unit appears in the provided SOURCES.
-2) When you give a numeric limit, include a short quote (1–2 lines) copied from SOURCES that contains that number.
-3) For each requirement you state, cite the evidence using:
-   - For PDFs: (Document: <name>, p.<page>)
-   - For web: (URL)
-4) If the SOURCES do not contain the exact limit, say you cannot confirm it from the current evidence.
+Style:
+- Write like ChatGPT: natural paragraphs first.
+- Only use bullet points if it truly improves clarity.
+- Start with a direct answer sentence.
 
-Output style:
-- Use Markdown.
-- Be concise but complete.
+Hard rules:
+1) Only assert numeric compliance limits (mm, m, %, W/m²K, lux, etc.) if the exact number + unit appears in SOURCES.
+2) When you give a numeric limit, include a short quote (1–2 lines) copied from SOURCES that contains that number.
+3) Cite evidence:
+   - PDFs: (Document: <name>, Section: <section> OR Table: <table> OR p.<page>)
+   - Web: (URL)
+4) If SOURCES do not contain the exact limit, say you cannot confirm it from current evidence and ask ONE focused follow-up.
+
+Write in Markdown, but keep it conversational.
+""".strip()
+
+RERANK_PROMPT = """
+You are a strict reranker for compliance evidence.
+
+You will be given:
+- USER_QUESTION
+- CANDIDATES: a JSON array of objects with fields {id, doc, page, section, heading, table, text}
+
+Return ONLY valid JSON:
+{
+  "ranked_ids": ["id1","id2",...]
+}
+
+Rules:
+- Put the most directly relevant candidates first.
+- Prefer candidates that contain numeric limits or clear requirement statements relevant to the question.
+- Prefer candidates that mention a matching Part/TGD topic.
+- Keep output to at most 12 ids.
 """.strip()
 
 
-def build_contents(history: List[Dict[str, str]], user_message: str, sources_block: str) -> List[Content]:
+def build_contents(history: List[Dict[str, str]], user_message: str, sources_block: str, precision: str) -> List[Content]:
+    """
+    Adds a small controller hint:
+    - broad => cover all key topics user mentioned + one follow-up
+    - precise => answer only what was asked
+    """
     contents: List[Content] = []
     for m in history or []:
         r = (m.get("role") or "").lower().strip()
@@ -609,32 +1399,255 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
             contents.append(Content(role="model", parts=[Part.from_text(c)]))
 
     final_user = (user_message or "").strip()
+
+    if precision == "broad":
+        controller = (
+            "\n\n[CONTROLLER]\n"
+            "The user question is BROAD. Cover the main interpretations that match the user's words, "
+            "and make sure you address EACH key topic mentioned by the user. "
+            "Keep it in paragraphs. End with ONE focused follow-up.\n"
+        )
+    elif precision == "precise":
+        controller = (
+            "\n\n[CONTROLLER]\n"
+            "The user question is PRECISE. Answer ONLY what was asked. "
+            "Do not expand into unrelated topics.\n"
+        )
+    else:
+        controller = (
+            "\n\n[CONTROLLER]\n"
+            "The user question is MIXED. Answer the core request, and only mention adjacent points "
+            "if they are directly implied.\n"
+        )
+
     if sources_block.strip():
-        final_user += "\n\nSOURCES:\n" + sources_block.strip()
+        final_user += controller + "\nSOURCES:\n" + sources_block.strip()
+    else:
+        final_user += controller
 
     contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
     return contents
 
 
-def build_sources_block(chunks: List[Chunk], web_results: List[Dict[str, str]], docai_hits: List[Tuple[str, str]]) -> str:
+def _format_pdf_citation(c: Chunk) -> str:
+    bits = [f"Document: {c.doc}"]
+    if c.section:
+        bits.append(f"Section: {c.section}")
+    elif c.table:
+        bits.append(f"Table: {c.table}")
+    else:
+        bits.append(f"p.{c.page}")
+    return "(" + ", ".join(bits) + ")"
+
+
+def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950) -> str:
+    """
+    Evidence pack builder (query-driven):
+    - keep only the most relevant lines/sentences
+    - boost numeric + requirement statements
+    """
+    text = clean_text(c.text)
+    if not text:
+        return ""
+
+    qt = set(tokenize(query))
+
+    meta = []
+    if c.heading:
+        meta.append(f"Heading: {c.heading}")
+    if c.section:
+        meta.append(f"Section: {c.section}")
+    if c.table:
+        meta.append(f"Table: {c.table}")
+    if c.diagram:
+        meta.append(f"Diagram: {c.diagram}")
+    meta_line = (" | ".join(meta)).strip()
+
+    lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
+    sents = re.split(r"(?<=[\.\?\!])\s+", text)
+
+    def score_piece(p: str) -> int:
+        toks = tokenize(p)
+        overlap = sum(1 for t in toks if t in qt)
+        if NUM_WITH_UNIT_RE.search(p):
+            overlap += 6
+        if re.search(r"\b(must|shall|required|requirement)\b", p, re.I):
+            overlap += 2
+        return overlap
+
+    scored: List[Tuple[int, str]] = []
+    for p in (lines[:140] + sents):
+        p = p.strip()
+        if not p or len(p) < 12:
+            continue
+        sc = score_piece(p)
+        if sc > 0:
+            scored.append((sc, p))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    picks: List[str] = [p for _, p in scored[:6]]
+
+    if not picks and NUM_WITH_UNIT_RE.search(text):
+        picks = [text[:max_chars]]
+
+    out = "\n".join(picks).strip()
+    if len(out) > max_chars:
+        out = out[:max_chars] + "..."
+
+    if meta_line:
+        return meta_line + "\n" + out
+    return out
+
+
+def build_sources_block(
+    chunks: List[Chunk],
+    web_pages: List[Dict[str, str]],
+    docai_hits: List[Tuple[str, str]],
+    user_query: str,
+    precision: str
+) -> str:
     parts: List[str] = []
+
+    # Keep evidence shorter for broad questions to reduce bullet-y responses
+    max_chars = 650 if precision == "broad" else 950
 
     if chunks:
         parts.append("PDF EVIDENCE:")
         for c in chunks:
-            parts.append(f"[PDF] {c.doc} | p.{c.page} | id:{c.chunk_id}\n{c.text}")
+            excerpt = _tighten_chunk_text_for_evidence(c, query=user_query, max_chars=max_chars) or clean_text(c.text)[:max_chars]
+            parts.append(f"[PDF] {_format_pdf_citation(c)} | id:{c.chunk_id}\n{excerpt}")
 
     if docai_hits:
         parts.append("\nDOC.AI EVIDENCE (raw extraction, use carefully):")
         for label, text in docai_hits:
-            parts.append(f"[DOCAI] {label}\n{text}")
+            t = clean_text(text)
+            if len(t) > 1800:
+                t = t[:1800] + "..."
+            parts.append(f"[DOCAI] {label}\n{t}")
 
-    if web_results:
+    if web_pages:
         parts.append("\nWEB EVIDENCE:")
-        for i, w in enumerate(web_results, start=1):
-            parts.append(f"[WEB {i}] {w.get('title','').strip()}\nURL: {w.get('url','').strip()}\n{w.get('snippet','').strip()}")
+        for i, w in enumerate(web_pages, start=1):
+            parts.append(
+                f"[WEB {i}] {w.get('title','').strip()}\n"
+                f"URL: {w.get('url','').strip()}\n"
+                f"{clean_text(w.get('excerpt',''))}"
+            )
 
-    return "\n\n".join(parts).strip()
+    return "\n\n".join([p for p in parts if p]).strip()
+
+
+# ============================================================
+# RERANK (LLM)
+# ============================================================
+
+async def _rerank_candidates(user_msg: str, cands: List[Chunk], max_keep: int = RERANK_TOPK) -> List[Chunk]:
+    if not RERANK_ENABLED or not cands:
+        return cands[:max_keep]
+
+    ensure_vertex_ready()
+    if not _VERTEX_READY:
+        return cands[:max_keep]
+
+    small = cands[: min(len(cands), 18)]
+    payload = []
+    for c in small:
+        payload.append({
+            "id": c.chunk_id,
+            "doc": c.doc,
+            "page": c.page,
+            "section": c.section,
+            "heading": c.heading,
+            "table": c.table,
+            "text": (c.text[:900] if c.text else "")
+        })
+
+    model = get_model(MODEL_COMPLIANCE, RERANK_PROMPT)
+    inp = "USER_QUESTION:\n" + user_msg.strip() + "\n\nCANDIDATES:\n" + json.dumps(payload)
+    try:
+        resp = model.generate_content(
+            [Content(role="user", parts=[Part.from_text(inp)])],
+            generation_config=GenerationConfig(temperature=0.1, top_p=0.6, max_output_tokens=300),
+            stream=False
+        )
+        raw = (getattr(resp, "text", "") or "").strip()
+        m = re.search(r"\{.*\}", raw, re.S)
+        if m:
+            raw = m.group(0)
+        data = json.loads(raw)
+        ranked_ids = [x for x in (data.get("ranked_ids") or []) if isinstance(x, str)]
+        if not ranked_ids:
+            return small[:max_keep]
+        by_id = {c.chunk_id: c for c in small}
+        ranked = [by_id[i] for i in ranked_ids if i in by_id]
+        seen = set(r.chunk_id for r in ranked)
+        for c in small:
+            if c.chunk_id not in seen:
+                ranked.append(c)
+            if len(ranked) >= max_keep:
+                break
+        return ranked[:max_keep]
+    except Exception:
+        return small[:max_keep]
+
+
+# ============================================================
+# HARD NUMERIC VERIFIER (server-enforced)
+# ============================================================
+
+def _sources_text_blob_for_verification(
+    pdf_chunks: List[Chunk],
+    docai_hits: List[Tuple[str, str]],
+    web_pages: List[Dict[str, str]]
+) -> str:
+    parts: List[str] = []
+    for c in pdf_chunks or []:
+        parts.append(clean_text(c.text))
+    for _, t in docai_hits or []:
+        parts.append(clean_text(t))
+    for w in web_pages or []:
+        parts.append(clean_text(w.get("excerpt", "")))
+    return "\n\n".join([p for p in parts if p]).lower()
+
+
+def _contains_exact_numeric_from_answer(answer: str) -> List[str]:
+    hits = []
+    for m in NUM_WITH_UNIT_RE.finditer(answer or ""):
+        hits.append(m.group(0).strip())
+    seen = set()
+    out = []
+    for h in hits:
+        k = h.lower()
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(h)
+    return out
+
+
+def _hard_verify_numeric(answer: str, sources_blob_lower: str) -> Tuple[bool, str]:
+    nums = _contains_exact_numeric_from_answer(answer or "")
+    if not nums:
+        return True, answer
+
+    if not VERIFY_NUMERIC:
+        return True, answer
+
+    missing = []
+    for n in nums:
+        if n.lower() not in (sources_blob_lower or ""):
+            missing.append(n)
+
+    if not missing:
+        return True, answer
+
+    safe = (
+        "I can’t safely confirm those numeric values from the evidence I have available right now.\n\n"
+        "If you tell me which exact document/edition to use (or upload it), I’ll quote the exact line containing the number.\n\n"
+        "Numbers I’m refusing because they are not present in the current evidence: "
+        + ", ".join(missing)
+    )
+    return False, safe
 
 
 # ============================================================
@@ -684,14 +1697,20 @@ def upload_pdf(file: UploadFile = File(...)):
     with open(dest, "wb") as f:
         f.write(raw)
 
-    # Clear indexes
+    # Clear indexes for this file
     CHUNK_INDEX.pop(dest.name, None)
+    EMBED_INDEX.pop(dest.name, None)
 
-    # Build chunk index immediately (fast enough for TGDs)
     try:
         index_pdf_to_chunks(dest)
     except Exception as e:
-        return JSONResponse({"ok": False, "error": f"Indexed failed: {repr(e)}"}, status_code=500)
+        return JSONResponse({"ok": False, "error": f"Index failed: {repr(e)}"}, status_code=500)
+
+    try:
+        if EMBED_ENABLED:
+            _ensure_embeddings(dest.name)
+    except Exception:
+        pass
 
     # Optional: DocAI parse
     docai_ok = False
@@ -716,6 +1735,8 @@ def upload_pdf(file: UploadFile = File(...)):
         "stored_as": dest.name,
         "pdf_count": len(list_pdfs()),
         "indexed_chunks": CHUNK_INDEX.get(dest.name, {}).get("N", 0),
+        "embeddings_ready": bool(EMBED_INDEX.get(dest.name, {}).get("vectors")) if dest.name in EMBED_INDEX else False,
+        "web_enabled": WEB_ENABLED,
         "docai": {
             "attempted": bool(_DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text),
             "ok": docai_ok,
@@ -754,11 +1775,65 @@ def health():
         "docai_processor_id_present": bool((os.getenv("DOCAI_PROCESSOR_ID") or "").strip()),
         "docai_location_present": bool((os.getenv("DOCAI_LOCATION") or "").strip()),
         "web_enabled": WEB_ENABLED,
+        "web_allowlist": WEB_ALLOWLIST,
+        "embed_enabled": bool(EMBED_ENABLED and _EMBED_MODEL is not None),
+        "rerank_enabled": bool(RERANK_ENABLED),
+        "verify_numeric": bool(VERIFY_NUMERIC),
+        "rules_enabled": bool(RULES_ENABLED and RULES_FILE.exists()),
+        "web_cache_ttl_seconds": WEB_CACHE_TTL_SECONDS,
     }
 
 
 # ============================================================
-# STREAMING CORE
+# EVAL HARNESS
+# ============================================================
+
+async def _ask_once(user_msg: str, evidence_mode: bool) -> str:
+    ensure_vertex_ready()
+    if not _VERTEX_READY:
+        return "Vertex not ready"
+
+    model = get_model(
+        MODEL_COMPLIANCE if evidence_mode else MODEL_CHAT,
+        SYSTEM_PROMPT_EVIDENCE if evidence_mode else SYSTEM_PROMPT_NORMAL
+    )
+    resp = model.generate_content(
+        [Content(role="user", parts=[Part.from_text(user_msg)])],
+        generation_config=get_generation_config(evidence_mode),
+        stream=False
+    )
+    return (getattr(resp, "text", "") or "").strip()
+
+
+@app.post("/eval")
+async def eval_run(payload: Dict[str, Any] = Body(default={})):
+    try:
+        tests = payload.get("tests")
+        if not isinstance(tests, list):
+            if EVAL_FILE.exists():
+                tests = json.loads(EVAL_FILE.read_text(encoding="utf-8"))
+            else:
+                tests = []
+        tests = tests[:50]
+
+        started = time.time()
+        outs = []
+        for t in tests:
+            q = (t.get("q") or "").strip()
+            if not q:
+                continue
+            fam = (t.get("family") or "").strip() or _question_family(q)
+            evidence = fam in ("building_regs", "planning", "ber")
+            ans = await _ask_once(q, evidence_mode=evidence)
+            outs.append({"q": q, "family": fam, "answer": ans[:1200]})
+        elapsed = time.time() - started
+        return {"ok": True, "count": len(outs), "seconds": elapsed, "samples": outs}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": repr(e)}, status_code=500)
+
+
+# ============================================================
+# STREAMING CORE (broad coverage + style + doc diversity + safer web)
 # ============================================================
 
 async def _stream_answer_async(
@@ -769,9 +1844,6 @@ async def _stream_answer_async(
     page_hint: Optional[int],
     messages: Optional[List[Dict[str, Any]]] = None
 ):
-    """
-    Async generator for SSE.
-    """
     try:
         user_msg = (message or "").strip()
         if not user_msg:
@@ -795,42 +1867,127 @@ async def _stream_answer_async(
                 remember(chat_id, "user", user_msg)
                 history_for_prompt = get_history(chat_id)
 
-        # Decide modes
-        evidence_mode = force_docs or DEFAULT_EVIDENCE_MODE or is_compliance_question(user_msg)
-        numeric_needed = is_numeric_compliance(user_msg)
+        fam = _question_family(user_msg)
+        precision = question_precision(user_msg)
+
+        evidence_mode = force_docs or DEFAULT_EVIDENCE_MODE or fam in ("building_regs", "planning", "ber")
+        numeric_needed = is_numeric_compliance(user_msg) and fam == "building_regs"
 
         pinned = pdf or auto_pin_pdf(user_msg)
 
-        # Retrieve PDF evidence
-        chunks: List[Chunk] = []
-        if list_pdfs():
-            chunks = search_chunks(user_msg, top_k=TOP_K_CHUNKS, pinned_pdf=pinned)
+        # Rules first
+        rules_hit = _match_rules(user_msg) if RULES_ENABLED else []
+        if rules_hit:
+            rule = rules_hit[0]
+            ans = (rule.get("answer") or "").strip()
+            quote = (rule.get("quote") or "").strip()
+            cit = rule.get("citation") or {}
 
-        # Optional DocAI hits (extra)
-        docai_hits: List[Tuple[str, str]] = []
-        if pinned and _docai_chunk_files_for(pinned):
-            docai_hits = docai_search_text(pinned, user_msg, k=2)
+            rendered = ans
+            if quote:
+                rendered += "\n\n> " + quote
+            if cit:
+                bits = []
+                if cit.get("doc"):
+                    bits.append(f"Document: {cit.get('doc')}")
+                if cit.get("section"):
+                    bits.append(f"Section: {cit.get('section')}")
+                if cit.get("table"):
+                    bits.append(f"Table: {cit.get('table')}")
+                if bits:
+                    rendered += "\n\n(" + ", ".join(bits) + ")"
 
-        # Web evidence (only if enabled and either non-compliance question OR no good PDF evidence)
-        web_results: List[Dict[str, str]] = []
-        if WEB_ENABLED and WEB_ENABLED and WEB_ENABLED:
-            if (not evidence_mode) or (evidence_mode and not chunks and not numeric_needed):
-                web_results = await web_search_serper(user_msg, k=TOP_K_WEB)
+            if chat_id:
+                remember(chat_id, "assistant", rendered)
+            yield f"data: {rendered.replace(chr(10),'\\\\n')}\n\n"
+            yield "event: done\ndata: ok\n\n"
+            return
 
-        sources_block = build_sources_block(chunks, web_results, docai_hits)
+        async def get_pdf_chunks() -> List[Chunk]:
+            if not list_pdfs():
+                return []
 
-        # HARD safety rule: numeric compliance requires numeric evidence in SOURCES
-        if numeric_needed:
-            if not chunks and not docai_hits:
-                refusal = (
-                    "I can’t confirm the exact numeric requirement yet because I don’t have any relevant TGD evidence loaded for this question.\n\n"
-                    "Upload the relevant TGD (or tell me which one), and I’ll quote the exact line containing the number."
+            # Broad: topic expansion + dedupe + rerank + doc diversity
+            if precision == "broad":
+                topics = detect_topic_keys(user_msg)
+                queries = [user_msg] + intent_queries_for_topics(user_msg, topics)
+                queries = queries[: max(1, BROAD_MAX_SUBQUERIES)]
+
+                collected: List[Chunk] = []
+                for q in queries:
+                    collected.extend(search_chunks(q, top_k=max(TOP_K_CHUNKS, 8), pinned_pdf=pinned))
+
+                collected = dedupe_chunks_keep_order(collected)
+
+                if RERANK_ENABLED and collected:
+                    collected = await _rerank_candidates(user_msg, collected, max_keep=max(RERANK_TOPK, 10))
+
+                collected = diversify_chunks(
+                    collected,
+                    max_docs=max(1, BROAD_DOC_DIVERSITY_K),
+                    per_doc=max(1, BROAD_TOPIC_HITS_K),
+                )
+                return collected[: max(RERANK_TOPK, 10)]
+
+            # Precise/mixed: normal
+            cands = search_chunks(user_msg, top_k=TOP_K_CHUNKS, pinned_pdf=pinned)
+            if RERANK_ENABLED and cands:
+                cands = await _rerank_candidates(user_msg, cands, max_keep=RERANK_TOPK)
+            return cands[:RERANK_TOPK]
+
+        async def get_docai_hits() -> List[Tuple[str, str]]:
+            if not pinned:
+                return []
+            if not _docai_chunk_files_for(pinned):
+                return []
+            return docai_search_text(pinned, user_msg, k=3 if precision == "broad" else 2)
+
+        async def get_web_evidence() -> List[Dict[str, str]]:
+            if not WEB_ENABLED:
+                return []
+            serp = await web_search_serper(user_msg, k=TOP_K_WEB)
+            pages = await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
+            return pages
+
+        # Only pull web when allowed:
+        # - generally OK for general/planning/ber
+        # - avoid web when evidence_mode AND numeric_needed (force doc quotes)
+        do_web = WEB_ENABLED and (not evidence_mode or fam in ("planning", "general", "ber") or (evidence_mode and not numeric_needed))
+
+        pdf_chunks, docai_hits, web_pages = await asyncio.gather(
+            get_pdf_chunks(),
+            get_docai_hits(),
+            get_web_evidence() if do_web else asyncio.sleep(0, result=[]),
+        )
+
+        # Doc-family sanity: pinned doc mismatch
+        if pinned:
+            pinned_type = _doc_type_from_pdfname(pinned)
+            if fam != "general" and pinned_type not in ("general", fam):
+                safe = (
+                    "I think you’re asking about **" + fam.replace("_", " ") + "**, but the document I’m currently using looks like **"
+                    + pinned_type.replace("_", " ") + "**.\n\n"
+                    "Tell me which document to use (or upload the relevant one) and I’ll answer directly from it with a quote."
                 )
                 if chat_id:
-                    remember(chat_id, "assistant", refusal)
-                yield f"data: {refusal.replace(chr(10),'\\\\n')}\n\n"
+                    remember(chat_id, "assistant", safe)
+                yield f"data: {safe.replace(chr(10),'\\\\n')}\n\n"
                 yield "event: done\ndata: ok\n\n"
                 return
+
+        # Numeric compliance: must have doc evidence
+        if numeric_needed and not pdf_chunks and not docai_hits:
+            refusal = (
+                "I can’t confirm the exact numeric requirement yet because I don’t have relevant TGD evidence loaded for this question.\n\n"
+                "Upload the correct TGD (or tell me which one: K, M, B, L), and I’ll quote the exact line containing the number."
+            )
+            if chat_id:
+                remember(chat_id, "assistant", refusal)
+            yield f"data: {refusal.replace(chr(10),'\\\\n')}\n\n"
+            yield "event: done\ndata: ok\n\n"
+            return
+
+        sources_block = build_sources_block(pdf_chunks, web_pages, docai_hits, user_query=user_msg, precision=precision)
 
         ensure_vertex_ready()
         if not _VERTEX_READY:
@@ -843,28 +2000,32 @@ async def _stream_answer_async(
         model_name = MODEL_COMPLIANCE if evidence_mode else MODEL_CHAT
 
         model = get_model(model_name=model_name, system_prompt=system_prompt)
-        contents = build_contents(history_for_prompt, user_msg, sources_block)
+        contents = build_contents(history_for_prompt, user_msg, sources_block, precision=precision)
 
-        stream = model.generate_content(
-            contents,
-            generation_config=get_generation_config(evidence_mode),
-            stream=True
-        )
+        stream = model.generate_content(contents, generation_config=get_generation_config(evidence_mode), stream=True)
 
-        full = []
-        for chunk in stream:
-            delta = getattr(chunk, "text", None)
+        full: List[str] = []
+        for ch in stream:
+            delta = getattr(ch, "text", None)
             if not delta:
                 continue
             full.append(delta)
             safe = delta.replace("\r", "").replace("\n", "\\n")
             yield f"data: {safe}\n\n"
 
-        final_text = "".join(full).strip()
+        draft = "".join(full).strip()
 
-        # Store
+        # Hard verify numeric against evidence blob
+        sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
+        ok, final_text = _hard_verify_numeric(draft, sources_blob)
+
+        if not ok and final_text:
+            upd = "\n\n---\n\n### ✅ Final (verified)\n\n" + final_text
+            yield f"data: {upd.replace(chr(10),'\\\\n')}\n\n"
+            draft = (draft + upd).strip()
+
         if chat_id:
-            remember(chat_id, "assistant", final_text)
+            remember(chat_id, "assistant", draft)
 
         yield "event: done\ndata: ok\n\n"
 
@@ -872,21 +2033,6 @@ async def _stream_answer_async(
         msg = str(e).replace("\r", "").replace("\n", " ")
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
-
-
-def _stream_answer_sync(*args, **kwargs):
-    """
-    FastAPI StreamingResponse can take a sync generator easily.
-    We wrap the async generator.
-    """
-    import anyio
-    async_gen = _stream_answer_async(*args, **kwargs)
-
-    async def run():
-        async for item in async_gen:
-            yield item
-
-    return anyio.to_thread.run_sync(lambda: None)  # no-op placeholder
 
 
 @app.get("/chat_stream")
