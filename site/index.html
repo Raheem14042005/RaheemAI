@@ -1,15 +1,1491 @@
+```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Maintenance</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Raheem AI</title>
+
   <style>
-    body { font-family: Arial; text-align: center; margin-top: 15%; }
+    :root{
+      --bg0:#050610;
+      --bg1:#070a18;
+      --bg2:#0a0f22;
+
+      --glass: rgba(255,255,255,.08);
+      --glass2: rgba(255,255,255,.11);
+      --stroke: rgba(255,255,255,.14);
+
+      --text:#f4f7ff;
+      --muted: rgba(244,247,255,.78);
+      --muted2: rgba(244,247,255,.60);
+
+      --a1:#50ffd7;
+      --a2:#65b7ff;
+      --a3:#c7a5ff;
+      --hot:#ff4fd8;
+
+      --shadow: 0 28px 72px rgba(0,0,0,.58);
+      --shadow2: 0 18px 48px rgba(0,0,0,.42);
+
+      --r:22px;
+      --r2:16px;
+
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 18% -10%, rgba(80,255,215,.14), transparent 60%),
+        radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.14), transparent 58%),
+        radial-gradient(900px 620px at 50% 115%, rgba(199,165,255,.12), transparent 58%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
+      overflow-x:hidden;
+    }
+
+    .bg-wrap{
+      position:fixed;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+      overflow:hidden;
+    }
+
+    .aurora{
+      position:absolute;
+      inset:-25%;
+      background:
+        radial-gradient(900px 520px at 12% 18%, rgba(80,255,215,.14) 0%, rgba(80,255,215,0) 65%),
+        radial-gradient(900px 520px at 88% 14%, rgba(101,183,255,.14) 0%, rgba(101,183,255,0) 62%),
+        radial-gradient(980px 560px at 50% 108%, rgba(199,165,255,.12) 0%, rgba(199,165,255,0) 60%),
+        radial-gradient(840px 520px at 45% 40%, rgba(255,79,216,.06) 0%, rgba(255,79,216,0) 60%);
+      filter: blur(22px);
+      opacity:.85;
+      transform: translate3d(0,0,0);
+      animation: auroraMove 22s ease-in-out infinite;
+    }
+
+    @keyframes auroraMove{
+      0%,100%{ transform: translate3d(0,0,0) scale(1); }
+      45%{ transform: translate3d(12px,-10px,0) scale(1.02); }
+      75%{ transform: translate3d(-12px,10px,0) scale(1.015); }
+    }
+
+    canvas#particles{
+      position:absolute;
+      inset:0;
+      opacity:.18;
+      filter: blur(.2px);
+    }
+
+    .vignette{
+      position:absolute;
+      inset:-1px;
+      background: radial-gradient(900px 520px at 50% 22%, rgba(0,0,0,0), rgba(0,0,0,.58));
+      opacity:.9;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .aurora{ animation:none; }
+      canvas#particles{ display:none; }
+    }
+
+    .app{
+      position:relative;
+      z-index:1;
+      min-height:100vh;
+      display:grid;
+      grid-template-columns: 330px 1fr;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    @media (max-width: 980px){
+      .app{ grid-template-columns: 1fr; }
+      .side{ position:sticky; top:0; }
+    }
+
+    .side, .main{
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-radius: var(--r);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .main{
+      box-shadow: var(--shadow);
+      display:flex;
+      flex-direction:column;
+      min-height: calc(100vh - 36px);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      padding: 16px 16px 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+
+    .logoMark{
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.18);
+      box-shadow: 0 0 26px rgba(80,255,215,.10), 0 0 26px rgba(101,183,255,.08);
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+      position:relative;
+    }
+
+    .logoMark svg{ width:38px; height:38px; opacity:.95; }
+
+    .brand h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing:.5px;
+      font-weight: 900;
+      line-height:1.1;
+    }
+
+    .brand h1 span{
+      background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
+      -webkit-background-clip: text;
+      background-clip:text;
+      color: transparent;
+      text-shadow: 0 0 18px rgba(101,183,255,.12);
+    }
+
+    .brand .sub{
+      margin-top:4px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.2;
+    }
+
+    .nav{
+      padding: 12px 12px 10px 12px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+
+    .navbtn{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      width:100%;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      cursor:pointer;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .navbtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.34);
+      background: rgba(0,0,0,.24);
+    }
+
+    .navbtn .left{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+
+    .tag{
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--muted);
+      background: rgba(255,255,255,.06);
+      white-space:nowrap;
+    }
+    .tag.live{
+      border-color: rgba(80,255,215,.38);
+      color: rgba(230,255,240,.92);
+      background: rgba(80,255,215,.10);
+    }
+
+    .chatlist{
+      display:none;
+      padding: 8px 12px 12px 12px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+    .chatlist.show{ display:block; }
+    .chatlist h3{
+      margin: 10px 4px 8px 4px;
+      font-size: 12px;
+      color: var(--muted2);
+      font-weight:800;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .chatitem{
+      width:100%;
+      text-align:left;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      color: var(--text);
+      cursor:pointer;
+      margin-bottom: 8px;
+      transition: border-color .15s ease, transform .15s ease, background .15s ease;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .chatitem:hover{
+      transform: translateY(-1px);
+      border-color: rgba(80,255,215,.26);
+      background: rgba(0,0,0,.20);
+    }
+    .chatitem.active{
+      border-color: rgba(101,183,255,.34);
+      background: rgba(0,0,0,.22);
+    }
+    .chatitem .metaWrap{ min-width:0; flex:1; }
+    .chatitem .t{ font-weight:850; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .chatitem .s{ margin-top:4px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; }
+
+    .chatActions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-shrink:0;
+      margin-top:1px;
+    }
+    .iconBtn{
+      width:30px;
+      height:30px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.92);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      font-weight: 900;
+      line-height:1;
+      user-select:none;
+    }
+    .iconBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.10);
+    }
+    .iconBtn.danger{
+      border-color: rgba(255,79,216,.30);
+      background: rgba(255,79,216,.08);
+    }
+    .iconBtn.danger:hover{
+      border-color: rgba(255,79,216,.45);
+      background: rgba(255,79,216,.12);
+    }
+
+    .sideFoot{
+      padding: 12px 16px 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted2);
+      font-size: 12px;
+      line-height:1.35;
+    }
+
+    .topbar{
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+    }
+    .crumb{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .crumb .title{
+      font-weight: 900;
+      letter-spacing:.25px;
+      font-size: 15px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .crumb .hint{
+      font-size: 12px;
+      color: var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .actions{ display:flex; gap:10px; align-items:center; }
+
+    .btn{
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      cursor:pointer;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      font-weight: 800;
+      font-size: 13px;
+      white-space:nowrap;
+    }
+    .btn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.10);
+    }
+    .btn.primary{
+      border-color: rgba(80,255,215,.34);
+      background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
+      box-shadow: 0 0 18px rgba(80,255,215,.08);
+    }
+
+    .view{ display:none; padding: 18px; }
+    .view.show{ display:block; }
+
+    .hero{
+      padding: 16px;
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background:
+        radial-gradient(900px 320px at 18% 0%, rgba(80,255,215,.12), transparent 65%),
+        radial-gradient(900px 320px at 88% 0%, rgba(101,183,255,.10), transparent 62%),
+        rgba(0,0,0,.16);
+      box-shadow: var(--shadow2);
+    }
+    .hero h2{ margin:0; font-size: 22px; letter-spacing:.2px; }
+    .hero p{ margin:8px 0 0 0; color: var(--muted); max-width: 980px; line-height:1.55; }
+
+    .quote{
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,247,255,.92);
+      line-height:1.45;
+    }
+
+    .grid{
+      margin-top: 14px;
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      box-shadow: var(--shadow2);
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .cardhead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+    }
+
+    .cardtitle{
+      display:flex;
+      gap: 12px;
+      align-items:flex-start;
+    }
+
+    .icon{
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      font-weight: 900;
+      letter-spacing:.4px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10), rgba(199,165,255,.08));
+      box-shadow: 0 0 16px rgba(101,183,255,.08);
+    }
+
+    .card h4{ margin:0; font-size: 15px; }
+    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.5; }
+
+    .pill{
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--muted);
+      background: rgba(255,255,255,.06);
+      white-space:nowrap;
+      align-self:flex-start;
+    }
+
+    .cta{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-top:auto;
+    }
+
+    .chatwrap{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+      height: calc(100vh - 170px);
+      min-height: 540px;
+    }
+
+    .chatbox{
+      flex: 1;
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.14);
+      padding: 14px;
+      overflow:auto;
+    }
+
+    .msg{
+      max-width: 78%;
+      padding: 12px 12px;
+      border-radius: 18px;
+      margin: 10px 0;
+      line-height:1.55;
+      border: 1px solid rgba(255,255,255,.12);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .msg.user{
+      margin-left:auto;
+      background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.12));
+      border-color: rgba(80,255,215,.30);
+      box-shadow: 0 0 14px rgba(80,255,215,.06);
+    }
+    .msg.ai{ background: rgba(255,255,255,.06); }
+
+    .typing{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color: var(--muted2);
+      font-size: 12px;
+      margin-top: 6px;
+      user-select:none;
+    }
+    .dots{ display:inline-flex; gap:4px; transform: translateY(1px); }
+    .dot{
+      width:6px;height:6px;border-radius:999px;
+      background: rgba(244,247,255,.55);
+      animation: bounce 1.1s infinite ease-in-out;
+    }
+    .dot:nth-child(2){ animation-delay: .12s; }
+    .dot:nth-child(3){ animation-delay: .24s; }
+    @keyframes bounce{
+      0%, 80%, 100%{ transform: translateY(0); opacity:.55; }
+      40%{ transform: translateY(-4px); opacity:1; }
+    }
+
+    .composer{
+      display:flex;
+      gap: 10px;
+      align-items:flex-end;
+    }
+
+    textarea{
+      flex:1;
+      min-height: 46px;
+      max-height: 150px;
+      resize: vertical;
+      padding: 12px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      outline:none;
+      line-height:1.45;
+    }
+
+    textarea:focus{
+      border-color: rgba(101,183,255,.40);
+      box-shadow: 0 0 0 3px rgba(101,183,255,.12);
+    }
+
+    .row{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      font-size: 12px;
+      user-select:none;
+    }
+    .toggle input{ transform: translateY(1px); }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: rgba(244,247,255,.95);
+      box-shadow: var(--shadow2);
+      display:none;
+      max-width: min(760px, calc(100vw - 26px));
+      line-height:1.45;
+    }
+    .toast.show{ display:block; animation: pop .18s ease; }
+    @keyframes pop{
+      from{ transform: translateX(-50%) translateY(8px); opacity:0; }
+      to{ transform: translateX(-50%) translateY(0); opacity:1; }
+    }
+
+    .footer{
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted2);
+      font-size: 12px;
+      line-height:1.35;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
+      background: rgba(0,0,0,.10);
+    }
+    .copy{ color: rgba(244,247,255,.78); }
+
+    .smallHint{
+      margin-top:10px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.45;
+    }
   </style>
 </head>
+
 <body>
-  <h1>🚧 Site under maintenance</h1>
-  <p>We’ll be back shortly😊</p>
+  <div class="bg-wrap">
+    <div class="aurora"></div>
+    <canvas id="particles"></canvas>
+    <div class="vignette"></div>
+  </div>
+
+  <div class="app">
+    <aside class="side">
+      <div class="brand">
+        <div class="logoMark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <defs>
+              <linearGradient id="g1" x1="6" y1="10" x2="58" y2="54" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#50FFD7"/>
+                <stop offset="0.55" stop-color="#65B7FF"/>
+                <stop offset="1" stop-color="#C7A5FF"/>
+              </linearGradient>
+              <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="2.4" result="b"/>
+                <feMerge>
+                  <feMergeNode in="b"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <path filter="url(#glow)" d="M14 50V14h18c8 0 14 6 14 14 0 6-3 10-8 12l10 10h-10l-9-9H24v9H14Zm10-27h8c3 0 5 2 5 5s-2 5-5 5h-8V23Z" fill="url(#g1)" opacity="0.95"/>
+            <path filter="url(#glow)" d="M48 50l-5-12h8l5 12h-8Z" fill="#FF4FD8" opacity="0.7"/>
+          </svg>
+        </div>
+        <div>
+          <h1><span>Raheem AI</span></h1>
+          <div class="sub">Compliance-first chat and document reasoning</div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <button class="navbtn" id="navHome" type="button">
+          <div class="left">
+            <span class="tag">Home</span>
+            <div style="min-width:0">
+              <div style="font-weight:900">Overview</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Product summary and quick start</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+
+        <button class="navbtn" id="navChat" type="button">
+          <div class="left">
+            <span class="tag live">Live</span>
+            <div style="min-width:0">
+              <div style="font-weight:900">Chat</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved sessions and continuous context</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+
+        <button class="navbtn" id="navFuture" type="button">
+          <div class="left">
+            <span class="tag">Roadmap</span>
+            <div style="min-width:0">
+              <div style="font-weight:900">Future Features</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, integrations</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+      </div>
+
+      <div class="chatlist" id="chatList">
+        <h3>
+          <span>Saved chats</span>
+          <button class="iconBtn danger" id="btnDeleteAllChats" type="button" title="Delete all chats">!</button>
+        </h3>
+        <div id="chatItems"></div>
+        <button class="btn" id="btnNewChat" type="button" style="width:100%; margin-top:6px;">New chat</button>
+      </div>
+
+      <div class="sideFoot">
+        <div style="font-weight:850;color:rgba(244,247,255,.86)">Usage tip</div>
+        <div style="margin-top:6px">
+          Use <b>Evidence mode</b> for stricter answers and citations where available.
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb">
+          <div class="title" id="viewTitle">Overview</div>
+          <div class="hint" id="viewHint">Product summary and quick start</div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="btnStatus" type="button" title="Check backend health">Status</button>
+          <button class="btn primary" id="btnDocs" type="button" title="Open API documentation">Docs</button>
+        </div>
+      </div>
+
+      <section class="view show" id="viewHome">
+        <div class="hero">
+          <h2>AI chat for compliance, specifications and technical workflows</h2>
+          <p>
+            Ask questions in plain language. When you need higher confidence, enable Evidence mode to nudge the assistant
+            toward traceable, structured replies.
+          </p>
+          <div class="quote">
+            Designed for practical building workflows: clear outputs, consistent structure, and faster review cycles.
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">AI</div>
+                <div>
+                  <h4>Chat</h4>
+                  <p>Continue conversations, keep context, and retrieve past work by session.</p>
+                </div>
+              </div>
+              <span class="pill" style="border-color: rgba(80,255,215,.38); background: rgba(80,255,215,.10); color: rgba(230,255,240,.92)">Live</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Session memory</span>
+              <button class="btn primary" id="btnStartChat" type="button">Open chat</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">+</div>
+                <div>
+                  <h4>Roadmap</h4>
+                  <p>Structured reports, BIM review helpers, manufacturer search, and automated workflows.</p>
+                </div>
+              </div>
+              <span class="pill">Preview</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Planned modules</span>
+              <button class="btn" id="btnOpenFuture" type="button">View</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Built By Abdulraheem Hayder Ahmed</div>
+        </div>
+      </section>
+
+      <section class="view" id="viewChat">
+        <div class="hero">
+          <h2>Chat</h2>
+          <p>
+            Select a saved chat on the left to continue. Start a new chat to keep topics separated.
+          </p>
+          <div class="smallHint">
+            If you see a connection error, click <b>Status</b> to verify the backend is online. If Status fails,
+            the issue is typically backend availability or CORS configuration.
+          </div>
+        </div>
+
+        <div class="chatwrap">
+          <div class="row" style="justify-content:space-between;">
+            <div class="row">
+              <label class="toggle" title="Prefer stricter, evidence-oriented responses">
+                <input type="checkbox" id="forceDocs"/>
+                Evidence mode
+              </label>
+            </div>
+            <div class="row">
+              <button class="btn" id="btnClear" type="button">Clear chat</button>
+            </div>
+          </div>
+
+          <div class="chatbox" id="chatBox"></div>
+
+          <div class="composer">
+            <textarea id="msg" placeholder="Type your message... (Shift + Enter for a new line)"></textarea>
+            <button class="btn primary" id="send" type="button">Send</button>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Tip: Evidence mode is best for technical checks.</div>
+        </div>
+      </section>
+
+      <section class="view" id="viewFuture">
+        <div class="hero">
+          <h2>Future Features</h2>
+          <p>
+            This roadmap shows planned modules and workflows. Each feature is shipped with a focus on reliability and clarity.
+          </p>
+          <div class="quote">
+            Roadmap items are previews. Availability depends on testing, performance, and data coverage.
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">ED</div>
+                <div>
+                  <h4>Early Design</h4>
+                  <p>Capture requirements and explore options with structured prompts and refinements.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Concept workflows</span>
+              <button class="btn" data-soon="Early Design">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">DAC</div>
+                <div>
+                  <h4>DAC Report Generator</h4>
+                  <p>Generate structured report drafts aligned to guidance and project inputs, ready for review.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Access and use</span>
+              <button class="btn" data-soon="DAC Report Generator">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">FCS</div>
+                <div>
+                  <h4>Fire Safety Report Generator</h4>
+                  <p>Produce consistent report drafts with traceable checks and repeatable structure.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Fire safety workflow</span>
+              <button class="btn" data-soon="Fire Safety Report Generator">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">MFG</div>
+                <div>
+                  <h4>Manufacturer and Spec Search</h4>
+                  <p>Search suppliers and specs using model parameters and project context.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Product discovery</span>
+              <button class="btn" data-soon="Manufacturer and Spec Search">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">BER</div>
+                <div>
+                  <h4>BER Workflow</h4>
+                  <p>Guide DEAP logic, import model data, and generate consistent reports for review.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">DEAP and BIM</span>
+              <button class="btn" data-soon="BER Workflow">Preview</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Roadmap preview</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // =========================
+    // BACKEND ROUTING (MATCHES YOUR FastAPI main.py)
+    // Endpoints used:
+    //   GET  /health
+    //   GET  /swagger
+    //   POST /chat  (SSE text/event-stream)
+    // =========================
+    const API_BASE_DEFAULT = "https://complyr.onrender.com";
+    const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
+
+    function apiUrl(path){
+      if(!path) path = "/";
+      if(!path.startsWith("/")) path = "/" + path;
+      return API_BASE + path;
+    }
+
+    // Safety: prevent arbitrary API_BASE overrides (protects users and prevents broken configs)
+    if (!API_BASE.startsWith("https://complyr.onrender.com")) {
+      localStorage.removeItem("RAHEEM_API_BASE");
+      if (!navigator.userAgent.toLowerCase().includes("samsungbrowser")) {
+        location.reload();
+      }
+    }
+
+    // Toast
+    const toast = document.getElementById("toast");
+    let toastTimer = null;
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=>toast.classList.remove("show"), 2800);
+    }
+
+    // Navigation
+    const viewTitle = document.getElementById("viewTitle");
+    const viewHint  = document.getElementById("viewHint");
+    const viewHome  = document.getElementById("viewHome");
+    const viewChat  = document.getElementById("viewChat");
+    const viewFuture= document.getElementById("viewFuture");
+    const chatList  = document.getElementById("chatList");
+
+    function showView(which){
+      [viewHome, viewChat, viewFuture].forEach(v=>v.classList.remove("show"));
+      chatList.classList.remove("show");
+
+      if(which==="home"){
+        viewHome.classList.add("show");
+        viewTitle.textContent = "Overview";
+        viewHint.textContent  = "Product summary and quick start";
+      }
+      if(which==="chat"){
+        viewChat.classList.add("show");
+        viewTitle.textContent = "Chat";
+        viewHint.textContent  = "Saved sessions and continuous context";
+        chatList.classList.add("show");
+        renderChatList();
+        renderChat();
+      }
+      if(which==="future"){
+        viewFuture.classList.add("show");
+        viewTitle.textContent = "Future Features";
+        viewHint.textContent  = "Roadmap preview";
+      }
+    }
+
+    document.getElementById("navHome").onclick  = ()=>showView("home");
+    document.getElementById("navChat").onclick  = ()=>showView("chat");
+    document.getElementById("navFuture").onclick= ()=>showView("future");
+
+    document.getElementById("btnStartChat").onclick = ()=>showView("chat");
+    document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
+
+    // Top bar buttons
+    document.getElementById("btnDocs").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
+    document.getElementById("btnStatus").onclick = async ()=>{
+      try{
+        const r = await fetch(apiUrl("/health"));
+        const t = await r.text();
+        let j = {};
+        try{ j = JSON.parse(t); }catch(e){}
+        if(!r.ok){
+          showToast("Status error " + r.status + ": " + (t || "No response body"));
+          return;
+        }
+        showToast(j.vertex_ready ? "Status: Online (AI ready)" : "Status: Online (AI warming up)");
+      }catch(e){
+        showToast("Status check failed. Backend may be offline or blocked by CORS.");
+      }
+    };
+
+    // Future feature buttons (professional)
+    document.querySelectorAll("[data-soon]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const name = btn.getAttribute("data-soon");
+        const lines = [
+          name + " is in development.",
+          name + " is planned for a future release.",
+          name + " is currently in testing.",
+          "Preview only: " + name
+        ];
+        showToast(lines[Math.floor(Math.random()*lines.length)]);
+      });
+    });
+
+    // Calmer particles
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    let W=0,H=0, particles=[];
+    function resize(){
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      const base = Math.floor(Math.min(80, Math.max(35, W/26)));
+      particles = Array.from({length:base}).map(()=>({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        r: Math.random()*1.4 + 0.4,
+        vx:(Math.random()*0.22+0.05)*(Math.random()<0.5?-1:1),
+        vy:(Math.random()*0.18+0.04)*(Math.random()<0.5?-1:1),
+        a: Math.random()*0.45 + 0.10
+      }));
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    function tick(){
+      ctx.clearRect(0,0,W,H);
+      for(const p of particles){
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < -20) p.x = W+20;
+        if(p.x > W+20) p.x = -20;
+        if(p.y < -20) p.y = H+20;
+        if(p.y > H+20) p.y = -20;
+
+        ctx.globalAlpha = p.a;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle = "white";
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(tick);
+    }
+    if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      tick();
+    }
+
+    // =========================
+    // CHAT STATE
+    // =========================
+    const chatBox = document.getElementById("chatBox");
+    const msgEl = document.getElementById("msg");
+    const sendBtn = document.getElementById("send");
+    const forceDocsEl = document.getElementById("forceDocs");
+    const btnClear = document.getElementById("btnClear");
+    const btnNewChat = document.getElementById("btnNewChat");
+    const chatItemsWrap = document.getElementById("chatItems");
+    const btnDeleteAllChats = document.getElementById("btnDeleteAllChats");
+
+    const STORAGE_KEY = "raheem_ai_chats_v3";
+    const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
+
+    function loadAllChats(){
+      try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+      catch(e){ return {}; }
+    }
+    function saveAllChats(obj){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+    }
+
+    function newChatId(){
+      return "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
+    }
+
+    function fmtTime(ts){
+      try{
+        const d = new Date(ts);
+        return d.toLocaleString(undefined, { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
+      }catch(e){
+        return "";
+      }
+    }
+
+    let activeChatId = (localStorage.getItem(ACTIVE_CHAT_KEY) || "").trim() || null;
+
+    function persistActiveChatId(){
+      if(activeChatId) localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+    }
+
+    function ensureActiveChat(){
+      const all = loadAllChats();
+
+      if(activeChatId && all[activeChatId]){
+        persistActiveChatId();
+        return all;
+      }
+
+      activeChatId = newChatId();
+      all[activeChatId] = {
+        title: "New chat",
+        updated: Date.now(),
+        messages: [
+          { role:"assistant", content:"Hello. How can I help today?" }
+        ]
+      };
+      saveAllChats(all);
+      persistActiveChatId();
+      return all;
+    }
+
+    function setChatTitleFromFirstUser(all, chatId){
+      const c = all[chatId];
+      if(!c) return;
+      const firstUser = (c.messages || []).find(m=>m.role==="user");
+      if(firstUser && (c.title==="New chat" || !c.title)){
+        const s = (firstUser.content || "").trim();
+        c.title = s.slice(0, 44) + (s.length>44 ? "..." : "");
+      }
+    }
+
+    function escapeHtml(s){
+      return (s||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function deleteChat(chatId){
+      const all = loadAllChats();
+      if(!all[chatId]) return;
+
+      const title = all[chatId].title || "this chat";
+      const ok = confirm("Delete chat: " + title + " ?");
+      if(!ok) return;
+
+      delete all[chatId];
+
+      if(chatId === activeChatId){
+        const remaining = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
+        activeChatId = remaining[0] || null;
+        if(!activeChatId){
+          saveAllChats(all);
+          localStorage.removeItem(ACTIVE_CHAT_KEY);
+          ensureActiveChat();
+        }else{
+          persistActiveChatId();
+          saveAllChats(all);
+        }
+      }else{
+        saveAllChats(all);
+      }
+
+      renderChatList();
+      renderChat();
+      showToast("Chat deleted.");
+    }
+
+    function renderChatList(){
+      const all = ensureActiveChat();
+      const ids = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
+      chatItemsWrap.innerHTML = "";
+
+      ids.forEach(id=>{
+        const c = all[id];
+
+        const row = document.createElement("button");
+        row.className = "chatitem" + (id===activeChatId ? " active" : "");
+        row.type = "button";
+
+        const title = c.title || "New chat";
+        const time = fmtTime(c.updated || Date.now());
+        const msgCount = (c.messages||[]).length;
+
+        row.innerHTML = `
+          <div class="metaWrap">
+            <div class="t">${escapeHtml(title)}</div>
+            <div class="s"><span>${escapeHtml(time)}</span><span style="opacity:.7">•</span><span>${msgCount} msgs</span></div>
+          </div>
+          <div class="chatActions">
+            <div class="iconBtn danger" title="Delete chat" aria-label="Delete chat">×</div>
+          </div>
+        `;
+
+        row.addEventListener("click", (ev)=>{
+          const target = ev.target;
+          const isDelete = target && target.classList && target.classList.contains("iconBtn");
+          if(isDelete) return;
+          activeChatId = id;
+          persistActiveChatId();
+          renderChatList();
+          renderChat();
+        });
+
+        const delBtn = row.querySelector(".iconBtn.danger");
+        delBtn.addEventListener("click", (ev)=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          deleteChat(id);
+        });
+
+        chatItemsWrap.appendChild(row);
+      });
+    }
+
+    function renderChat(){
+      const all = ensureActiveChat();
+      const c = all[activeChatId];
+      chatBox.innerHTML = "";
+      (c.messages||[]).forEach(m=>{
+        addMsg(m.role==="user" ? "user" : "ai", m.content, false);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addMsg(who, text, scroll=true){
+      const div = document.createElement("div");
+      div.className = "msg " + (who==="user" ? "user" : "ai");
+      div.textContent = text;
+      chatBox.appendChild(div);
+      if(scroll) chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
+    function addTypingIndicator(targetDiv){
+      const wrap = document.createElement("div");
+      wrap.className = "typing";
+      wrap.innerHTML = `<span>Raheem AI is responding</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+      targetDiv.appendChild(wrap);
+      return wrap;
+    }
+
+    function clearChat(){
+      const all = ensureActiveChat();
+      all[activeChatId].messages = [{ role:"assistant", content:"Cleared. What would you like to do next?" }];
+      all[activeChatId].updated = Date.now();
+      saveAllChats(all);
+      renderChat();
+      renderChatList();
+    }
+
+    btnClear.onclick = clearChat;
+
+    btnNewChat.onclick = ()=>{
+      const all = loadAllChats();
+      activeChatId = newChatId();
+      all[activeChatId] = {
+        title: "New chat",
+        updated: Date.now(),
+        messages: [{ role:"assistant", content:"Hello. How can I help today?" }]
+      };
+      saveAllChats(all);
+      persistActiveChatId();
+      renderChatList();
+      renderChat();
+      showToast("New chat created.");
+    };
+
+    btnDeleteAllChats.onclick = ()=>{
+      const ok = confirm("Delete all saved chats? This cannot be undone.");
+      if(!ok) return;
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CHAT_KEY);
+      activeChatId = null;
+      ensureActiveChat();
+      renderChatList();
+      renderChat();
+      showToast("All chats deleted.");
+    };
+
+    ensureActiveChat();
+    renderChat();
+
+    // =========================
+    // Streaming helpers (SSE)
+    // Your FastAPI /chat returns SSE frames like:
+    //   data: <delta>\n\n
+    //   event: done\ndata: ok\n\n
+    //   event: error\ndata: <message>\n\n
+    // =========================
+    function isSamsungInternet(){
+      try{
+        const ua = (navigator.userAgent || "").toLowerCase();
+        return ua.includes("samsungbrowser");
+      }catch(e){
+        return false;
+      }
+    }
+
+    function parseSSETextToAnswer(sseText){
+      let out = "";
+      const frames = (sseText || "").split("\n\n");
+      for(const frame of frames){
+        const f = frame.trim();
+        if(!f) continue;
+
+        // If an error event happened, show it immediately
+        if(f.startsWith("event: error")){
+          const line = f.split("\n").find(x => x.startsWith("data: "));
+          const msg = line ? line.slice(6) : "Error";
+          return msg.replaceAll("\\n","\n");
+        }
+
+        // Collect token deltas
+        if(f.startsWith("data: ")){
+          const dataLine = f.slice(6);
+          out += dataLine.replaceAll("\\n","\n");
+        }
+      }
+      return out.trim();
+    }
+
+    // =========================
+    // CHAT SEND (MATCHES YOUR FastAPI signature)
+    // FastAPI:
+    //   POST /chat?chat_id=...&force_docs=...
+    //   body: { "message": "...", "messages": [...] }
+    // =========================
+    async function send(){
+      const text = (msgEl.value || "").trim();
+      if(!text) return;
+      msgEl.value = "";
+
+      const all = ensureActiveChat();
+      const c = all[activeChatId];
+
+      c.messages.push({ role:"user", content:text });
+      c.updated = Date.now();
+      setChatTitleFromFirstUser(all, activeChatId);
+      saveAllChats(all);
+
+      addMsg("user", text);
+
+      const aiDiv = addMsg("ai", "");
+      const typing = addTypingIndicator(aiDiv);
+
+      let full = "";
+      let gotAnyToken = false;
+
+      const url =
+        apiUrl("/chat")
+        + "?chat_id=" + encodeURIComponent(activeChatId)
+        + "&force_docs=" + (forceDocsEl.checked ? "1" : "0");
+
+      const body = JSON.stringify({
+        message: text,
+        messages: c.messages
+      });
+
+      try{
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body
+        });
+
+        if(!res.ok){
+          const errText = await res.text().catch(()=>"(no error body)");
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = "Server error " + res.status + ": " + (errText || "").slice(0, 900);
+          return;
+        }
+
+        // Samsung Internet: read entire response as text, then parse SSE frames
+        if(isSamsungInternet()){
+          const raw = await res.text();
+          const reply = parseSSETextToAnswer(raw) || " ";
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = reply;
+
+          const all2 = ensureActiveChat();
+          const c2 = all2[activeChatId];
+          c2.messages.push({ role:"assistant", content: reply });
+          c2.updated = Date.now();
+          saveAllChats(all2);
+          renderChatList();
+          return;
+        }
+
+        if(!res.body || !res.body.getReader){
+          // No streaming support: fallback to full text read
+          const raw = await res.text().catch(()=> "");
+          const reply = parseSSETextToAnswer(raw) || "Connection error. Try again.";
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = reply;
+
+          const all2 = ensureActiveChat();
+          const c2 = all2[activeChatId];
+          c2.messages.push({ role:"assistant", content: reply });
+          c2.updated = Date.now();
+          saveAllChats(all2);
+          renderChatList();
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while(true){
+          const { value, done } = await reader.read();
+          if(done) break;
+
+          buffer += decoder.decode(value, { stream:true });
+
+          // SSE frames are separated by blank line
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for(const chunk of parts){
+            const c = (chunk || "").trim();
+            if(!c) continue;
+
+            // Handle error event frame
+            if(c.startsWith("event: error")){
+              const line = c.split("\n").find(x=>x.startsWith("data: "));
+              const msg = line ? line.slice(6) : "Error";
+              if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+              aiDiv.textContent = msg.replaceAll("\\n","\n");
+              continue;
+            }
+
+            // Ignore done
+            if(c.startsWith("event: done")) {
+              continue;
+            }
+
+            // Normal delta frames
+            if(c.startsWith("data: ")){
+              const dataLine = c.slice(6);
+              const delta = (dataLine || "").replaceAll("\\n","\n");
+
+              if(delta){
+                gotAnyToken = true;
+                if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+
+                full += delta;
+                aiDiv.textContent = full;
+                chatBox.scrollTop = chatBox.scrollHeight;
+              }
+            }
+          }
+        }
+
+        if(!gotAnyToken && typing && typing.parentNode){
+          typing.parentNode.removeChild(typing);
+        }
+
+        const finalText = full.trim() || " ";
+
+        const all2 = ensureActiveChat();
+        const c2 = all2[activeChatId];
+        c2.messages.push({ role:"assistant", content: finalText });
+        c2.updated = Date.now();
+        saveAllChats(all2);
+        renderChatList();
+
+      }catch(e){
+        console.error("Chat send error:", e);
+        if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+        aiDiv.textContent = "Connection error. Try again.";
+      }
+    }
+
+    sendBtn.onclick = send;
+    msgEl.addEventListener("keydown", (e)=>{
+      if(e.key==="Enter" && !e.shiftKey){
+        e.preventDefault();
+        send();
+      }
+    });
+  </script>
 </body>
 </html>
-
-
+```
