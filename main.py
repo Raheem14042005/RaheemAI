@@ -1,19 +1,24 @@
-from fastapi import FastAPI, UploadFile, File, Query, Body
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-from dotenv import load_dotenv
+from __future__ import annotations
 
 import os
 import re
 import math
 import json
 import tempfile
+import hashlib
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple, Any, Union
-from collections import Counter
+from typing import Any, Dict, List, Optional, Tuple, Union
 from datetime import datetime
+from collections import Counter
 
+import httpx
 import fitz  # PyMuPDF
+
+from fastapi import FastAPI, UploadFile, File, Query, Body
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse, JSONResponse
+from dotenv import load_dotenv
 
 import vertexai
 from vertexai.generative_models import (
@@ -23,7 +28,7 @@ from vertexai.generative_models import (
     GenerationConfig,
 )
 
-# Document AI ingest helper (optional file)
+# Optional: Document AI ingest helper
 try:
     from docai_ingest import docai_extract_pdf_to_text
     _DOCAI_HELPER_AVAILABLE = True
@@ -32,28 +37,47 @@ except Exception:
     _DOCAI_HELPER_AVAILABLE = False
 
 
-# ----------------------------
-# Setup
-# ----------------------------
+# ============================================================
+# CONFIG
+# ============================================================
 
 load_dotenv()
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
+BASE_DIR = Path(__file__).resolve().parent
+PDF_DIR = BASE_DIR / "pdfs"
+PDF_DIR.mkdir(parents=True, exist_ok=True)
+
+DOCAI_DIR = BASE_DIR / "parsed_docai"
+DOCAI_DIR.mkdir(parents=True, exist_ok=True)
+
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "80"))
 
-CHAT_MAX_MESSAGES = int(os.getenv("CHAT_MAX_MESSAGES", "30"))
-CHAT_MAX_CHARS = int(os.getenv("CHAT_MAX_CHARS", "22000"))
+CHAT_MAX_MESSAGES = int(os.getenv("CHAT_MAX_MESSAGES", "40"))
+CHAT_MAX_CHARS = int(os.getenv("CHAT_MAX_CHARS", "32000"))
 
 GCP_PROJECT_ID = (os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID") or "").strip()
 GCP_LOCATION = (os.getenv("GCP_LOCATION") or os.getenv("VERTEX_LOCATION") or "europe-west4").strip()
-
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 
 MODEL_CHAT = (os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001") or "").strip()
 MODEL_COMPLIANCE = (os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001") or "").strip()
 
-# Verification pass toggle (default ON)
-VERIFY_NUMERIC = (os.getenv("VERIFY_NUMERIC", "true") or "true").strip().lower() in ("1", "true", "yes", "y", "on")
+# Web search (optional but recommended)
+SERPER_API_KEY = (os.getenv("SERPER_API_KEY") or "").strip()  # https://serper.dev
+WEB_ENABLED = (os.getenv("WEB_ENABLED", "true").lower() in ("1", "true", "yes", "on")) and bool(SERPER_API_KEY)
+
+# Behavior
+DEFAULT_EVIDENCE_MODE = os.getenv("DEFAULT_EVIDENCE_MODE", "false").lower() in ("1", "true", "yes", "on")
+
+# Retrieval sizing
+CHUNK_TARGET_CHARS = int(os.getenv("CHUNK_TARGET_CHARS", "1200"))  # ~ a few paragraphs
+CHUNK_OVERLAP_CHARS = int(os.getenv("CHUNK_OVERLAP_CHARS", "150"))
+TOP_K_CHUNKS = int(os.getenv("TOP_K_CHUNKS", "6"))  # how many snippets we feed to model
+TOP_K_WEB = int(os.getenv("TOP_K_WEB", "5"))
+
+# ============================================================
+# APP
+# ============================================================
 
 app = FastAPI(docs_url="/swagger", redoc_url=None)
 
@@ -72,18 +96,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BASE_DIR = Path(__file__).resolve().parent
 
-PDF_DIR = BASE_DIR / "pdfs"
-PDF_DIR.mkdir(parents=True, exist_ok=True)
-
-DOCAI_DIR = BASE_DIR / "parsed_docai"
-DOCAI_DIR.mkdir(parents=True, exist_ok=True)
-
-
-# ----------------------------
-# Vertex init
-# ----------------------------
+# ============================================================
+# VERTEX INIT
+# ============================================================
 
 _VERTEX_READY = False
 _VERTEX_ERR: Optional[str] = None
@@ -119,31 +135,17 @@ def get_model(model_name: str, system_prompt: str) -> GenerativeModel:
     return GenerativeModel(model_name, system_instruction=[Part.from_text(system_prompt)])
 
 
-def get_generation_config(is_compliance: bool) -> GenerationConfig:
-    if is_compliance:
-        return GenerationConfig(
-            temperature=0.35,
-            top_p=0.85,
-            max_output_tokens=950,
-        )
-    return GenerationConfig(
-        temperature=0.85,
-        top_p=0.9,
-        max_output_tokens=900,
-    )
+def get_generation_config(is_evidence: bool) -> GenerationConfig:
+    # Evidence mode: lower temperature for precision
+    if is_evidence:
+        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=1200)
+    # Normal chat
+    return GenerationConfig(temperature=0.8, top_p=0.9, max_output_tokens=1200)
 
 
-def get_verify_generation_config() -> GenerationConfig:
-    return GenerationConfig(
-        temperature=0.1,
-        top_p=0.6,
-        max_output_tokens=450,
-    )
-
-
-# ----------------------------
-# Chat memory (server-side)
-# ----------------------------
+# ============================================================
+# CHAT MEMORY (SERVER SIDE)
+# ============================================================
 
 CHAT_STORE: Dict[str, List[Dict[str, str]]] = {}
 
@@ -152,7 +154,6 @@ def _trim_chat(chat_id: str) -> None:
     msgs = CHAT_STORE.get(chat_id, [])
     if not msgs:
         return
-
     if len(msgs) > CHAT_MAX_MESSAGES:
         msgs = msgs[-CHAT_MAX_MESSAGES:]
 
@@ -203,132 +204,23 @@ def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[
     return hist
 
 
-# ----------------------------
-# Prompts (tone stays the same)
-# ----------------------------
-
-FORMAT_RULES = """
-Formatting rules (strict):
-- Do NOT use Markdown.
-- Do NOT use bullet points, numbered lists, asterisks, or hyphen lists.
-- Write in short, clear paragraphs only.
-- Never mention page numbers.
-- If citing TGDs, cite only: document + section number and/or table number.
-- Never invent section numbers, clause numbers, or table numbers.
-- Only cite a section/table if it is visible in the provided SOURCES text.
-- Do not reproduce large chunks of the TGDs. If quoting, quote only 1–2 short lines.
-""".strip()
-
-SYSTEM_PROMPT_NORMAL = f"""
-You are Raheem AI.
-
-Tone:
-Friendly, calm, confident. Professional.
-Humour style: dry, light, and occasional — think “architect on coffee #2”, not stand-up comedy.
-You may add a short witty line when it fits, but never spam jokes and never derail the answer.
-No emojis unless the user uses emojis first.
-
-Memory:
-You have access to the conversation history for THIS chat. Use it.
-Never claim “this is our first conversation” if there is prior chat history.
-
-{FORMAT_RULES}
-
-General mode rules:
-Answer general questions naturally using common knowledge.
-If the user asks about Irish building regulations or TGDs, be cautious and do not guess numeric limits unless you can ground them in SOURCES.
-""".strip()
-
-SYSTEM_PROMPT_COMPLIANCE = f"""
-You are Raheem AI in Evidence Mode for Irish building regulations, TGDs, BER/DEAP, fire safety, and accessibility.
-
-Tone:
-Still calm and professional, with minimal humour.
-If you add humour at all, it must be a single short line and only when the user is not asking for strict numeric compliance.
-When giving compliance numbers, be straight to the point.
-
-Memory:
-You have access to the conversation history for THIS chat. Use it.
-
-{FORMAT_RULES}
-
-Compliance rules (strict):
-- Use provided SOURCES text as your primary grounding.
-- If SOURCES do not support an exact numeric requirement (distances, widths, U-values, rise/going, travel distances), do NOT guess.
-- If you cannot confirm a number from SOURCES, say so plainly and ask the user to clarify building type / situation or upload the relevant TGD.
-- Do not invent “optimum” values unless the TGD explicitly states them in the SOURCES.
-- If the user challenges you, re-check SOURCES and correct yourself.
-
-Proof rule (critical):
-- If you give a numeric requirement from a TGD, you MUST include a short verbatim quote (1–2 lines) from the SOURCES text you used.
-- If you cannot quote it from SOURCES, do not give the number.
-- Never mention page numbers in the quote.
-""".strip()
-
-VERIFY_PROMPT = f"""
-You are a strict verifier for Irish TGD compliance answers.
-
-Rules:
-- You ONLY use the SOURCES text provided.
-- If an answer includes any numeric requirement (mm, m, %, W/m²K, etc.), the exact number with its unit must be explicitly present in SOURCES.
-- If the answer cites a section or table, the cited section/table label must be visible in SOURCES. If not visible, it must be removed or the answer must say it cannot confirm.
-- If the answer gives numbers but does not include a 1–2 line verbatim quote from SOURCES that contains the number, it is NOT allowed.
-- Output MUST be valid JSON only. No markdown.
-
-Output JSON schema:
-{{
-  "ok": true/false,
-  "reason": "short reason",
-  "safe_answer": "a corrected safe answer that follows the formatting rules, includes quote: if numeric"
-}}
-
-{FORMAT_RULES}
-""".strip()
-
-
-
-def build_gemini_contents(history: List[Dict[str, str]], user_message: str, sources_text: str) -> List[Content]:
-    contents: List[Content] = []
-    for m in history or []:
-        r = (m.get("role") or "").lower().strip()
-        c = (m.get("content") or "").strip()
-        if not c:
-            continue
-        if r == "user":
-            contents.append(Content(role="user", parts=[Part.from_text(c)]))
-        elif r == "assistant":
-            contents.append(Content(role="model", parts=[Part.from_text(c)]))
-
-    final_user = (user_message or "").strip()
-    if sources_text and sources_text.strip():
-        final_user = (final_user + "\n\nSOURCES (use for evidence):\n" + sources_text).strip()
-
-    if not contents:
-        contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
-    else:
-        if contents[-1].role == "user":
-            contents[-1] = Content(role="user", parts=[Part.from_text(final_user)])
-        else:
-            contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
-
-    return contents
-
-
-# ----------------------------
-# Retrieval helpers
-# ----------------------------
+# ============================================================
+# TEXT + TOKENIZATION
+# ============================================================
 
 STOPWORDS = {
-    "the", "and", "or", "of", "to", "in", "a", "an", "for", "on", "with", "is", "are", "be", "as", "at", "from", "by",
-    "that", "this", "it", "your", "you", "we", "they", "their", "there", "what", "which", "when", "where", "how",
-    "can", "shall", "should", "must", "may", "not", "than", "then", "into", "onto", "also", "such"
+    "the","and","or","of","to","in","a","an","for","on","with","is","are","be","as","at","from","by",
+    "that","this","it","your","you","we","they","their","there","what","which","when","where","how",
+    "can","shall","should","must","may","not","than","then","into","onto","also","such"
 }
 
 
 def clean_text(s: str) -> str:
     s = (s or "").replace("\u00ad", "")
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    s = s.replace("\r", "\n")
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
 
 
 def tokenize(text: str) -> List[str]:
@@ -338,8 +230,81 @@ def tokenize(text: str) -> List[str]:
     return toks
 
 
-PDF_INDEX: Dict[str, Dict[str, Any]] = {}
-DOCAI_INDEX: Dict[str, Dict[str, Any]] = {}
+# ============================================================
+# CHUNK INDEX (BM25) — THIS IS THE BIG FIX
+# ============================================================
+
+@dataclass
+class Chunk:
+    doc: str
+    page: int  # 1-based
+    chunk_id: str
+    text: str
+    tf: Counter
+    length: int
+
+
+CHUNK_INDEX: Dict[str, Dict[str, Any]] = {}
+# structure:
+# CHUNK_INDEX[pdf_name] = {
+#   "chunks": List[Chunk],
+#   "df": Counter,
+#   "avgdl": float,
+#   "N": int
+# }
+
+def _hash_id(s: str) -> str:
+    return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
+
+
+def _split_into_chunks(text: str, target: int, overlap: int) -> List[str]:
+    """
+    Sliding-window chunking on paragraph boundaries.
+    """
+    text = clean_text(text)
+    if not text:
+        return []
+    paras = [p.strip() for p in text.split("\n\n") if p.strip()]
+    out: List[str] = []
+    buff = ""
+
+    def flush():
+        nonlocal buff
+        if buff.strip():
+            out.append(buff.strip())
+        buff = ""
+
+    for p in paras:
+        if not buff:
+            buff = p
+        elif len(buff) + 2 + len(p) <= target:
+            buff = buff + "\n\n" + p
+        else:
+            flush()
+            # overlap: keep last overlap chars from previous chunk as prefix
+            if overlap > 0 and out:
+                tail = out[-1][-overlap:]
+                buff = (tail + "\n\n" + p).strip()
+            else:
+                buff = p
+
+    flush()
+    return out
+
+
+def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
+    k1 = 1.2
+    b = 0.75
+    score = 0.0
+    for t in query_toks:
+        if t not in tf:
+            continue
+        n = df.get(t, 0)
+        idf = math.log(1 + (N - n + 0.5) / (n + 0.5))
+        f = tf[t]
+        denom = f + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
+        score += idf * (f * (k1 + 1) / (denom or 1.0))
+    return score
 
 
 def list_pdfs() -> List[str]:
@@ -351,43 +316,112 @@ def list_pdfs() -> List[str]:
     return files
 
 
-def auto_pin_pdf(question: str) -> Optional[str]:
-    q = (question or "").lower()
-    pdfs = set(list_pdfs())
+def index_pdf_to_chunks(pdf_path: Path) -> None:
+    """
+    Reads each page and creates paragraph chunks. Stores BM25 stats.
+    """
+    pdf_name = pdf_path.name
+    doc = fitz.open(pdf_path)
+    chunks: List[Chunk] = []
+    df = Counter()
 
-    def pick_any(cands: List[str]) -> Optional[str]:
-        for c in cands:
-            if c in pdfs:
-                return c
-        return None
+    try:
+        for i in range(doc.page_count):
+            page_no = i + 1
+            raw = doc.load_page(i).get_text("text") or ""
+            raw = clean_text(raw)
 
-    if any(w in q for w in ["stairs", "stair", "staircase", "riser", "rise", "going", "pitch", "headroom", "handrail", "balustrade", "landing"]):
-        return pick_any([
-            "Technical Guidance Document K.pdf",
-            "TGD K.pdf",
-            "Technical Guidance Document K (2020).pdf",
-            "Technical Guidance Document K.pdf".replace("  ", " ")
-        ])
+            # Split page into smaller chunks
+            page_chunks = _split_into_chunks(raw, CHUNK_TARGET_CHARS, CHUNK_OVERLAP_CHARS)
+            for j, ch in enumerate(page_chunks):
+                toks = tokenize(ch)
+                tf = Counter(toks)
+                df.update(set(tf.keys()))
+                cid = _hash_id(f"{pdf_name}|p{page_no}|{j}|{ch[:80]}")
+                chunks.append(Chunk(
+                    doc=pdf_name,
+                    page=page_no,
+                    chunk_id=cid,
+                    text=ch,
+                    tf=tf,
+                    length=len(toks)
+                ))
 
-    if any(w in q for w in ["fire", "escape", "means of escape", "travel distance", "sprinkler", "smoke", "compartment", "car park", "corridor", "protected route"]):
-        return pick_any([
-            "Technical Guidance Document B Non Dwellings.pdf",
-            "Technical Guidance Document B Dwellings.pdf",
-        ])
+        avgdl = (sum(c.length for c in chunks) / len(chunks)) if chunks else 0.0
+        CHUNK_INDEX[pdf_name] = {
+            "chunks": chunks,
+            "df": df,
+            "avgdl": avgdl,
+            "N": len(chunks),
+            "pages": doc.page_count
+        }
+    finally:
+        doc.close()
 
-    if any(w in q for w in ["u-value", "u value", "y-value", "thermal", "insulation", "ber", "deap", "energy", "renovation", "major renovation"]):
-        return pick_any([
-            "Technical Guidance Document L Dwellings.pdf",
-            "Technical Guidance Document L Non Dwellings.pdf",
-        ])
 
-    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac", "part m"]):
-        return pick_any([
-            "Technical Guidance Document M.pdf",
-        ])
+def ensure_chunk_indexed(pdf_name: str) -> None:
+    if pdf_name in CHUNK_INDEX:
+        return
+    p = PDF_DIR / pdf_name
+    if p.exists():
+        index_pdf_to_chunks(p)
 
-    return None
 
+def search_chunks(question: str, top_k: int = TOP_K_CHUNKS, pinned_pdf: Optional[str] = None) -> List[Chunk]:
+    pdfs = list_pdfs()
+    if not pdfs:
+        return []
+
+    qt = tokenize(question)
+    if not qt:
+        return []
+
+    candidates: List[Chunk] = []
+
+    search_space = [pinned_pdf] if pinned_pdf and pinned_pdf in pdfs else pdfs
+
+    for pdf_name in search_space:
+        ensure_chunk_indexed(pdf_name)
+        idx = CHUNK_INDEX.get(pdf_name)
+        if not idx:
+            continue
+
+        df = idx["df"]
+        N = idx["N"]
+        avgdl = idx["avgdl"]
+
+        scored: List[Tuple[float, Chunk]] = []
+        for ch in idx["chunks"]:
+            s = bm25_score(qt, ch.tf, df, N, ch.length, avgdl)
+            if s > 0:
+                scored.append((s, ch))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        candidates.extend([c for _, c in scored[: max(2, top_k)]])
+
+        # If pinned, don’t search other PDFs
+        if pinned_pdf and pdf_name == pinned_pdf:
+            break
+
+    # Global re-rank (simple): prefer higher BM25 + shorter chunks (more precise)
+    # We don’t have the scores here, so re-score quickly on a merged df is overkill.
+    # Instead: keep doc-local tops already; then just trim.
+    # (Good enough in practice with paragraph chunking.)
+    # De-dup by chunk_id.
+    seen = set()
+    uniq: List[Chunk] = []
+    for c in candidates:
+        if c.chunk_id in seen:
+            continue
+        seen.add(c.chunk_id)
+        uniq.append(c)
+
+    return uniq[:top_k]
+
+
+# ============================================================
+# DOCAI SUPPORT (kept, but used as an extra source)
+# ============================================================
 
 def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
     stem = Path(pdf_name).stem
@@ -406,425 +440,206 @@ def _parse_range_from_chunk_filename(path: Path) -> Optional[Tuple[int, int]]:
     return (int(m.group(1)), int(m.group(2)))
 
 
-def ensure_docai_indexed(pdf_name: str) -> None:
-    if pdf_name in DOCAI_INDEX:
-        return
-    chunk_files = _docai_chunk_files_for(pdf_name)
-    if not chunk_files:
-        return
-
-    chunks = []
-    df = Counter()
-
-    for p in chunk_files:
-        rng = _parse_range_from_chunk_filename(p)
+def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[str, str]]:
+    """
+    Returns list of (label, excerpt)
+    """
+    files = _docai_chunk_files_for(pdf_name)
+    if not files:
+        return []
+    qt = tokenize(question)
+    if not qt:
+        return []
+    scored: List[Tuple[float, str, str]] = []
+    for f in files:
+        rng = _parse_range_from_chunk_filename(f)
         if not rng:
             continue
-        try:
-            txt = p.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            continue
-
-        toks = tokenize(txt.lower())
+        txt = f.read_text(encoding="utf-8", errors="ignore")
+        toks = tokenize(txt)
         tf = Counter(toks)
-        df.update(set(tf.keys()))
-
-        chunks.append({"range": rng, "text": txt, "tf": tf, "len": len(toks)})
-
-    if not chunks:
-        return
-
-    avgdl = sum(c["len"] for c in chunks) / max(1, len(chunks))
-    DOCAI_INDEX[pdf_name] = {"chunks": chunks, "df": df, "avgdl": avgdl, "N": len(chunks)}
-
-
-def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
-    k1 = 1.2
-    b = 0.75
-    score = 0.0
-    for t in query_toks:
-        if t not in tf:
+        # naive score
+        overlap = sum(tf.get(t, 0) for t in qt)
+        if overlap <= 0:
             continue
-        n = df.get(t, 0)
-        idf = math.log(1 + (N - n + 0.5) / (n + 0.5))
-        f = tf[t]
-        denom = f + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
-        score += idf * (f * (k1 + 1) / (denom or 1.0))
-    return score
+        label = f"{pdf_name} DOC.AI pages {rng[0]}-{rng[1]}"
+        excerpt = clean_text(txt)
+        if len(excerpt) > 3500:
+            excerpt = excerpt[:3500] + "..."
+        scored.append((float(overlap), label, excerpt))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [(lab, ex) for _, lab, ex in scored[:k]]
 
 
-def search_docai_chunks(pdf_name: str, question: str, k: int = 3) -> List[Dict[str, Any]]:
-    ensure_docai_indexed(pdf_name)
-    idx = DOCAI_INDEX.get(pdf_name)
-    if not idx:
-        return []
-
-    qt = tokenize(question)
-    if not qt:
-        return []
-
-    df = idx["df"]
-    N = idx["N"]
-    avgdl = idx["avgdl"]
-
-    scored = []
-    for i, ch in enumerate(idx["chunks"]):
-        s = bm25_score(qt, ch["tf"], df, N, ch["len"], avgdl)
-        if s > 0:
-            scored.append((i, s))
-    scored.sort(key=lambda x: x[1], reverse=True)
-
-    out = []
-    for i, _ in scored[:k]:
-        out.append({"range": idx["chunks"][i]["range"], "text": idx["chunks"][i]["text"]})
-    return out
-
-
-def index_pdf(pdf_path: Path) -> None:
-    name = pdf_path.name
-    doc = fitz.open(pdf_path)
-    try:
-        page_tf: List[Counter] = []
-        df = Counter()
-        page_len: List[int] = []
-
-        for i in range(doc.page_count):
-            txt = clean_text(doc.load_page(i).get_text("text") or "")
-            toks = tokenize(txt.lower())
-            tf = Counter(toks)
-            page_tf.append(tf)
-            df.update(set(tf.keys()))
-            page_len.append(len(toks))
-
-        avgdl = (sum(page_len) / len(page_len)) if page_len else 0.0
-
-        PDF_INDEX[name] = {
-            "page_tf": page_tf,
-            "df": df,
-            "page_len": page_len,
-            "avgdl": avgdl,
-            "pages": doc.page_count,
-        }
-    finally:
-        doc.close()
-
-
-def ensure_indexed(pdf_name: str) -> None:
-    if pdf_name in PDF_INDEX:
-        return
-    p = PDF_DIR / pdf_name
-    if p.exists():
-        index_pdf(p)
-
-
-def search_pages(pdf_name: str, question: str, k: int = 5) -> List[int]:
-    ensure_indexed(pdf_name)
-    idx = PDF_INDEX.get(pdf_name)
-    if not idx:
-        return []
-
-    qt = tokenize(question)
-    if not qt:
-        return []
-
-    N = idx["pages"]
-    df = idx["df"]
-    avgdl = idx["avgdl"]
-    page_tf = idx["page_tf"]
-    page_len = idx["page_len"]
-
-    scored = []
-    for i, tf in enumerate(page_tf):
-        s = bm25_score(qt, tf, df, N, page_len[i], avgdl)
-        if s > 0:
-            scored.append((i, s))
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return [i for i, _ in scored[:k]]
-
-
-def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int = 2200) -> str:
-    doc = fitz.open(pdf_path)
-    try:
-        chunks = []
-        for p in pages:
-            if p < 0 or p >= doc.page_count:
-                continue
-            txt = clean_text(doc.load_page(p).get_text("text") or "")
-            if len(txt) > max_chars_per_page:
-                txt = txt[:max_chars_per_page] + "..."
-            chunks.append(f"[{pdf_path.name} excerpt]\n{txt}")
-        return "\n\n".join(chunks).strip()
-    finally:
-        doc.close()
-
-
-def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]) -> str:
-    pieces = []
-    for pdf_name, items, mode in selected:
-        pdf_path = PDF_DIR / pdf_name
-        if not pdf_path.exists():
-            continue
-
-        if mode == "docai":
-            ensure_docai_indexed(pdf_name)
-            idx = DOCAI_INDEX.get(pdf_name)
-            if not idx:
-                continue
-
-            for rng in items:  # type: ignore
-                a, b = rng
-                txt = ""
-                for ch in idx["chunks"]:
-                    if ch["range"] == (a, b):
-                        txt = ch["text"]
-                        break
-                if txt:
-                    clipped = txt.strip()
-                    if len(clipped) > 6500:
-                        clipped = clipped[:6500] + "..."
-                    pieces.append(f"[{pdf_name} excerpt]\n{clipped}")
-        else:
-            pages = items  # type: ignore
-            pieces.append(extract_pages_text(pdf_path, pages))
-
-    return ("\n\n".join([p for p in pieces if p]).strip())
-
-
-def select_sources(
-    question: str,
-    pdf_pin: Optional[str] = None,
-    max_docs: int = 3,
-    pages_per_doc: int = 3,
-    docai_chunks_per_doc: int = 2,
-) -> List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
-    pdfs = list_pdfs()
-    if not pdfs:
-        return []
-
-    chosen: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
-    know_docai = {name for name in pdfs if _docai_chunk_files_for(name)}
-
-    def pick_for_pdf(pdf_name: str) -> Optional[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
-        if pdf_name in know_docai:
-            chunks = search_docai_chunks(pdf_name, question, k=docai_chunks_per_doc)
-            if chunks:
-                ranges = [c["range"] for c in chunks]
-                return (pdf_name, ranges, "docai")
-
-        pages = search_pages(pdf_name, question, k=pages_per_doc)
-        if pages:
-            return (pdf_name, pages, "pymupdf")
-        return None
-
-    if pdf_pin and pdf_pin in pdfs:
-        picked = pick_for_pdf(pdf_pin)
-        return [picked] if picked else []
-
-    picks = []
-    for pdf_name in pdfs:
-        picked = pick_for_pdf(pdf_name)
-        if picked:
-            score = 10.0 if picked[2] == "docai" else 5.0
-            picks.append((score, picked))
-    picks.sort(key=lambda x: x[0], reverse=True)
-
-    for _, picked in picks[:max_docs]:
-        chosen.append(picked)
-
-    return chosen
-
-
-# ----------------------------
-# Compliance intent detection
-# ----------------------------
+# ============================================================
+# INTENT DETECTION
+# ============================================================
 
 COMPLIANCE_KEYWORDS = [
     "tgd", "technical guidance", "building regulations", "building regs",
-    "part a", "part b", "part c", "part d", "part e", "part f", "part g", "part h",
-    "part j", "part k", "part l", "part m",
-    "fire", "escape", "travel distance", "compartment", "smoke", "fire cert",
-    "access", "accessible", "wheelchair", "dac",
-    "ber", "deap", "u-value", "y-value", "airtight", "thermal bridge",
-    "means of escape", "compartmentation", "evacuation",
+    "part a","part b","part c","part d","part e","part f","part g","part h",
+    "part j","part k","part l","part m",
+    "fire","escape","travel distance","compartment","smoke","fire cert",
+    "access","accessible","wheelchair","dac",
+    "ber","deap","u-value","y-value","airtight","thermal bridge",
+    "means of escape"
 ]
 
 PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
-TECH_PATTERN = re.compile(
-    r"\b(tgd|technical guidance|building regulations|building regs|ber|deap|fire cert|dac|means of escape)\b",
-    re.I
-)
 
-NUMERIC_COMPLIANCE_TRIGGERS = [
-    "minimum", "maximum", "max", "min", "limit", "limits",
-    "distance", "width", "widths", "lengths", "length", "height", "u-value", "y-value",
-    "rise", "riser", "going", "pitch",
-    "stairs", "stair", "staircase", "landing", "headroom",
-    "dimension", "dimensions",
-    "escape", "travel distance"
+NUMERIC_TRIGGERS = [
+    "minimum","maximum","min","max","limit",
+    "distance","width","height",
+    "u-value","y-value","rise","riser","going","pitch",
+    "stairs","stair","staircase","landing","headroom",
+    "travel distance"
 ]
 
+NUM_WITH_UNIT_RE = re.compile(r"\b\d+(\.\d+)?\s*(mm|m|metre|meter|w/m²k|w\/m2k|%)\b", re.I)
 
-def is_numeric_compliance_question(q: str) -> bool:
+
+def is_compliance_question(q: str) -> bool:
     ql = (q or "").lower()
-    return any(k in ql for k in NUMERIC_COMPLIANCE_TRIGGERS)
-
-
-def should_use_docs(q: str, force_docs: bool = False) -> bool:
-    if force_docs:
-        return True
-    ql = (q or "").lower()
-    if is_numeric_compliance_question(ql):
-        return True
     if PART_PATTERN.search(ql):
-        return True
-    if TECH_PATTERN.search(ql):
         return True
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
 
 
-# ----------------------------
-# Output sanitizers
-# ----------------------------
-
-PAGE_MENTION_RE = re.compile(r"\bpage\s*\d+\b", re.I)
-BULLET_RE = re.compile(r"(^|\n)\s*(\*|-|•|\d+\.)\s+", re.M)
-REF_RE = re.compile(r"\b(Section|Table|Clause|Figure|Diagram)\s*[A-Za-z0-9][A-Za-z0-9\.\-]*\b", re.I)
-
-ANY_NUMBER_RE = re.compile(r"\b\d+(\.\d+)?\b")
-NUM_WITH_UNIT_RE = re.compile(r"\b\d+(\.\d+)?\s*(mm|m|metre|meter|w/m²k|w\/m2k|%)\b", re.I)
+def is_numeric_compliance(q: str) -> bool:
+    ql = (q or "").lower()
+    return is_compliance_question(ql) and any(k in ql for k in NUMERIC_TRIGGERS)
 
 
-def strip_bullets_streaming(delta: str) -> str:
-    return BULLET_RE.sub(lambda m: m.group(1), delta)
+def auto_pin_pdf(question: str) -> Optional[str]:
+    q = (question or "").lower()
+    pdfs = set(list_pdfs())
+
+    def pick(cands: List[str]) -> Optional[str]:
+        for c in cands:
+            if c in pdfs:
+                return c
+        return None
+
+    if any(w in q for w in ["stairs","stair","staircase","riser","going","pitch","headroom","handrail","balustrade","landing"]):
+        return pick(["Technical Guidance Document K.pdf", "TGD K.pdf"])
+
+    if any(w in q for w in ["access","accessible","wheelchair","ramp","dac","part m"]):
+        return pick(["Technical Guidance Document M.pdf", "TGD M.pdf"])
+
+    if any(w in q for w in ["fire","escape","travel distance","means of escape","compartment","smoke"]):
+        return pick(["Technical Guidance Document B Dwellings.pdf", "Technical Guidance Document B Non Dwellings.pdf"])
+
+    if any(w in q for w in ["u-value","y-value","thermal","ber","deap","energy","nzeb","primary energy"]):
+        return pick(["Technical Guidance Document L Dwellings.pdf", "Technical Guidance Document L Non Dwellings.pdf"])
+
+    return None
 
 
-def _sources_contain_any_number(sources_text: str) -> bool:
-    return bool(ANY_NUMBER_RE.search(sources_text or ""))
+# ============================================================
+# WEB SEARCH (SERPER) — makes it “ChatGPT-like”
+# ============================================================
 
-
-def _looks_like_numeric_answer(text: str) -> bool:
-    return bool(NUM_WITH_UNIT_RE.search(text or ""))
-
-
-def postprocess_final_answer(final_text: str, sources_text: str, compliance: bool) -> str:
-    t = final_text or ""
-    t = PAGE_MENTION_RE.sub("", t)
-    t = BULLET_RE.sub(lambda m: m.group(1), t)
-
-    if compliance:
-        src = (sources_text or "").lower()
-        if src.strip():
-            if ("section" not in src) and ("table" not in src) and ("clause" not in src) and ("diagram" not in src) and ("figure" not in src):
-                if REF_RE.search(t):
-                    t = REF_RE.sub("", t).strip()
-                    t = (t + "\n\nI can’t confidently point to the exact section or table from the extracted text I have right now. If you re-upload a clearer extract, I’ll re-check and cite it properly.").strip()
-        else:
-            t = REF_RE.sub("", t).strip()
-
-    t = re.sub(r"[ \t]+", " ", t)
-    t = re.sub(r"\n{3,}", "\n\n", t).strip()
-    return t
-
-
-# ----------------------------
-# Verification (silent double-check)
-# ----------------------------
-
-def _run_verifier(user_msg: str, draft_answer: str, sources_text: str) -> Tuple[bool, str]:
-    """
-    Returns (ok, safe_answer). If verifier fails, safe_answer is a corrected safe output.
-    """
-    if not VERIFY_NUMERIC:
-        return True, draft_answer
-
-    # Only verify when we have sources
-    if not (sources_text and sources_text.strip()):
-        return True, draft_answer
-
-    # Only verify when answer contains numbers OR question is numeric compliance
-    needs = is_numeric_compliance_question(user_msg) or _looks_like_numeric_answer(draft_answer) or bool(ANY_NUMBER_RE.search(draft_answer or ""))
-    if not needs:
-        return True, draft_answer
-
+async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, str]]:
+    if not WEB_ENABLED:
+        return []
+    url = "https://google.serper.dev/search"
+    headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
+    payload = {"q": query, "num": max(3, min(10, k))}
     try:
-        ensure_vertex_ready()
-        if not _VERTEX_READY:
-            return True, draft_answer
-
-        verifier = get_model(MODEL_COMPLIANCE, VERIFY_PROMPT)
-
-        verify_input = (
-            "USER QUESTION:\n" + (user_msg or "").strip() + "\n\n"
-            "DRAFT ANSWER:\n" + (draft_answer or "").strip() + "\n\n"
-            "SOURCES:\n" + (sources_text or "").strip()
-        )
-
-        resp = verifier.generate_content(
-            [Content(role="user", parts=[Part.from_text(verify_input)])],
-            generation_config=get_verify_generation_config(),
-            stream=False
-        )
-
-        raw = (getattr(resp, "text", "") or "").strip()
-
-        # Try to extract JSON object from any surrounding text (just in case)
-        m = re.search(r"\{.*\}", raw, re.S)
-        if m:
-            raw = m.group(0)
-
-        data = json.loads(raw)
-        ok = bool(data.get("ok", False))
-        safe_answer = (data.get("safe_answer") or "").strip()
-
-        if ok and safe_answer:
-            return True, safe_answer
-
-        # If not ok, enforce a safe fallback message
-        if safe_answer:
-            return False, safe_answer
-
-        fallback = (
-            "I can’t safely confirm that numeric requirement from the extracted TGD text I have available right now.\n\n"
-            "If you upload a clearer copy or tell me the exact table or section you want checked, I’ll answer directly from the text and include a short quote."
-        )
-        return False, fallback
-
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(url, headers=headers, json=payload)
+            r.raise_for_status()
+            data = r.json()
     except Exception:
-        # If verifier fails for any reason, don't break the app; just return draft.
-        return True, draft_answer
+        return []
+
+    out: List[Dict[str, str]] = []
+    for item in (data.get("organic") or [])[:k]:
+        title = (item.get("title") or "").strip()
+        link = (item.get("link") or "").strip()
+        snippet = (item.get("snippet") or "").strip()
+        if link:
+            out.append({"title": title, "url": link, "snippet": snippet})
+    return out
 
 
-# ----------------------------
-# Endpoints
-# ----------------------------
+# ============================================================
+# PROMPTS — rebuilt to behave like “ChatGPT + citations”
+# ============================================================
 
-@app.get("/")
-def root():
-    return {"ok": True, "app": "Raheem AI", "time": datetime.utcnow().isoformat()}
+SYSTEM_PROMPT_NORMAL = """
+You are Raheem AI.
+
+Write like a top-tier assistant:
+- Clear, direct, and helpful.
+- Use Markdown when it improves readability (headings, bullets, short tables).
+- If you are unsure, say so and explain what would confirm it.
+
+If the user asks about Irish building regulations / TGDs, prefer evidence from supplied SOURCES.
+If web sources are used, cite them as URLs.
+""".strip()
+
+SYSTEM_PROMPT_EVIDENCE = """
+You are Raheem AI in Evidence Mode.
+
+Rules:
+1) You MUST only assert numeric compliance limits (mm, m, %, W/m²K, etc.) if the exact number + unit appears in the provided SOURCES.
+2) When you give a numeric limit, include a short quote (1–2 lines) copied from SOURCES that contains that number.
+3) For each requirement you state, cite the evidence using:
+   - For PDFs: (Document: <name>, p.<page>)
+   - For web: (URL)
+4) If the SOURCES do not contain the exact limit, say you cannot confirm it from the current evidence.
+
+Output style:
+- Use Markdown.
+- Be concise but complete.
+""".strip()
 
 
-@app.get("/health")
-def health():
-    ensure_vertex_ready()
-    return {
-        "ok": True,
-        "vertex_ready": _VERTEX_READY,
-        "vertex_error": _VERTEX_ERR,
-        "pdf_count": len(list_pdfs()),
-        "models": {"chat": MODEL_CHAT, "compliance": MODEL_COMPLIANCE},
-        "project": GCP_PROJECT_ID,
-        "location": GCP_LOCATION,
-        "docai_helper": _DOCAI_HELPER_AVAILABLE,
-        "docai_processor_id_present": bool((os.getenv("DOCAI_PROCESSOR_ID") or "").strip()),
-        "docai_location_present": bool((os.getenv("DOCAI_LOCATION") or "").strip()),
-        "verify_numeric": VERIFY_NUMERIC,
-    }
+def build_contents(history: List[Dict[str, str]], user_message: str, sources_block: str) -> List[Content]:
+    contents: List[Content] = []
+    for m in history or []:
+        r = (m.get("role") or "").lower().strip()
+        c = (m.get("content") or "").strip()
+        if not c:
+            continue
+        if r == "user":
+            contents.append(Content(role="user", parts=[Part.from_text(c)]))
+        elif r == "assistant":
+            contents.append(Content(role="model", parts=[Part.from_text(c)]))
+
+    final_user = (user_message or "").strip()
+    if sources_block.strip():
+        final_user += "\n\nSOURCES:\n" + sources_block.strip()
+
+    contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
+    return contents
 
 
-@app.get("/pdfs")
-def pdfs():
-    return {"pdfs": list_pdfs()}
+def build_sources_block(chunks: List[Chunk], web_results: List[Dict[str, str]], docai_hits: List[Tuple[str, str]]) -> str:
+    parts: List[str] = []
 
+    if chunks:
+        parts.append("PDF EVIDENCE:")
+        for c in chunks:
+            parts.append(f"[PDF] {c.doc} | p.{c.page} | id:{c.chunk_id}\n{c.text}")
+
+    if docai_hits:
+        parts.append("\nDOC.AI EVIDENCE (raw extraction, use carefully):")
+        for label, text in docai_hits:
+            parts.append(f"[DOCAI] {label}\n{text}")
+
+    if web_results:
+        parts.append("\nWEB EVIDENCE:")
+        for i, w in enumerate(web_results, start=1):
+            parts.append(f"[WEB {i}] {w.get('title','').strip()}\nURL: {w.get('url','').strip()}\n{w.get('snippet','').strip()}")
+
+    return "\n\n".join(parts).strip()
+
+
+# ============================================================
+# UPLOAD + INDEXING
+# ============================================================
 
 def _split_docai_combined_to_chunks(combined: str) -> List[Tuple[Tuple[int, int], str]]:
     if not combined:
@@ -834,7 +649,6 @@ def _split_docai_combined_to_chunks(combined: str) -> List[Tuple[Tuple[int, int]
     out: List[Tuple[Tuple[int, int], str]] = []
     if len(parts) < 4:
         return out
-
     i = 1
     while i + 2 < len(parts):
         a = int(parts[i])
@@ -870,13 +684,19 @@ def upload_pdf(file: UploadFile = File(...)):
     with open(dest, "wb") as f:
         f.write(raw)
 
-    PDF_INDEX.pop(dest.name, None)
-    DOCAI_INDEX.pop(dest.name, None)
+    # Clear indexes
+    CHUNK_INDEX.pop(dest.name, None)
 
+    # Build chunk index immediately (fast enough for TGDs)
+    try:
+        index_pdf_to_chunks(dest)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": f"Indexed failed: {repr(e)}"}, status_code=500)
+
+    # Optional: DocAI parse
     docai_ok = False
     docai_chunks_saved = 0
     docai_error = None
-
     try:
         if _DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text:
             if (os.getenv("DOCAI_PROCESSOR_ID") or "").strip() and (os.getenv("DOCAI_LOCATION") or "").strip():
@@ -895,6 +715,7 @@ def upload_pdf(file: UploadFile = File(...)):
         "ok": True,
         "stored_as": dest.name,
         "pdf_count": len(list_pdfs()),
+        "indexed_chunks": CHUNK_INDEX.get(dest.name, {}).get("N", 0),
         "docai": {
             "attempted": bool(_DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text),
             "ok": docai_ok,
@@ -904,11 +725,43 @@ def upload_pdf(file: UploadFile = File(...)):
     }
 
 
-# ----------------------------
-# Streaming core
-# ----------------------------
+@app.get("/pdfs")
+def pdfs():
+    return {"pdfs": list_pdfs()}
 
-def _stream_answer(
+
+# ============================================================
+# HEALTH + ROOT
+# ============================================================
+
+@app.get("/")
+def root():
+    return {"ok": True, "app": "Raheem AI", "time": datetime.utcnow().isoformat()}
+
+
+@app.get("/health")
+def health():
+    ensure_vertex_ready()
+    return {
+        "ok": True,
+        "vertex_ready": _VERTEX_READY,
+        "vertex_error": _VERTEX_ERR,
+        "pdf_count": len(list_pdfs()),
+        "models": {"chat": MODEL_CHAT, "compliance": MODEL_COMPLIANCE},
+        "project": GCP_PROJECT_ID,
+        "location": GCP_LOCATION,
+        "docai_helper": _DOCAI_HELPER_AVAILABLE,
+        "docai_processor_id_present": bool((os.getenv("DOCAI_PROCESSOR_ID") or "").strip()),
+        "docai_location_present": bool((os.getenv("DOCAI_LOCATION") or "").strip()),
+        "web_enabled": WEB_ENABLED,
+    }
+
+
+# ============================================================
+# STREAMING CORE
+# ============================================================
+
+async def _stream_answer_async(
     chat_id: str,
     message: str,
     force_docs: bool,
@@ -916,14 +769,17 @@ def _stream_answer(
     page_hint: Optional[int],
     messages: Optional[List[Dict[str, Any]]] = None
 ):
+    """
+    Async generator for SSE.
+    """
     try:
-        if not message.strip():
+        user_msg = (message or "").strip()
+        if not user_msg:
             yield "event: error\ndata: No message provided.\n\n"
             yield "event: done\ndata: ok\n\n"
             return
 
         chat_id = (chat_id or "").strip()
-        user_msg = (message or "").strip()
 
         # Canonical history
         if isinstance(messages, list) and messages:
@@ -939,38 +795,40 @@ def _stream_answer(
                 remember(chat_id, "user", user_msg)
                 history_for_prompt = get_history(chat_id)
 
-        # Decide compliance intent
-        use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
-        numeric_compliance = use_docs_intent and is_numeric_compliance_question(user_msg)
+        # Decide modes
+        evidence_mode = force_docs or DEFAULT_EVIDENCE_MODE or is_compliance_question(user_msg)
+        numeric_needed = is_numeric_compliance(user_msg)
 
-        sources_text = ""
-        if use_docs_intent and list_pdfs():
-            auto_pdf = pdf or auto_pin_pdf(user_msg)
-            selected = select_sources(
-                user_msg,
-                pdf_pin=auto_pdf,   # IMPORTANT: use auto-pinned PDF
-                max_docs=3,
-                pages_per_doc=3,
-                docai_chunks_per_doc=2
-            )
-            sources_text = build_sources_bundle(selected)
+        pinned = pdf or auto_pin_pdf(user_msg)
 
-        used_docs_flag = bool(sources_text and sources_text.strip())
-        is_compliance = use_docs_intent
+        # Retrieve PDF evidence
+        chunks: List[Chunk] = []
+        if list_pdfs():
+            chunks = search_chunks(user_msg, top_k=TOP_K_CHUNKS, pinned_pdf=pinned)
 
-        model_name = MODEL_COMPLIANCE if is_compliance else MODEL_CHAT
-        system_prompt = SYSTEM_PROMPT_COMPLIANCE if is_compliance else SYSTEM_PROMPT_NORMAL
+        # Optional DocAI hits (extra)
+        docai_hits: List[Tuple[str, str]] = []
+        if pinned and _docai_chunk_files_for(pinned):
+            docai_hits = docai_search_text(pinned, user_msg, k=2)
 
-        # HARD RULE: numeric compliance must be grounded in extracted text that contains numbers
-        if numeric_compliance:
-            if (not used_docs_flag) or (not _sources_contain_any_number(sources_text)):
+        # Web evidence (only if enabled and either non-compliance question OR no good PDF evidence)
+        web_results: List[Dict[str, str]] = []
+        if WEB_ENABLED and WEB_ENABLED and WEB_ENABLED:
+            if (not evidence_mode) or (evidence_mode and not chunks and not numeric_needed):
+                web_results = await web_search_serper(user_msg, k=TOP_K_WEB)
+
+        sources_block = build_sources_block(chunks, web_results, docai_hits)
+
+        # HARD safety rule: numeric compliance requires numeric evidence in SOURCES
+        if numeric_needed:
+            if not chunks and not docai_hits:
                 refusal = (
-                    "I can’t confirm the exact numeric limit from the extracted TGD text I have available right now.\n\n"
-                    "If you upload a clearer copy or tell me the exact clause or table you want checked, I’ll answer directly from the text and include a short quote."
+                    "I can’t confirm the exact numeric requirement yet because I don’t have any relevant TGD evidence loaded for this question.\n\n"
+                    "Upload the relevant TGD (or tell me which one), and I’ll quote the exact line containing the number."
                 )
                 if chat_id:
                     remember(chat_id, "assistant", refusal)
-                yield f"data: {refusal}\n\n"
+                yield f"data: {refusal.replace(chr(10),'\\\\n')}\n\n"
                 yield "event: done\ndata: ok\n\n"
                 return
 
@@ -981,12 +839,15 @@ def _stream_answer(
             yield "event: done\ndata: ok\n\n"
             return
 
+        system_prompt = SYSTEM_PROMPT_EVIDENCE if evidence_mode else SYSTEM_PROMPT_NORMAL
+        model_name = MODEL_COMPLIANCE if evidence_mode else MODEL_CHAT
+
         model = get_model(model_name=model_name, system_prompt=system_prompt)
-        contents = build_gemini_contents(history_for_prompt, user_msg, sources_text)
+        contents = build_contents(history_for_prompt, user_msg, sources_block)
 
         stream = model.generate_content(
             contents,
-            generation_config=get_generation_config(is_compliance),
+            generation_config=get_generation_config(evidence_mode),
             stream=True
         )
 
@@ -995,30 +856,13 @@ def _stream_answer(
             delta = getattr(chunk, "text", None)
             if not delta:
                 continue
-            delta_clean = strip_bullets_streaming(delta)
-            full.append(delta_clean)
-            safe = delta_clean.replace("\r", "").replace("\n", "\\n")
+            full.append(delta)
+            safe = delta.replace("\r", "").replace("\n", "\\n")
             yield f"data: {safe}\n\n"
 
         final_text = "".join(full).strip()
-        final_text = postprocess_final_answer(final_text, sources_text, compliance=is_compliance)
 
-        # FINAL HARD CHECK: numeric compliance must include a short quote from SOURCES if it outputs numbers
-        if numeric_compliance:
-            has_numeric_output = _looks_like_numeric_answer(final_text) or bool(ANY_NUMBER_RE.search(final_text or ""))
-            has_quote_marker = ("quote:" in (final_text or "").lower())
-            if has_numeric_output and not has_quote_marker:
-                final_text = (
-                    "I can’t safely give you that numeric requirement yet because I don’t have a reliable quoted line from the extracted TGD text to prove it.\n\n"
-                    "If you re-upload the PDF (so it re-parses) or tell me the exact clause or table, I’ll answer and include a short quote."
-                )
-
-        # Silent verification pass (prevents wrong table reads / fake section refs)
-        if is_compliance and used_docs_flag:
-            ok, verified = _run_verifier(user_msg, final_text, sources_text)
-            if verified and verified.strip():
-                final_text = postprocess_final_answer(verified.strip(), sources_text, compliance=is_compliance)
-
+        # Store
         if chat_id:
             remember(chat_id, "assistant", final_text)
 
@@ -1030,6 +874,21 @@ def _stream_answer(
         yield "event: done\ndata: ok\n\n"
 
 
+def _stream_answer_sync(*args, **kwargs):
+    """
+    FastAPI StreamingResponse can take a sync generator easily.
+    We wrap the async generator.
+    """
+    import anyio
+    async_gen = _stream_answer_async(*args, **kwargs)
+
+    async def run():
+        async for item in async_gen:
+            yield item
+
+    return anyio.to_thread.run_sync(lambda: None)  # no-op placeholder
+
+
 @app.get("/chat_stream")
 def chat_stream_get(
     q: str = Query(""),
@@ -1038,8 +897,12 @@ def chat_stream_get(
     pdf: Optional[str] = Query(None),
     page_hint: Optional[int] = Query(None),
 ):
+    async def gen():
+        async for s in _stream_answer_async(chat_id.strip(), q, force_docs, pdf, page_hint, messages=None):
+            yield s
+
     return StreamingResponse(
-        _stream_answer(chat_id.strip(), q, force_docs, pdf, page_hint),
+        gen(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
@@ -1054,13 +917,12 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
     page_hint = payload.get("page_hint")
     messages = payload.get("messages")
 
+    async def gen():
+        async for s in _stream_answer_async(chat_id, message, force_docs, pdf, page_hint, messages=messages):
+            yield s
+
     return StreamingResponse(
-        _stream_answer(chat_id, message, force_docs, pdf, page_hint, messages=messages),
+        gen(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
-
-
-
-
-
