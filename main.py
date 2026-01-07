@@ -17,9 +17,10 @@ from collections import Counter, defaultdict
 import httpx
 import fitz  # PyMuPDF
 
-from fastapi import FastAPI, UploadFile, File, Query, Body
+from fastapi import FastAPI, UploadFile, File, Query, Body, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
+
 from dotenv import load_dotenv
 
 import vertexai
@@ -50,19 +51,6 @@ except Exception:
 
 load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent
-
-PDF_DIR = BASE_DIR / "pdfs"
-PDF_DIR.mkdir(parents=True, exist_ok=True)
-
-DOCAI_DIR = BASE_DIR / "parsed_docai"
-DOCAI_DIR.mkdir(parents=True, exist_ok=True)
-
-CACHE_DIR = BASE_DIR / "cache"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-WEB_CACHE_DIR = CACHE_DIR / "web"
-WEB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "80"))
 
@@ -143,24 +131,48 @@ WEB_RETRY_BACKOFF = float(os.getenv("WEB_RETRY_BACKOFF", "0.6")) # seconds
 # Web cache
 WEB_CACHE_TTL_SECONDS = int(os.getenv("WEB_CACHE_TTL_SECONDS", str(12 * 60 * 60)))  # 12h
 
+DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR))).resolve()
 
-# ============================================================
-# APP
-# ============================================================
+PDF_DIR = DATA_DIR / "pdfs"
+DOCAI_DIR = DATA_DIR / "parsed_docai"
+CACHE_DIR = DATA_DIR / "cache"
+WEB_CACHE_DIR = CACHE_DIR / "web"
+
+for d in (PDF_DIR, DOCAI_DIR, CACHE_DIR, WEB_CACHE_DIR):
+    d.mkdir(parents=True, exist_ok=True)
+    
+ADMIN_API_KEY = (os.getenv("ADMIN_API_KEY") or "").strip()
+def require_admin_key(x_api_key: Optional[str]) -> Optional[JSONResponse]:
+    if not ADMIN_API_KEY:
+        return None  # dev mode
+    if (x_api_key or "").strip() != ADMIN_API_KEY:
+        return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
+    return None
 
 app = FastAPI(docs_url="/swagger", redoc_url=None)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# ---- CORS configuration ----
+# Comma-separated list in env:
+# CORS_ORIGINS="https://raheemai.pages.dev,https://raheemai.ie,http://localhost:5500"
+raw_origins = os.getenv("CORS_ORIGINS", "")
+
+if raw_origins:
+    allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+else:
+    # Sensible defaults for local + current prod
+    allowed_origins = [
         "https://raheemai.pages.dev",
         "https://raheem-ai.pages.dev",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:5500",
         "http://127.0.0.1:5500",
-    ],
-    allow_credentials=False,
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,   # keep false unless you truly need cookies/auth
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -217,8 +229,8 @@ def get_model(model_name: str, system_prompt: str) -> GenerativeModel:
 def get_generation_config(is_evidence: bool) -> GenerationConfig:
     # More ChatGPT-like: stable, paragraphy
     if is_evidence:
-        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=1400)
-    return GenerationConfig(temperature=0.6, top_p=0.9, max_output_tokens=1400)
+        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=2200)
+    return GenerationConfig(temperature=0.65, top_p=0.9, max_output_tokens=2200)
 
 
 # ============================================================
@@ -302,26 +314,25 @@ SECTION_RE = re.compile(r"^\s*(?:section\s+)?(\d+(?:\.\d+){0,4})\b", re.I)
 TABLE_RE = re.compile(r"\btable\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 DIAGRAM_RE = re.compile(r"\bdiagram\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 
-WEB_CITE_TOKEN_RE = re.compile(r"\[WEB:(\d+)\]\(\s*(https?://[^\s)]+)\s*\)")
+WEB_CITE_NUM_RE = re.compile(r"\[(\d+)\]")
 
 def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
-    """
-    If the model doesn't include any [WEB:i](URL) token, append a Sources section.
-    """
     if not web_pages:
         return answer
 
-    # If it already used at least one token, accept.
-    if WEB_CITE_TOKEN_RE.search(answer or ""):
+    # If it already includes at least one [n], accept.
+    if WEB_CITE_NUM_RE.search(answer or ""):
         return answer
 
-    sources_lines = ["\n\n---\n\n### Sources (web)"]
+    # Otherwise append a sources section and let the user see the references cleanly.
+    lines = ["\n\nSources:"]
     for i, w in enumerate(web_pages, start=1):
+        title = (w.get("title") or "").strip() or f"Source {i}"
         url = (w.get("url") or "").strip()
         if url:
-            sources_lines.append(f"- [WEB:{i}]({url})")
+            lines.append(f"[{i}] {title} — {url}")
+    return (answer or "").rstrip() + "\n" + "\n".join(lines)
 
-    return (answer or "").rstrip() + "\n" + "\n".join(sources_lines)
 
 def clean_text(s: str) -> str:
     s = (s or "").replace("\u00ad", "")
@@ -1838,7 +1849,6 @@ def build_sources_block(
             url = (w.get("url") or "").strip()
             title = (w.get("title") or "").strip()
             ex = clean_text(w.get("excerpt", ""))
-            # Give the model a stable citation token it can copy verbatim
             parts.append(
                 f"[WEB {i}] {title}\n"
                 f"URL: {url}\n"
@@ -1985,19 +1995,31 @@ def _split_docai_combined_to_chunks(combined: str) -> List[Tuple[Tuple[int, int]
 
 
 @app.post("/upload-pdf")
-def upload_pdf(file: UploadFile = File(...)):
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
+async def upload_pdf(
+    file: UploadFile = File(...),
+    x_api_key: Optional[str] = Header(None, alias="x-api-key"),
+):
+
+    # Admin key gate (dev allows if ADMIN_API_KEY not set)
+    unauthorized = require_admin_key(x_api_key)
+    if unauthorized:
+        return unauthorized
+
+    # Validate file type (don’t trust only filename, but this is a good minimum)
+    filename = (file.filename or "").lower()
+    content_type = (file.content_type or "").lower()
+
+    if not filename.endswith(".pdf") and content_type != "application/pdf":
         return JSONResponse({"ok": False, "error": "Only PDF files are allowed."}, status_code=400)
 
-    raw = file.file.read()
+    raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "error": f"File too large. Max {MAX_UPLOAD_MB}MB."}, status_code=400)
 
-    safe_name = Path(file.filename).name
+    safe_name = Path(file.filename or "upload.pdf").name
     dest = PDF_DIR / safe_name
     if dest.exists():
-        stem = dest.stem
-        suffix = dest.suffix
+        stem, suffix = dest.stem, dest.suffix
         i = 2
         while True:
             cand = PDF_DIR / f"{stem}_{i}{suffix}"
@@ -2006,8 +2028,7 @@ def upload_pdf(file: UploadFile = File(...)):
                 break
             i += 1
 
-    with open(dest, "wb") as f:
-        f.write(raw)
+    dest.write_bytes(raw)
 
     # Clear indexes for this file
     CHUNK_INDEX.pop(dest.name, None)
@@ -2024,19 +2045,18 @@ def upload_pdf(file: UploadFile = File(...)):
     except Exception:
         pass
 
-    # Optional: DocAI parse
+    # DocAI parse (optional)
     docai_ok = False
     docai_chunks_saved = 0
     docai_error = None
     try:
         if _DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text:
             if (os.getenv("DOCAI_PROCESSOR_ID") or "").strip() and (os.getenv("DOCAI_LOCATION") or "").strip():
-                combined_text, _chunk_ranges = docai_extract_pdf_to_text(str(dest), chunk_pages=15)
+                combined_text, _ = docai_extract_pdf_to_text(str(dest), chunk_pages=15)
                 chunks = _split_docai_combined_to_chunks(combined_text)
                 stem = dest.stem
                 for (a, b), txt in chunks:
-                    out_path = DOCAI_DIR / f"{stem}_p{a}-{b}.txt"
-                    out_path.write_text(txt, encoding="utf-8", errors="ignore")
+                    (DOCAI_DIR / f"{stem}_p{a}-{b}.txt").write_text(txt, encoding="utf-8", errors="ignore")
                     docai_chunks_saved += 1
                 docai_ok = docai_chunks_saved > 0
     except Exception as e:
@@ -2054,7 +2074,7 @@ def upload_pdf(file: UploadFile = File(...)):
             "ok": docai_ok,
             "chunks_saved": docai_chunks_saved,
             "error": docai_error,
-        }
+        },
     }
 
 @app.post("/chat")
@@ -2065,7 +2085,12 @@ async def chat_endpoint(
     pdf: Optional[str] = Query(None),
     page_hint: Optional[int] = Query(None),
     messages: Optional[List[Dict[str, Any]]] = Body(None),
+    x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
+    unauthorized = require_admin_key(x_api_key)
+    if unauthorized:
+        return unauthorized
+
     return StreamingResponse(
         _stream_answer_async(chat_id, message, force_docs, pdf, page_hint, messages=messages),
         media_type="text/event-stream",
@@ -2355,7 +2380,7 @@ async def _stream_answer_async(
         ok, final_text = _hard_verify_numeric(draft, sources_blob)
 
         if not ok and final_text:
-            upd = "\n\n---\n\n### ✅ Final (verified)\n\n" + final_text
+            upd = "\n\n---\n\nFinal (verified):\n\n" + final_text
             yield f"data: {upd.replace(chr(10), '\\\\n')}\n\n"
             draft = (draft + upd).strip()
 
@@ -2368,5 +2393,6 @@ async def _stream_answer_async(
         msg = str(e).replace("\r", "").replace("\n", " ")
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
+
 
 
