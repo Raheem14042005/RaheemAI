@@ -484,21 +484,29 @@ def pick_visual_pages(user_msg: str, chunks: List[Chunk], max_pages: int = 2) ->
     return out
 
 def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
+    """
+    If the model forgot to include inline [n] citations, append a clean Sources list.
+    Never show raw URLs inline inside paragraphs.
+    """
+    answer = (answer or "").rstrip()
     if not web_pages:
         return answer
 
-    # If it already includes at least one [n], accept.
-    if WEB_CITE_NUM_RE.search(answer or ""):
+    # If it already includes [n] citations, leave it alone.
+    if WEB_CITE_NUM_RE.search(answer):
         return answer
 
-    # Otherwise append a sources section and let the user see the references cleanly.
-    lines = ["\n\nSources:"]
+    lines = ["", "Sources:"]
     for i, w in enumerate(web_pages, start=1):
         title = (w.get("title") or "").strip() or f"Source {i}"
         url = (w.get("url") or "").strip()
         if url:
             lines.append(f"[{i}] {title} — {url}")
-    return (answer or "").rstrip() + "\n" + "\n".join(lines)
+        else:
+            lines.append(f"[{i}] {title}")
+
+    return answer + "\n" + "\n".join(lines)
+
 
 
 def clean_text(s: str) -> str:
@@ -507,7 +515,12 @@ def clean_text(s: str) -> str:
     s = re.sub(r"[ \t]+", " ", s)
     s = re.sub(r"\n{3,}", "\n\n", s)
     return s.strip()
-
+    
+def sse_data(text: str) -> str:
+    # SSE format: each line must be prefixed with 'data: '
+    # and the event ends with a blank line.
+    text = (text or "").replace("\r", "")
+    return "".join(f"data: {line}\n" for line in text.split("\n")) + "\n"
 
 def tokenize(text: str) -> List[str]:
     t = (text or "").lower()
@@ -688,6 +701,23 @@ def _pdf_fingerprint(pdf_path: Path) -> str:
     s = f"{pdf_path.name}|{st.st_size}|{int(st.st_mtime)}"
     return hashlib.sha1(s.encode("utf-8")).hexdigest()[:16]
 
+def get_pdf_display_name(pdf_path: Path) -> str:
+    # 1) PDF metadata title (best)
+    try:
+        d = fitz.open(pdf_path)
+        meta = d.metadata or {}
+        title = (meta.get("title") or "").strip()
+        d.close()
+        if title and len(title) >= 5:
+            return title
+    except Exception:
+        pass
+
+    # 2) Clean filename fallback
+    stem = pdf_path.stem
+    stem = re.sub(r"[_\-]+", " ", stem).strip()
+    stem = re.sub(r"\s{2,}", " ", stem)
+    return stem or pdf_path.name
 
 def list_pdfs() -> List[str]:
     if R2_ENABLED:
@@ -843,8 +873,16 @@ def _load_index_from_cache(pdf_path: Path) -> bool:
 
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        if meta.get("pdf_name") != pdf_name:
+
+        # Cache belongs to a different PDF filename → ignore
+        if (meta.get("pdf_name") or "").strip() != pdf_name:
             return False
+
+        # Restore display name from cache (if present)
+        disp = (meta.get("display_name") or "").strip()
+        if disp:
+            # IMPORTANT: PDF_DISPLAY_NAME must be a global dict defined once at module level
+            PDF_DISPLAY_NAME[pdf_name] = disp
 
         df = Counter(meta.get("df", {}))
         avgdl = float(meta.get("avgdl", 0.0))
@@ -865,10 +903,10 @@ def _load_index_from_cache(pdf_path: Path) -> bool:
                         text=obj["text"],
                         tf=Counter(obj.get("tf", {})),
                         length=int(obj.get("length", 0)),
-                        section=obj.get("section", "") or "",
-                        heading=obj.get("heading", "") or "",
-                        table=obj.get("table", "") or "",
-                        diagram=obj.get("diagram", "") or "",
+                        section=(obj.get("section") or ""),
+                        heading=(obj.get("heading") or ""),
+                        table=(obj.get("table") or ""),
+                        diagram=(obj.get("diagram") or ""),
                     )
                 )
 
@@ -881,6 +919,7 @@ def _load_index_from_cache(pdf_path: Path) -> bool:
             "fingerprint": meta.get("fingerprint", ""),
         }
         return True
+
     except Exception:
         return False
 
@@ -895,6 +934,7 @@ def _save_index_to_cache(pdf_path: Path, idx: Dict[str, Any]) -> None:
         meta = {
             "pdf_name": pdf_path.name,
             "fingerprint": _pdf_fingerprint(pdf_path),
+            "display_name": PDF_DISPLAY_NAME.get(pdf_path.name) or get_pdf_display_name(pdf_path),
             "pages": int(idx.get("pages", 0)),
             "avgdl": float(idx.get("avgdl", 0.0)),
             "df": dict(df),
@@ -997,6 +1037,7 @@ def extract_pdf_images(pdf_path: Path) -> List[Dict[str, Any]]:
 
 def index_pdf_to_chunks(pdf_path: Path) -> None:
     pdf_name = pdf_path.name
+    PDF_DISPLAY_NAME[pdf_name] = get_pdf_display_name(pdf_path)
 
     if _load_index_from_cache(pdf_path):
         return
@@ -1953,9 +1994,11 @@ Voice:
 Hard rules:
 1) Only state numeric limits (mm, m, %, W/m²K, lux, etc.) if the exact number + unit appears in SOURCES.
 2) When you state a numeric limit, include a short quote (1–2 lines) that contains that number.
-3) Cite sources clearly:
+3) Do not guess “typical” values. If the evidence doesn’t contain the number, say you can’t confirm it.
+4) Cite sources clearly:
    - PDF: (Document: <name>, p.<page>) and optionally Section/Table if known
    - Web: [1], [2] etc (no raw URLs inline)
+
 
 Formatting:
 - No markdown headings (#).
@@ -2036,7 +2079,8 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
 
 
 def _format_pdf_citation(c: Chunk) -> str:
-    bits = [f"Document: {c.doc}", f"p.{c.page}"]
+    doc_label = PDF_DISPLAY_NAME.get(c.doc, c.doc)
+    bits = [f"Document: {doc_label}", f"p.{c.page}"]
     if c.section:
         bits.append(f"Section: {c.section}")
     if c.table:
@@ -2044,7 +2088,6 @@ def _format_pdf_citation(c: Chunk) -> str:
     if c.diagram:
         bits.append(f"Diagram: {c.diagram}")
     return "(" + ", ".join(bits) + ")"
-
 
 
 def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950) -> str:
@@ -2111,41 +2154,54 @@ def build_sources_block(
     web_pages: List[Dict[str, str]],
     docai_hits: List[Tuple[str, str]],
     user_query: str,
-    precision: str
+    precision: str,
 ) -> str:
     parts: List[str] = []
 
     # Keep evidence shorter for broad questions to reduce bullet-y responses
     max_chars = 650 if precision == "broad" else 950
 
+    # -------------------------
+    # PDF evidence
+    # -------------------------
     if chunks:
         parts.append("PDF EVIDENCE:")
         for c in chunks:
-            excerpt = _tighten_chunk_text_for_evidence(c, query=user_query, max_chars=max_chars) or clean_text(c.text)[:max_chars]
+            excerpt = (
+                _tighten_chunk_text_for_evidence(c, query=user_query, max_chars=max_chars)
+                or clean_text(c.text)[:max_chars]
+            )
             parts.append(f"[PDF] {_format_pdf_citation(c)} | id:{c.chunk_id}\n{excerpt}")
 
+    # -------------------------
+    # DocAI evidence
+    # -------------------------
     if docai_hits:
-        parts.append("\nDOC.AI EVIDENCE (raw extraction, use carefully):")
+        parts.append("DOC.AI EVIDENCE (raw extraction, use carefully):")
         for label, text in docai_hits:
             t = clean_text(text)
             if len(t) > 1800:
                 t = t[:1800] + "..."
             parts.append(f"[DOCAI] {label}\n{t}")
 
+    # -------------------------
+    # Web evidence (numbered to support [1], [2] in-text citations)
+    # -------------------------
     if web_pages:
         parts.append("\nWEB EVIDENCE:")
         for i, w in enumerate(web_pages, start=1):
             url = (w.get("url") or "").strip()
-            title = (w.get("title") or "").strip()
+            title = (w.get("title") or "").strip() or f"Source {i}"
             ex = clean_text(w.get("excerpt", ""))
             parts.append(
-                f"[WEB {i}] {title}\n"
+                f"[{i}] {title}\n"
                 f"URL: {url}\n"
-                f"CITE_TOKEN: [WEB:{i}]({url})\n"
-                f"{ex}"
+                f"EXCERPT:\n{ex}"
             )
 
-    return "\n\n".join([p for p in parts if p]).strip()
+
+    return "\n\n".join(p for p in parts if p).strip()
+
 
 
 # ============================================================
@@ -2253,10 +2309,9 @@ def _hard_verify_numeric(answer: str, sources_blob_lower: str) -> Tuple[bool, st
         return True, answer
 
     safe = (
-        "I can’t safely confirm those numeric values from the evidence I have available right now.\n\n"
-        "If you tell me which exact document/edition to use (or upload it), I’ll quote the exact line containing the number.\n\n"
-        "Numbers I’m refusing because they are not present in the current evidence: "
-        + ", ".join(missing)
+        "I can’t confirm those exact numeric values from the evidence loaded for this answer.\n"
+        "If you point me to the correct document/edition (or upload it), I’ll quote the exact line containing each number.\n\n"
+        "Numbers not found in the current evidence: " + ", ".join(missing)
     )
     return False, safe
 
@@ -2495,6 +2550,12 @@ def health():
 # STREAMING CORE
 # ============================================================
 
+def sse_send(text: str) -> str:
+    if text is None:
+        return ""
+    text = str(text).replace("\r", "")
+    return "".join(f"data: {line}\n" for line in text.split("\n")) + "\n"
+
 async def _stream_answer_async(
     chat_id: str,
     message: str,
@@ -2516,7 +2577,7 @@ async def _stream_answer_async(
             if chat_id:
                 remember(chat_id, "user", user_msg)
                 remember(chat_id, "assistant", friendly)
-            yield f"data: {friendly.replace(chr(10), '\\\\n')}\n\n"
+            yield sse_send(friendly)
             yield "event: done\ndata: ok\n\n"
             return
 
@@ -2568,7 +2629,7 @@ async def _stream_answer_async(
 
             if chat_id:
                 remember(chat_id, "assistant", rendered)
-            yield f"data: {rendered.replace(chr(10), '\\\\n')}\n\n"
+            yield sse_send(rendered)
             yield "event: done\ndata: ok\n\n"
             return
 
@@ -2710,7 +2771,7 @@ async def _stream_answer_async(
                 )
                 if chat_id:
                     remember(chat_id, "assistant", safe)
-                yield f"data: {safe.replace(chr(10), '\\\\n')}\n\n"
+                yield sse_send(rendered)
                 yield "event: done\ndata: ok\n\n"
                 return
 
@@ -2724,7 +2785,7 @@ async def _stream_answer_async(
             )
             if chat_id:
                 remember(chat_id, "assistant", refusal)
-            yield f"data: {refusal.replace(chr(10), '\\\\n')}\n\n"
+            yield sse_send(rendered)
             yield "event: done\ndata: ok\n\n"
             return
 
@@ -2742,7 +2803,7 @@ async def _stream_answer_async(
 
         ensure_vertex_ready()
         if not _VERTEX_READY:
-            msg = (_VERTEX_ERR or "Vertex not ready").replace("\n", " ")
+            msg = (_VERTEX_ERR or "Vertex not ready").replace("\r", "").replace("\n", " ")
             yield f"event: error\ndata: {msg}\n\n"
             yield "event: done\ndata: ok\n\n"
             return
@@ -2765,8 +2826,8 @@ async def _stream_answer_async(
             if not delta:
                 continue
             full.append(delta)
-            safe_delta = delta.replace("\r", "").replace("\n", "\\n")
-            yield f"data: {safe_delta}\n\n"
+            yield sse_send(delta)
+
 
         draft = "".join(full).strip()
 
@@ -2780,7 +2841,7 @@ async def _stream_answer_async(
 
         if not ok and final_text:
             upd = "\n\n---\n\nFinal (verified):\n\n" + final_text
-            yield f"data: {upd.replace(chr(10), '\\\\n')}\n\n"
+            yield sse_send(rendered)
             draft = (draft + upd).strip()
 
         if chat_id:
@@ -2793,6 +2854,7 @@ async def _stream_answer_async(
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
