@@ -1089,9 +1089,9 @@
     // Safety: prevent arbitrary API_BASE overrides (protects users & prevents broken configs)
     if (!API_BASE.startsWith("https://complyr.onrender.com")) {
       localStorage.removeItem("RAHEEM_API_BASE");
-      // Force correct base without causing a redirect loop.
-      window.__RAHEEM_API_BASE_FORCED = true;
-      }
+      location.replace("/");
+    }
+
  
 
     // =========================================================
@@ -1182,10 +1182,6 @@
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
 
-    // Restore last view
-    const API_BASE_DEFAULT = "https://complyr.onrender.com";
-    let API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
-    if (window.__RAHEEM_API_BASE_FORCED) API_BASE = API_BASE_DEFAULT;
 
     // =========================================================
     // Future feature preview buttons
@@ -1297,29 +1293,32 @@
       }
     }
 
-      try{
+      btnStatus.onclick = async ()=>{
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000);
-
-        const r = await fetch(apiUrl("/health"), { cache: "no-store", signal: controller.signal });
-        const t = await r.text();
-        clearTimeout(timeout);
-
-        let j = {};
-        try{ j = JSON.parse(t); }catch(e){}
-        if(!r.ok){
-          showToast("Status error " + r.status);
-          openModal("Backend status", t.slice(0, 5000));
-          return;
+        
+        try{
+          const r = await fetch(apiUrl("/health"), { cache: "no-store", signal: controller.signal });
+          const t = await r.text();
+          
+          let j = {};
+          try{ j = JSON.parse(t); }catch(e){}
+          
+          if(!r.ok){
+            showToast("Status error " + r.status);
+            openModal("Backend status", t.slice(0, 5000));
+            return;
+          }
+          
+          openModal("Backend status", JSON.stringify(j, null, 2));
+          showToast(j.vertex_ready ? "Online (AI ready)" : "Online (warming up)");
+        }catch(e){
+          showToast("Status check failed (timeout/offline/CORS).");
+        }finally{
+          clearTimeout(timeout);
         }
-        // Show a nicer modal with the JSON
-        const pretty = JSON.stringify(j, null, 2);
-        openModal("Backend status", pretty);
-        showToast(j.vertex_ready ? "Online (AI ready)" : "Online (warming up)");
-      }catch(e){
-        showToast("Status check failed. Backend may be offline or blocked by CORS.");
-      }
-    };
+      };
+
 
     refreshStatusPill();
     setInterval(refreshStatusPill, 25000);
@@ -1939,6 +1938,7 @@
   </script>
 </body>
 </html>
+
 
 
 
