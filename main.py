@@ -177,7 +177,9 @@ PDF_IMAGE_MAX_IMAGES = int(os.getenv("PDF_IMAGE_MAX_IMAGES", "24"))   # safety c
 PDF_IMAGE_MIN_PIXELS = int(os.getenv("PDF_IMAGE_MIN_PIXELS", "120000"))  # ignore tiny icons
 
 
-DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR))).resolve()
+DEFAULT_DATA_DIR = "/tmp/raheemai" if os.getenv("RENDER") else str(BASE_DIR)
+DATA_DIR = Path(os.getenv("DATA_DIR", DEFAULT_DATA_DIR)).resolve()
+
 
 PDF_DIR = DATA_DIR / "pdfs"
 DOCAI_DIR = DATA_DIR / "parsed_docai"
@@ -2758,4 +2760,5 @@ async def _stream_answer_async(
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
