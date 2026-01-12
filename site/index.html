@@ -3,1940 +3,581 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Raheem AI</title>
-
-  <!-- Professional metadata -->
-  <meta name="description" content="Raheem AI — compliance-first chat and document reasoning for building workflows." />
-  <meta name="theme-color" content="#050610" />
-  <meta property="og:title" content="Raheem AI" />
-  <meta property="og:description" content="Compliance-first chat and document reasoning for building workflows." />
-  <meta property="og:type" content="website" />
-
+  <title>Maintenance Mode 👷‍♂️✨</title>
+  <meta name="description" content="We’re doing a little tune-up. Play a mini game while you wait!" />
   <style>
     :root{
-      --bg0:#050610;
-      --bg1:#070a18;
-      --bg2:#0a0f22;
-      --glass: rgba(255,255,255,.08);
-      --glass2: rgba(255,255,255,.11);
-      --stroke: rgba(255,255,255,.14);
-      --text:#f4f7ff;
-      --muted: rgba(244,247,255,.78);
-      --muted2: rgba(244,247,255,.60);
-      --a1:#50ffd7;
-      --a2:#65b7ff;
-      --a3:#c7a5ff;
-      --hot:#ff4fd8;
-      --ok: rgba(80,255,215,.38);
-      --warn: rgba(255,204,102,.35);
-      --bad: rgba(255,79,216,.38);
-      --shadow: 0 28px 72px rgba(0,0,0,.58);
-      --shadow2: 0 18px 48px rgba(0,0,0,.42);
-      --r:22px;
-      --r2:16px;
-      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      --btnPad: 10px 12px;
+      --bg1:#0b1020;
+      --bg2:#1b2a4a;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --accent:#7cf7ff;
+      --accent2:#b47cff;
+      --good:#63ff9a;
+      --warn:#ffd66e;
+      --bad:#ff6b8b;
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+      --radius: 20px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
-    *{ box-sizing:border-box; }
+
+    *{ box-sizing: border-box; }
     html,body{ height:100%; }
     body{
       margin:0;
-      font-family: var(--font);
+      font-family: var(--sans);
       color: var(--text);
-      background:
-        radial-gradient(1200px 700px at 18% -10%, rgba(80,255,215,.14), transparent 60%),
-        radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.14), transparent 58%),
-        radial-gradient(900px 620px at 50% 115%, rgba(199,165,255,.12), transparent 58%),
-        linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
       overflow-x:hidden;
+      background:
+        radial-gradient(1200px 600px at 20% 10%, rgba(124,247,255,.16), transparent 60%),
+        radial-gradient(1000px 600px at 80% 20%, rgba(180,124,255,.18), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
     }
 
-    /* Background effects */
-    .bg-wrap{
-      position:fixed;
-      inset:0;
-      z-index:0;
+    /* floating blobs */
+    .blob{
+      position:absolute;
+      filter: blur(40px);
+      opacity:.35;
+      border-radius:50%;
+      animation: drift 18s ease-in-out infinite;
       pointer-events:none;
-      overflow:hidden;
     }
-    .aurora{
-      position:absolute;
-      inset:-25%;
-      background:
-        radial-gradient(900px 520px at 12% 18%, rgba(80,255,215,.14) 0%, rgba(80,255,215,0) 65%),
-        radial-gradient(900px 520px at 88% 14%, rgba(101,183,255,.14) 0%, rgba(101,183,255,0) 62%),
-        radial-gradient(980px 560px at 50% 108%, rgba(199,165,255,.12) 0%, rgba(199,165,255,0) 60%),
-        radial-gradient(840px 520px at 45% 40%, rgba(255,79,216,.06) 0%, rgba(255,79,216,0) 60%);
-      filter: blur(22px);
-      opacity:.85;
-      transform: translate3d(0,0,0);
-      animation: auroraMove 22s ease-in-out infinite;
-    }
-    @keyframes auroraMove{
-      0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      45%{ transform: translate3d(12px,-10px,0) scale(1.02); }
-      75%{ transform: translate3d(-12px,10px,0) scale(1.015); }
-    }
-    canvas#particles{
-      position:absolute;
-      inset:0;
-      opacity:.18;
-      filter: blur(.2px);
-    }
-    .vignette{
-      position:absolute;
-      inset:-1px;
-      background: radial-gradient(900px 520px at 50% 22%, rgba(0,0,0,0), rgba(0,0,0,.58));
-      opacity:.9;
-    }
-    @media (prefers-reduced-motion: reduce){
-      .aurora{ animation:none; }
-      canvas#particles{ display:none; }
+    .blob.b1{ width:420px;height:420px; left:-120px; top:40px; background: var(--accent); }
+    .blob.b2{ width:360px;height:360px; right:-120px; top:120px; background: var(--accent2); animation-delay:-6s; }
+    .blob.b3{ width:480px;height:480px; left:20%; bottom:-220px; background: #3cff7b; animation-delay:-11s; }
+
+    @keyframes drift{
+      0%,100%{ transform: translate(0,0) scale(1); }
+      50%{ transform: translate(40px,-20px) scale(1.08); }
     }
 
-    /* Layout */
-    .app{
+    .wrap{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px 18px;
       position:relative;
-      z-index:1;
-      min-height:100vh;
-      display:grid;
-      grid-template-columns: 340px 1fr;
-      gap: 18px;
-      padding: 18px;
+      isolation:isolate;
     }
-    @media (max-width: 980px){
-      .app{ grid-template-columns: 1fr; }
-      .side{ position:sticky; top:0; }
-    }
-    .side, .main{
-      border: 1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-      border-radius: var(--r);
-      box-shadow: var(--shadow2);
-      overflow:hidden;
-      backdrop-filter: blur(10px);
-    }
-    .main{
-      box-shadow: var(--shadow);
-      display:flex;
-      flex-direction:column;
-      min-height: calc(100vh - 36px);
-    }
-
-    /* Brand */
-    .brand{
-      display:flex;
-      align-items:center;
-      gap: 12px;
-      padding: 16px 16px 12px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-    .logoMark{
-      width: 46px;
-      height: 46px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.16);
-      background: rgba(0,0,0,.18);
-      box-shadow: 0 0 26px rgba(80,255,215,.10), 0 0 26px rgba(101,183,255,.08);
-      display:grid;
-      place-items:center;
-      overflow:hidden;
-      position:relative;
-    }
-    .logoMark svg{ width:38px; height:38px; opacity:.95; }
-    .brand h1{
-      margin:0;
-      font-size: 18px;
-      letter-spacing:.5px;
-      font-weight: 900;
-      line-height:1.1;
-    }
-    .brand h1 span{
-      background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
-      -webkit-background-clip: text;
-      background-clip:text;
-      color: transparent;
-      text-shadow: 0 0 18px rgba(101,183,255,.12);
-    }
-    .brand .sub{
-      margin-top:4px;
-      font-size: 12px;
-      color: var(--muted2);
-      line-height:1.2;
-    }
-
-    /* Sidebar nav */
-    .nav{
-      padding: 12px 12px 10px 12px;
-      display:flex;
-      flex-direction:column;
-      gap: 10px;
-    }
-    .navbtn{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      width:100%;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
-      color: var(--text);
-      cursor:pointer;
-      transition: transform .15s ease, border-color .15s ease, background .15s ease;
-      text-align:left;
-    }
-    .navbtn:hover{
-      transform: translateY(-1px);
-      border-color: rgba(101,183,255,.34);
-      background: rgba(0,0,0,.24);
-    }
-    .navbtn.active{
-      border-color: rgba(80,255,215,.34);
-      background: linear-gradient(135deg, rgba(80,255,215,.12), rgba(101,183,255,.08));
-      box-shadow: 0 0 18px rgba(80,255,215,.06);
-    }
-    .navbtn .left{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      min-width:0;
-    }
-    .tag{
-      font-size: 11px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      color: var(--muted);
-      background: rgba(255,255,255,.06);
-      white-space:nowrap;
-    }
-    .tag.live{
-      border-color: var(--ok);
-      color: rgba(230,255,240,.92);
-      background: rgba(80,255,215,.10);
-    }
-    .tag.warn{
-      border-color: var(--warn);
-      color: rgba(255,235,200,.95);
-      background: rgba(255,204,102,.10);
-    }
-    .tag.bad{
-      border-color: var(--bad);
-      color: rgba(255,215,242,.95);
-      background: rgba(255,79,216,.10);
-    }
-
-    .sideFoot{
-      padding: 12px 16px 14px 16px;
-      border-top: 1px solid rgba(255,255,255,.10);
-      color: var(--muted2);
-      font-size: 12px;
-      line-height:1.35;
-    }
-
-    /* Saved chats */
-    .chatlist{
-      display:none;
-      padding: 8px 12px 12px 12px;
-      border-top: 1px solid rgba(255,255,255,.10);
-    }
-    .chatlist.show{ display:block; }
-    .chatlist h3{
-      margin: 10px 4px 8px 4px;
-      font-size: 12px;
-      color: var(--muted2);
-      font-weight:800;
-      letter-spacing:.35px;
-      text-transform:uppercase;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .chatSearch{
-      padding: 0 12px 10px 12px;
-    }
-    .chatSearch input{
-      width:100%;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.20);
-      color: var(--text);
-      outline:none;
-    }
-    .chatSearch input:focus{
-      border-color: rgba(101,183,255,.40);
-      box-shadow: 0 0 0 3px rgba(101,183,255,.12);
-    }
-
-    .chatitem{
-      width:100%;
-      text-align:left;
-      padding: 10px 10px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      color: var(--text);
-      cursor:pointer;
-      margin-bottom: 8px;
-      transition: border-color .15s ease, transform .15s ease, background .15s ease;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .chatitem:hover{
-      transform: translateY(-1px);
-      border-color: rgba(80,255,215,.26);
-      background: rgba(0,0,0,.20);
-    }
-    .chatitem.active{
-      border-color: rgba(101,183,255,.34);
-      background: rgba(0,0,0,.22);
-    }
-    .chatitem .metaWrap{ min-width:0; flex:1; }
-    .chatitem .t{ font-weight:850; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .chatitem .s{ margin-top:4px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; }
-
-    .chatActions{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-shrink:0;
-      margin-top:1px;
-    }
-    .iconBtn{
-      width:30px;
-      height:30px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(244,247,255,.92);
-      cursor:pointer;
-      display:grid;
-      place-items:center;
-      transition: transform .15s ease, border-color .15s ease, background .15s ease;
-      font-weight: 900;
-      line-height:1;
-      user-select:none;
-    }
-    .iconBtn:hover{
-      transform: translateY(-1px);
-      border-color: rgba(101,183,255,.36);
-      background: rgba(255,255,255,.10);
-    }
-    .iconBtn.danger{
-      border-color: rgba(255,79,216,.30);
-      background: rgba(255,79,216,.08);
-    }
-    .iconBtn.danger:hover{
-      border-color: rgba(255,79,216,.45);
-      background: rgba(255,79,216,.12);
-    }
-
-    /* Main topbar */
-    .topbar{
-      padding: 14px 16px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.12);
-      flex-wrap:wrap;
-    }
-    .crumb{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      min-width: 0;
-    }
-    .crumb .title{
-      font-weight: 900;
-      letter-spacing:.25px;
-      font-size: 15px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .crumb .hint{
-      font-size: 12px;
-      color: var(--muted2);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-
-    .btn{
-      padding: var(--btnPad);
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      cursor:pointer;
-      transition: transform .15s ease, border-color .15s ease, background .15s ease;
-      font-weight: 800;
-      font-size: 13px;
-      white-space:nowrap;
-    }
-    .btn:hover{
-      transform: translateY(-1px);
-      border-color: rgba(101,183,255,.36);
-      background: rgba(255,255,255,.10);
-    }
-    .btn.primary{
-      border-color: rgba(80,255,215,.34);
-      background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
-      box-shadow: 0 0 18px rgba(80,255,215,.08);
-    }
-    .btn.ghost{
-      background: rgba(0,0,0,.18);
-    }
-
-    /* Views */
-    .view{ display:none; padding: 18px; }
-    .view.show{ display:block; }
-
-    .hero{
-      padding: 16px;
-      border-radius: var(--r);
-      border: 1px solid rgba(255,255,255,.12);
-      background:
-        radial-gradient(900px 320px at 18% 0%, rgba(80,255,215,.12), transparent 65%),
-        radial-gradient(900px 320px at 88% 0%, rgba(101,183,255,.10), transparent 62%),
-        rgba(0,0,0,.16);
-      box-shadow: var(--shadow2);
-    }
-    .hero h2{ margin:0; font-size: 22px; letter-spacing:.2px; }
-    .hero p{ margin:8px 0 0 0; color: var(--muted); max-width: 980px; line-height:1.55; }
-    .quote{
-      margin-top: 12px;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
-      color: rgba(244,247,255,.92);
-      line-height:1.45;
-    }
-
-    .grid{
-      margin-top: 14px;
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-    }
-    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
 
     .card{
-      border-radius: var(--r);
+      width:min(980px, 100%);
+      background: linear-gradient(180deg, var(--card), rgba(255,255,255,.05));
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.16);
-      box-shadow: var(--shadow2);
-      padding: 14px;
-      display:flex;
-      flex-direction:column;
-      gap: 12px;
-      min-height: 170px;
-    }
-    .cardhead{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap: 10px;
-    }
-    .cardtitle{
-      display:flex;
-      gap: 12px;
-      align-items:flex-start;
-    }
-    .icon{
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      display:grid;
-      place-items:center;
-      font-weight: 900;
-      letter-spacing:.4px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10), rgba(199,165,255,.08));
-      box-shadow: 0 0 16px rgba(101,183,255,.08);
-    }
-    .card h4{ margin:0; font-size: 15px; }
-    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.5; }
-
-    .pill{
-      font-size: 11px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      color: var(--muted);
-      background: rgba(255,255,255,.06);
-      white-space:nowrap;
-      align-self:flex-start;
-    }
-    .pill.live{
-      border-color: rgba(80,255,215,.38);
-      background: rgba(80,255,215,.10);
-      color: rgba(230,255,240,.92);
-    }
-
-    .cta{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      margin-top:auto;
-      flex-wrap:wrap;
-    }
-
-    /* Chat */
-    .chatwrap{
-      display:flex;
-      flex-direction:column;
-      gap: 12px;
-      height: calc(100vh - 190px);
-      min-height: 560px;
-    }
-    .row{
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .toggle{
-      display:flex;
-      align-items:center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.18);
-      color: var(--muted);
-      font-size: 12px;
-      user-select:none;
-    }
-    .toggle input{ transform: translateY(1px); }
-
-    .chatbox{
-      flex: 1;
-      border-radius: var(--r);
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.14);
-      padding: 14px;
-      overflow:auto;
-      scroll-behavior:smooth;
-    }
-    .msg{
-      max-width: 78%;
-      padding: 12px 12px;
-      border-radius: 18px;
-      margin: 10px 0;
-      line-height:1.55;
-      border: 1px solid rgba(255,255,255,.12);
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-    .msg.user{
-      margin-left:auto;
-      background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.12));
-      border-color: rgba(80,255,215,.30);
-      box-shadow: 0 0 14px rgba(80,255,215,.06);
-    }
-    .msg.ai{
-      background: rgba(255,255,255,.06);
-      position:relative;
-    }
-
-    /* In-message tools */
-    .msgTools{
-      margin-top: 8px;
-      display:flex;
-      gap: 8px;
-      flex-wrap:wrap;
-      opacity:.9;
-    }
-    .miniBtn{
-      padding: 7px 10px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.22);
-      color: rgba(244,247,255,.92);
-      cursor:pointer;
-      font-size: 12px;
-      font-weight: 800;
-      transition: transform .15s ease, border-color .15s ease, background .15s ease;
-    }
-    .miniBtn:hover{
-      transform: translateY(-1px);
-      border-color: rgba(101,183,255,.36);
-      background: rgba(0,0,0,.28);
-    }
-
-    .typing{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      color: var(--muted2);
-      font-size: 12px;
-      margin-top: 6px;
-      user-select:none;
-    }
-    .dots{ display:inline-flex; gap:4px; transform: translateY(1px); }
-    .dot{
-      width:6px;height:6px;border-radius:999px;
-      background: rgba(244,247,255,.55);
-      animation: bounce 1.1s infinite ease-in-out;
-    }
-    .dot:nth-child(2){ animation-delay: .12s; }
-    .dot:nth-child(3){ animation-delay: .24s; }
-    @keyframes bounce{
-      0%, 80%, 100%{ transform: translateY(0); opacity:.55; }
-      40%{ transform: translateY(-4px); opacity:1; }
-    }
-
-    .composer{
-      display:flex;
-      gap: 10px;
-      align-items:flex-end;
-    }
-    textarea{
-      flex:1;
-      min-height: 46px;
-      max-height: 170px;
-      resize: vertical;
-      padding: 12px 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.20);
-      color: var(--text);
-      outline:none;
-      line-height:1.45;
-    }
-    textarea:focus{
-      border-color: rgba(101,183,255,.40);
-      box-shadow: 0 0 0 3px rgba(101,183,255,.12);
-    }
-
-    /* Footer */
-    .footer{
-      margin-top: 14px;
-      padding: 14px 16px;
-      border-top: 1px solid rgba(255,255,255,.10);
-      color: var(--muted2);
-      font-size: 12px;
-      line-height:1.35;
-      display:flex;
-      justify-content:space-between;
-      gap: 10px;
-      flex-wrap:wrap;
-      background: rgba(0,0,0,.10);
-    }
-    .copy{ color: rgba(244,247,255,.78); }
-
-    /* Toast */
-    .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      z-index: 50;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.16);
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      color: rgba(244,247,255,.95);
-      box-shadow: var(--shadow2);
-      display:none;
-      max-width: min(760px, calc(100vw - 26px));
-      line-height:1.45;
-    }
-    .toast.show{ display:block; animation: pop .18s ease; }
-    @keyframes pop{
-      from{ transform: translateX(-50%) translateY(8px); opacity:0; }
-      to{ transform: translateX(-50%) translateY(0); opacity:1; }
-    }
-
-    /* Modal */
-    .modalOverlay{
-      position:fixed;
-      inset:0;
-      display:none;
-      z-index:60;
-      background: rgba(0,0,0,.62);
-      backdrop-filter: blur(6px);
-      padding: 18px;
-    }
-    .modalOverlay.show{ display:grid; place-items:center; }
-    .modal{
-      width: min(920px, 100%);
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,12,24,.92);
+      border-radius: var(--radius);
       box-shadow: var(--shadow);
       overflow:hidden;
     }
-    .modalHead{
+
+    .top{
+      padding: 26px 26px 14px;
+      display:flex;
+      flex-wrap:wrap;
+      gap: 18px;
+      align-items:flex-start;
+      justify-content:space-between;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), transparent);
+    }
+
+    .brand{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      min-width: 260px;
+    }
+
+    .logo{
+      width:54px;height:54px;
+      border-radius: 16px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.22), transparent 45%),
+                  linear-gradient(135deg, rgba(124,247,255,.9), rgba(180,124,255,.9));
+      display:grid;
+      place-items:center;
+      box-shadow: 0 12px 28px rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.18);
+      user-select:none;
+    }
+    .logo span{
+      font-family: var(--mono);
+      font-weight: 800;
+      font-size: 18px;
+      color: rgba(10,15,30,.85);
+      letter-spacing: .5px;
+    }
+
+    h1{
+      margin:0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.05;
+    }
+    .sub{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .statusBox{
+      flex:1;
+      min-width: 280px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:flex-end;
+    }
+
+    .pillRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:flex-end;
+    }
+    .pill{
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      font-size: 12px;
+      color: rgba(255,255,255,.78);
+      user-select:none;
+      backdrop-filter: blur(8px);
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding: 14px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
+      gap:8px;
     }
-    .modalTitle{
-      font-weight: 950;
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background: var(--warn);
+      box-shadow: 0 0 0 4px rgba(255,214,110,.15);
+    }
+    .dot.good{ background: var(--good); box-shadow: 0 0 0 4px rgba(99,255,154,.15); }
+    .dot.bad{ background: var(--bad); box-shadow: 0 0 0 4px rgba(255,107,139,.15); }
+
+    .progressOuter{
+      width: min(320px, 100%);
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      height: 12px;
+      overflow:hidden;
+    }
+    .progressInner{
+      height:100%;
+      width: 18%;
+      background: linear-gradient(90deg, rgba(124,247,255,.95), rgba(180,124,255,.95));
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(124,247,255,.25);
+      animation: progress 10s ease-in-out infinite;
+    }
+    @keyframes progress{
+      0%{ width: 14%; }
+      50%{ width: 83%; }
+      100%{ width: 22%; }
+    }
+
+    .main{
+      padding: 22px 26px 26px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+    }
+    @media (max-width: 860px){
+      .main{ grid-template-columns: 1fr; }
+      .statusBox{ align-items:flex-start; }
+      .pillRow{ justify-content:flex-start; }
+    }
+
+    .panel{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      padding: 16px;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel h2{
+      margin:0 0 8px;
+      font-size: 16px;
       letter-spacing:.2px;
     }
-    .modalBody{
-      padding: 14px 16px;
-      color: rgba(244,247,255,.9);
-      line-height:1.55;
-      max-height: min(70vh, 560px);
-      overflow:auto;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-    .kbd{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.06);
-      border-radius: 10px;
-      padding: 2px 8px;
-      color: rgba(244,247,255,.92);
+    .panel p{
+      margin:0 0 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
     }
 
-    /* Accessibility focus */
-    :focus-visible{
-      outline: 3px solid rgba(101,183,255,.20);
-      outline-offset: 2px;
-      border-radius: 14px;
+    .btnRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top: 12px;
     }
+    button, a.btn{
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: rgba(10,15,30,.92);
+      background: linear-gradient(135deg, rgba(124,247,255,.92), rgba(180,124,255,.92));
+      font-weight: 700;
+      box-shadow: 0 14px 30px rgba(0,0,0,.22);
+      transition: transform .12s ease, filter .12s ease;
+      text-decoration:none;
+      display:inline-flex;
+      gap:10px;
+      align-items:center;
+      user-select:none;
+    }
+    button:hover, a.btn:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+    button:active, a.btn:active{ transform: translateY(1px); filter: brightness(.98); }
+
+    .ghost{
+      background: rgba(255,255,255,.08);
+      color: rgba(255,255,255,.88);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow:none;
+    }
+
+    /* GAME */
+    .gameWrap{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .hud{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      color: rgba(255,255,255,.85);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .hud span{
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 999px;
+      padding: 7px 10px;
+    }
+
+    .arena{
+      position: relative;
+      height: 280px;
+      border-radius: 18px;
+      background:
+        radial-gradient(400px 180px at 25% 30%, rgba(124,247,255,.12), transparent 60%),
+        radial-gradient(400px 200px at 75% 65%, rgba(180,124,255,.12), transparent 60%),
+        rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      user-select:none;
+      touch-action: none;
+    }
+
+    .bug{
+      position:absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      font-size: 22px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 18px 30px rgba(0,0,0,.25);
+      transform: translate(-50%, -50%);
+      cursor:pointer;
+      transition: transform .06s ease;
+    }
+    .bug:active{ transform: translate(-50%, -50%) scale(.96); }
+
+    .toast{
+      margin-top: 6px;
+      font-size: 13px;
+      color: rgba(255,255,255,.72);
+    }
+
+    .footer{
+      padding: 14px 26px 20px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:space-between;
+      align-items:center;
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+    }
+    .tiny{
+      font-family: var(--mono);
+      opacity:.85;
+    }
+    .link{
+      color: rgba(255,255,255,.82);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(255,255,255,.35);
+    }
+    .link:hover{ opacity:.9; }
   </style>
 </head>
-
 <body>
-  <div class="bg-wrap">
-    <div class="aurora"></div>
-    <canvas id="particles"></canvas>
-    <div class="vignette"></div>
-  </div>
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
 
-  <div class="app">
-    <aside class="side">
-      <div class="brand">
-        <div class="logoMark" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none">
-            <defs>
-              <linearGradient id="g1" x1="6" y1="10" x2="58" y2="54" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#50FFD7"/>
-                <stop offset="0.55" stop-color="#65B7FF"/>
-                <stop offset="1" stop-color="#C7A5FF"/>
-              </linearGradient>
-              <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="2.4" result="b"/>
-                <feMerge>
-                  <feMergeNode in="b"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <path filter="url(#glow)" d="M14 50V14h18c8 0 14 6 14 14 0 6-3 10-8 12l10 10h-10l-9-9H24v9H14Zm10-27h8c3 0 5 2 5 5s-2 5-5 5h-8V23Z" fill="url(#g1)" opacity="0.95"/>
-            <path filter="url(#glow)" d="M48 50l-5-12h8l5 12h-8Z" fill="#FF4FD8" opacity="0.7"/>
-          </svg>
-        </div>
-        <div>
-          <h1><span>Raheem AI</span></h1>
-          <div class="sub">Compliance-first chat and document reasoning</div>
-        </div>
-      </div>
-
-      <div class="nav">
-        <button class="navbtn active" id="navHome" type="button" aria-label="Go to Overview">
-          <div class="left">
-            <span class="tag">Home</span>
-            <div style="min-width:0">
-              <div style="font-weight:900">Overview</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Product summary and quick start</div>
-            </div>
+  <main class="wrap">
+    <section class="card" aria-label="Maintenance mode">
+      <header class="top">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"><span>⚙️</span></div>
+          <div>
+            <h1>We’re doing a quick tune-up 👷‍♀️🔧</h1>
+            <p class="sub">The site will be back soon. In the meantime… please bully the bugs (politely).</p>
           </div>
-          <span class="tag">↗</span>
-        </button>
+        </div>
 
-        <button class="navbtn" id="navChat" type="button" aria-label="Go to Chat">
-          <div class="left">
-            <span class="tag live">Live</span>
-            <div style="min-width:0">
-              <div style="font-weight:900">Chat</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved sessions and continuous context</div>
-            </div>
+        <div class="statusBox">
+          <div class="pillRow">
+            <div class="pill"><span class="dot good"></span><span id="statusText">Deploying fixes</span></div>
+            <div class="pill"><span class="dot"></span><span id="etaText">ETA: “soon™”</span></div>
           </div>
-          <span class="tag">↗</span>
-        </button>
-
-        <button class="navbtn" id="navFuture" type="button" aria-label="Go to Roadmap">
-          <div class="left">
-            <span class="tag">Roadmap</span>
-            <div style="min-width:0">
-              <div style="font-weight:900">Future Features</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, integrations</div>
-            </div>
+          <div class="progressOuter" aria-label="progress">
+            <div class="progressInner"></div>
           </div>
-          <span class="tag">↗</span>
-        </button>
-      </div>
-
-      <div class="chatlist" id="chatList">
-        <h3>
-          <span>Saved chats</span>
-          <button class="iconBtn danger" id="btnDeleteAllChats" type="button" title="Delete all chats" aria-label="Delete all chats">!</button>
-        </h3>
-
-        <div class="chatSearch">
-          <input id="chatFilter" type="text" placeholder="Search chats..." autocomplete="off" />
         </div>
+      </header>
 
-        <div id="chatItems"></div>
-
-        <button class="btn" id="btnNewChat" type="button" style="width:100%; margin-top:6px;">New chat</button>
-      </div>
-
-      <div class="sideFoot">
-        <div style="font-weight:850;color:rgba(244,247,255,.86)">Usage tip</div>
-        <div style="margin-top:6px">
-          Use <b>Evidence mode</b> for stricter answers and citations where available.
-          Press <span class="kbd">/</span> to focus the message box.
-        </div>
-      </div>
-    </aside>
-
-    <main class="main">
-      <div class="topbar">
-        <div class="crumb">
-          <div class="title" id="viewTitle">Overview</div>
-          <div class="hint" id="viewHint">Product summary and quick start</div>
-        </div>
-        <div class="actions">
-          <span class="tag" id="apiPill">Checking…</span>
-          <button class="btn" id="btnStatus" type="button" title="Check backend health">Status</button>
-          <button class="btn ghost" id="btnShortcuts" type="button" title="Keyboard shortcuts">Shortcuts</button>
-        </div>
-      </div>
-
-      <!-- HOME -->
-      <section class="view show" id="viewHome">
-        <div class="hero">
-          <h2>AI chat for compliance, specifications and technical workflows</h2>
-          <p>
-            Ask questions in plain language. When you need higher confidence, enable Evidence mode to nudge the assistant
-            toward traceable, structured replies.
+      <div class="main">
+        <section class="panel">
+          <h2>What’s happening?</h2>
+          <p id="rotatingMsg">
+            We’re updating things behind the scenes: performance tweaks, a sprinkle of polish, and fewer mysterious gremlins.
           </p>
-          <div class="quote">
-            Built for practical building workflows: clear outputs, consistent structure, and faster review cycles.
+
+          <div class="btnRow">
+            <button id="refreshBtn" title="Try again">🔄 Refresh</button>
+            <button id="copyBtn" class="ghost" title="Copy status message">📋 Copy status</button>
+            <a class="btn ghost" href="/" title="Home">🏠 Home</a>
           </div>
-        </div>
 
-        <div class="grid">
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">AI</div>
-                <div>
-                  <h4>Chat</h4>
-                  <p>Continue conversations, keep context, and retrieve past work by session.</p>
-                </div>
-              </div>
-              <span class="pill live">Live</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Session memory</span>
-              <button class="btn primary" id="btnStartChat" type="button">Open chat</button>
-            </div>
-          </article>
+          <p class="toast" id="toast" aria-live="polite"></p>
+        </section>
 
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">+</div>
-                <div>
-                  <h4>Roadmap</h4>
-                  <p>Structured reports, BIM review helpers, manufacturer search, and automated workflows.</p>
-                </div>
-              </div>
-              <span class="pill">Preview</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Planned modules</span>
-              <button class="btn" id="btnOpenFuture" type="button">View</button>
-            </div>
-          </article>
-        </div>
-
-        <div class="footer">
-          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-          <div>Built by Abdulraheem Hayder Ahmed</div>
-        </div>
-      </section>
-
-      <!-- CHAT -->
-      <section class="view" id="viewChat">
-        <div class="hero">
-          <h2>Chat</h2>
+        <aside class="panel gameWrap">
+          <h2>Mini game: Catch the Bug 🐛</h2>
           <p>
-            Select a saved chat on the left to continue. Start a new chat to keep topics separated.
+            Click the bug as many times as you can in <b>20 seconds</b>.
+            If you score <b>15+</b>, you officially qualify as a “QA Legend”.
           </p>
-          <div class="quote" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-            <div style="max-width:780px">
-              Tip: Use Evidence mode for stricter answers and citations. For best results, ask one question per message.
-            </div>
-            <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
-          </div>
-          <div style="margin-top:10px;font-size:12px;color:var(--muted2);line-height:1.45">
-            Keyboard: <span class="kbd">Enter</span> send • <span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline •
-            <span class="kbd">Ctrl</span>+<span class="kbd">K</span> clear • <span class="kbd">/</span> focus input.
-          </div>
-        </div>
 
-        <div class="chatwrap">
-          <div class="row" style="justify-content:space-between;">
-            <div class="row">
-              <label class="toggle" title="Prefer stricter, evidence-oriented responses">
-                <input type="checkbox" id="forceDocs" />
-                Evidence mode
-              </label>
-              <label class="toggle" title="Enable streaming typewriter effect (cosmetic)">
-                <input type="checkbox" id="typewriter" />
-                Typewriter
-              </label>
-            </div>
-            <div class="row">
-              <button class="btn" id="btnClear" type="button">Clear chat</button>
-            </div>
+          <div class="hud" aria-label="game status">
+            <span>Score: <b id="score">0</b></span>
+            <span>Time: <b id="time">20</b>s</span>
+            <span>Best: <b id="best">0</b></span>
           </div>
 
-          <div class="chatbox" id="chatBox" aria-live="polite"></div>
-
-          <div class="composer">
-            <textarea id="msg" placeholder="Type your message… (Shift + Enter for a new line)"></textarea>
-            <button class="btn primary" id="send" type="button">Send</button>
+          <div class="arena" id="arena" aria-label="game arena">
+            <div class="bug" id="bug" role="button" aria-label="bug">🐛</div>
           </div>
-        </div>
 
-        <div class="footer">
-          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-          <div>Tip: Evidence mode is best for technical checks.</div>
-        </div>
-      </section>
-
-      <!-- ROADMAP -->
-      <section class="view" id="viewFuture">
-        <div class="hero">
-          <h2>Future Features</h2>
-          <p>
-            This roadmap shows planned modules and workflows. Each feature is shipped with a focus on reliability and clarity.
-          </p>
-          <div class="quote">
-            Roadmap items are previews. Availability depends on testing, performance, and data coverage.
+          <div class="btnRow">
+            <button id="startBtn">▶️ Start</button>
+            <button id="resetBtn" class="ghost">🧼 Reset</button>
           </div>
-        </div>
 
-        <div class="grid">
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">ED</div>
-                <div>
-                  <h4>Early Design</h4>
-                  <p>Capture requirements and explore options with structured prompts and refinements.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Concept workflows</span>
-              <button class="btn" data-soon="Early Design" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">DAC</div>
-                <div>
-                  <h4>DAC Report Generator</h4>
-                  <p>Generate structured report drafts aligned to guidance and project inputs, ready for review.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Access and use</span>
-              <button class="btn" data-soon="DAC Report Generator" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">FCS</div>
-                <div>
-                  <h4>Fire Safety Report Generator</h4>
-                  <p>Produce consistent report drafts with traceable checks and repeatable structure.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Fire safety workflow</span>
-              <button class="btn" data-soon="Fire Safety Report Generator" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">MFG</div>
-                <div>
-                  <h4>Manufacturer and Spec Search</h4>
-                  <p>Search suppliers and specs using model parameters and project context.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Product discovery</span>
-              <button class="btn" data-soon="Manufacturer and Spec Search" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">BER</div>
-                <div>
-                  <h4>BER Workflow</h4>
-                  <p>Guide DEAP logic, import model data, and generate consistent reports for review.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">DEAP and BIM</span>
-              <button class="btn" data-soon="BER Workflow" type="button">Preview</button>
-            </div>
-          </article>
-        </div>
-
-        <div class="footer">
-          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-          <div>Roadmap preview</div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div class="toast" id="toast"></div>
-
-  <!-- Modal -->
-  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal">
-      <div class="modalHead">
-        <div class="modalTitle" id="modalTitle">Modal</div>
-        <button class="iconBtn" id="modalClose" type="button" aria-label="Close modal">×</button>
+          <p class="toast" id="gameMsg" aria-live="polite">Tip: the bug moves after every hit.</p>
+        </aside>
       </div>
-      <div class="modalBody" id="modalBody"></div>
-    </div>
-  </div>
+
+      <footer class="footer">
+        <div class="tiny">Maintenance Mode • <span id="dateStr"></span></div>
+        <div>Need to reach us? <a class="link" href="mailto:hello@example.com">email support</a></div>
+      </footer>
+    </section>
+  </main>
 
   <script>
-    // =========================================================
-    // FRONTEND HARD BLOCK: prevent users from viewing /docs, etc on THIS site.
-    // =========================================================
-    (function blockDocsRoutes(){
-      const p = (location.pathname || "").toLowerCase();
-      const blocked = ["/docs", "/swagger", "/redoc", "/openapi", "/openapi.json"];
-      if (blocked.some(x => p === x || p.startsWith(x + "/"))) {
-        history.replaceState(null, "", "/");
-      }
-    })();
-
-    // =========================================================
-    // BACKEND ROUTING
-    // =========================================================
-    const API_BASE_DEFAULT = "https://complyr.onrender.com";
-    let API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
-
-    // Safety: prevent arbitrary API_BASE overrides without redirect loops
-    if (!API_BASE.startsWith(API_BASE_DEFAULT)) {
-      localStorage.removeItem("RAHEEM_API_BASE");
-      API_BASE = API_BASE_DEFAULT;
-      window.__RAHEEM_API_BASE_FORCED = true;
-    }
-
-    function apiUrl(path){
-      if(!path) path = "/";
-      if(!path.startsWith("/")) path = "/" + path;
-      return API_BASE + path;
-    }
-
-    // =========================================================
-    // Toast
-    // =========================================================
-    const toast = document.getElementById("toast");
-    let toastTimer = null;
-    function showToast(msg){
-      toast.textContent = msg;
-      toast.classList.add("show");
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=>toast.classList.remove("show"), 2800);
-    }
-
-    // =========================================================
-    // Modal helpers (for status + shortcuts)
-    // =========================================================
-    const modalOverlay = document.getElementById("modalOverlay");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalBody = document.getElementById("modalBody");
-    const modalClose = document.getElementById("modalClose");
-    function openModal(title, bodyText){
-      modalTitle.textContent = title || "Info";
-      modalBody.textContent = bodyText || "";
-      modalOverlay.classList.add("show");
-    }
-    function closeModal(){ modalOverlay.classList.remove("show"); }
-    modalClose.onclick = closeModal;
-    modalOverlay.addEventListener("click", (e)=>{ if(e.target === modalOverlay) closeModal(); });
-    document.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && modalOverlay.classList.contains("show")) closeModal(); });
-
-    // =========================================================
-    // Navigation (with active highlight)
-    // =========================================================
-    const viewTitleEl = document.getElementById("viewTitle");
-    const viewHintEl  = document.getElementById("viewHint");
-    const viewHome    = document.getElementById("viewHome");
-    const viewChat    = document.getElementById("viewChat");
-    const viewFuture  = document.getElementById("viewFuture");
-    const chatList    = document.getElementById("chatList");
-
-    const navHome = document.getElementById("navHome");
-    const navChat = document.getElementById("navChat");
-    const navFuture = document.getElementById("navFuture");
-
-    function setNavActive(which){
-      [navHome, navChat, navFuture].forEach(b=>b.classList.remove("active"));
-      if(which==="home") navHome.classList.add("active");
-      if(which==="chat") navChat.classList.add("active");
-      if(which==="future") navFuture.classList.add("active");
-    }
-
-    function showView(which){
-      [viewHome, viewChat, viewFuture].forEach(v=>v.classList.remove("show"));
-      chatList.classList.remove("show");
-
-      if(which==="home"){
-        viewHome.classList.add("show");
-        viewTitleEl.textContent = "Overview";
-        viewHintEl.textContent  = "Product summary and quick start";
-      }
-      if(which==="chat"){
-        viewChat.classList.add("show");
-        viewTitleEl.textContent = "Chat";
-        viewHintEl.textContent  = "Saved sessions and continuous context";
-        chatList.classList.add("show");
-        renderChatList();
-        renderChat();
-        setTimeout(()=> msgEl.focus(), 50);
-      }
-      if(which==="future"){
-        viewFuture.classList.add("show");
-        viewTitleEl.textContent = "Future Features";
-        viewHintEl.textContent  = "Roadmap preview";
-      }
-
-      setNavActive(which);
-      localStorage.setItem("RAHEEM_VIEW", which);
-    }
-
-    navHome.onclick  = ()=>showView("home");
-    navChat.onclick  = ()=>showView("chat");
-    navFuture.onclick= ()=>showView("future");
-    document.getElementById("btnStartChat").onclick = ()=>showView("chat");
-    document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
-
-    // Restore last view
-    (function restoreView(){
-      const saved = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
-      if(saved === "chat" || saved === "future" || saved === "home") showView(saved);
-      else showView("home");
-    })();
-
-    // =========================================================
-    // Future feature preview buttons
-    // =========================================================
-    document.querySelectorAll("[data-soon]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const name = btn.getAttribute("data-soon") || "This feature";
-        const lines = [
-          name + " is in development.",
-          name + " is planned for a future release.",
-          name + " is currently in testing.",
-          "Preview only: " + name
-        ];
-        showToast(lines[Math.floor(Math.random()*lines.length)]);
-      });
-    });
-
-    // =========================================================
-    // Particles
-    // =========================================================
-    const canvas = document.getElementById("particles");
-    const ctx = canvas.getContext("2d");
-    let W=0,H=0, particles=[];
-    function resize(){
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
-      const base = Math.floor(Math.min(80, Math.max(35, W/26)));
-      particles = Array.from({length:base}).map(()=>({
-        x: Math.random()*W,
-        y: Math.random()*H,
-        r: Math.random()*1.4 + 0.4,
-        vx:(Math.random()*0.22+0.05)*(Math.random()<0.5?-1:1),
-        vy:(Math.random()*0.18+0.04)*(Math.random()<0.5?-1:1),
-        a: Math.random()*0.45 + 0.10
-      }));
-    }
-    window.addEventListener("resize", resize);
-    resize();
-    function tick(){
-      ctx.clearRect(0,0,W,H);
-      for(const p of particles){
-        p.x += p.vx; p.y += p.vy;
-        if(p.x < -20) p.x = W+20;
-        if(p.x > W+20) p.x = -20;
-        if(p.y < -20) p.y = H+20;
-        if(p.y > H+20) p.y = -20;
-        ctx.globalAlpha = p.a;
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        ctx.fillStyle = "white";
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      requestAnimationFrame(tick);
-    }
-    if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
-      tick();
-    }
-
-    // =========================================================
-    // Status pill + Status button
-    // =========================================================
-    const apiPill = document.getElementById("apiPill");
-    const btnStatus = document.getElementById("btnStatus");
-
-    function setPill(state, text){
-      apiPill.classList.remove("live","warn","bad");
-      if(state === "ok") apiPill.classList.add("live");
-      if(state === "warn") apiPill.classList.add("warn");
-      if(state === "bad") apiPill.classList.add("bad");
-      apiPill.textContent = text;
-    }
-
-    async function refreshStatusPill(){
-      setPill("warn", "Checking…");
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-
-      try{
-        const r = await fetch(apiUrl("/health"), {
-          method: "GET",
-          cache: "no-store",
-          mode: "cors",
-          signal: controller.signal
-        });
-
-        const t = await r.text();
-        if(!r.ok){
-          setPill("bad", "Offline");
-          return;
-        }
-
-        let j = {};
-        try{ j = JSON.parse(t); }catch(e){}
-
-        if(j && j.ok){
-          setPill(j.vertex_ready ? "ok" : "warn", j.vertex_ready ? "Online • AI ready" : "Online • Warming up");
-        }else{
-          setPill("warn", "Online");
-        }
-      }catch(e){
-        setPill("bad", "Offline");
-      }finally{
-        clearTimeout(timeout);
-      }
-    }
-
-    btnStatus.onclick = async ()=>{
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-
-      try{
-        const r = await fetch(apiUrl("/health"), {
-          method: "GET",
-          cache: "no-store",
-          mode: "cors",
-          signal: controller.signal
-        });
-
-        const t = await r.text();
-        let j = {};
-        try{ j = JSON.parse(t); }catch(e){}
-
-        if(!r.ok){
-          showToast("Status error " + r.status);
-          openModal("Backend status", t.slice(0, 5000));
-          return;
-        }
-
-        openModal("Backend status", JSON.stringify(j, null, 2));
-        showToast(j.vertex_ready ? "Online (AI ready)" : "Online (warming up)");
-      }catch(e){
-        showToast("Status check failed (timeout/offline/CORS).");
-      }finally{
-        clearTimeout(timeout);
-      }
+    // --------- tiny helpers ----------
+    const $ = (sel) => document.querySelector(sel);
+    const toast = (msg) => {
+      const el = $("#toast");
+      el.textContent = msg;
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => (el.textContent = ""), 2200);
     };
 
-    refreshStatusPill();
-    setInterval(refreshStatusPill, 25000);
-
-    // =========================================================
-    // Shortcuts modal
-    // =========================================================
-    const btnShortcuts = document.getElementById("btnShortcuts");
-    btnShortcuts.onclick = ()=>{
-      openModal(
-        "Keyboard shortcuts",
-        [
-          "Enter  — Send message",
-          "Shift + Enter  — New line",
-          "/  — Focus message input",
-          "Ctrl + K  — Clear chat",
-          "Esc  — Close this dialog"
-        ].join("\n")
-      );
-    };
-
-    // =========================================================
-    // CHAT STATE
-    // =========================================================
-    const chatBox = document.getElementById("chatBox");
-    const msgEl = document.getElementById("msg");
-    const sendBtn = document.getElementById("send");
-    const forceDocsEl = document.getElementById("forceDocs");
-    const typewriterEl = document.getElementById("typewriter");
-    const btnClear = document.getElementById("btnClear");
-    const btnNewChat = document.getElementById("btnNewChat");
-    const chatItemsWrap = document.getElementById("chatItems");
-    const btnDeleteAllChats = document.getElementById("btnDeleteAllChats");
-    const chatFilterEl = document.getElementById("chatFilter");
-    const btnExportChat = document.getElementById("btnExportChat");
-
-    const STORAGE_KEY = "raheem_ai_chats_v4";
-    const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
-
-    function loadAllChats(){
-      try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
-      catch(e){ return {}; }
-    }
-    function saveAllChats(obj){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-    }
-    function newChatId(){
-      return "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
-    }
-    function fmtTime(ts){
-      try{
-        const d = new Date(ts);
-        return d.toLocaleString(undefined, { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
-      }catch(e){
-        return "";
-      }
-    }
-
-    let activeChatId = (localStorage.getItem(ACTIVE_CHAT_KEY) || "").trim() || null;
-
-    function persistActiveChatId(){
-      if(activeChatId) localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
-    }
-
-    function ensureActiveChat(){
-      const all = loadAllChats();
-      if(activeChatId && all[activeChatId]){
-        persistActiveChatId();
-        return all;
-      }
-      activeChatId = newChatId();
-      all[activeChatId] = {
-        title: "New chat",
-        updated: Date.now(),
-        messages: [{ role:"assistant", content:"Hello. How can I help today?" }]
-      };
-      saveAllChats(all);
-      persistActiveChatId();
-      return all;
-    }
-
-    function setChatTitleFromFirstUser(all, chatId){
-      const c = all[chatId];
-      if(!c) return;
-      const firstUser = (c.messages || []).find(m=>m.role==="user");
-      if(firstUser && (c.title==="New chat" || !c.title)){
-        const s = (firstUser.content || "").trim();
-        c.title = s.slice(0, 44) + (s.length>44 ? "..." : "");
-      }
-    }
-
-    function escapeHtml(s){
-      return (s||"")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function deleteChat(chatId){
-      const all = loadAllChats();
-      if(!all[chatId]) return;
-      const title = all[chatId].title || "this chat";
-      const ok = confirm("Delete chat: " + title + " ?");
-      if(!ok) return;
-
-      delete all[chatId];
-
-      if(chatId === activeChatId){
-        const remaining = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
-        activeChatId = remaining[0] || null;
-        if(!activeChatId){
-          saveAllChats(all);
-          localStorage.removeItem(ACTIVE_CHAT_KEY);
-          ensureActiveChat();
-        }else{
-          persistActiveChatId();
-          saveAllChats(all);
-        }
-      }else{
-        saveAllChats(all);
-      }
-
-      renderChatList();
-      renderChat();
-      showToast("Chat deleted.");
-    }
-
-    function renderChatList(){
-      const all = ensureActiveChat();
-      const q = (chatFilterEl.value || "").trim().toLowerCase();
-
-      const ids = Object.keys(all)
-        .sort((a,b)=>(all[b].updated||0)-(all[a].updated||0))
-        .filter(id=>{
-          if(!q) return true;
-          const c = all[id];
-          const title = (c.title || "").toLowerCase();
-          if(title.includes(q)) return true;
-          const msgs = (c.messages||[]);
-          return msgs.slice(-20).some(m => (m.content||"").toLowerCase().includes(q));
-        });
-
-      chatItemsWrap.innerHTML = "";
-      ids.forEach(id=>{
-        const c = all[id];
-        const row = document.createElement("button");
-        row.className = "chatitem" + (id===activeChatId ? " active" : "");
-        row.type = "button";
-        const title = c.title || "New chat";
-        const time = fmtTime(c.updated || Date.now());
-        const msgCount = (c.messages||[]).length;
-
-        row.innerHTML = `
-          <div class="metaWrap">
-            <div class="t">${escapeHtml(title)}</div>
-            <div class="s"><span>${escapeHtml(time)}</span><span style="opacity:.7">•</span><span>${msgCount} msgs</span></div>
-          </div>
-          <div class="chatActions">
-            <div class="iconBtn danger" title="Delete chat" aria-label="Delete chat">×</div>
-          </div>
-        `;
-
-        row.addEventListener("click", (ev)=>{
-          const target = ev.target;
-          const isDelete = target && target.classList && target.classList.contains("iconBtn");
-          if(isDelete) return;
-          activeChatId = id;
-          persistActiveChatId();
-          renderChatList();
-          renderChat();
-        });
-
-        const delBtn = row.querySelector(".iconBtn.danger");
-        delBtn.addEventListener("click", (ev)=>{
-          ev.preventDefault();
-          ev.stopPropagation();
-          deleteChat(id);
-        });
-
-        chatItemsWrap.appendChild(row);
-      });
-
-      if(!ids.length){
-        const empty = document.createElement("div");
-        empty.style.padding = "10px 6px";
-        empty.style.color = "rgba(244,247,255,.65)";
-        empty.style.fontSize = "12px";
-        empty.textContent = "No chats match your search.";
-        chatItemsWrap.appendChild(empty);
-      }
-    }
-
-    function attachMsgTools(aiDiv, text){
-      const tools = document.createElement("div");
-      tools.className = "msgTools";
-
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "miniBtn";
-      copyBtn.type = "button";
-      copyBtn.textContent = "Copy";
-      copyBtn.onclick = async ()=>{
-        try{
-          await navigator.clipboard.writeText(text || "");
-          showToast("Copied.");
-        }catch(e){
-          showToast("Copy failed.");
-        }
-      };
-
-      const quoteBtn = document.createElement("button");
-      quoteBtn.className = "miniBtn";
-      quoteBtn.type = "button";
-      quoteBtn.textContent = "Quote";
-      quoteBtn.onclick = ()=>{
-        const q = (text || "").trim();
-        if(!q) return;
-        const snippet = q.length > 700 ? q.slice(0,700) + "…" : q;
-        msgEl.value = (msgEl.value ? (msgEl.value + "\n\n") : "") + "> " + snippet.replace(/\n/g, "\n> ");
-        msgEl.focus();
-        showToast("Quoted into input.");
-      };
-
-      const openBtn = document.createElement("button");
-      openBtn.className = "miniBtn";
-      openBtn.type = "button";
-      openBtn.textContent = "Open";
-      openBtn.onclick = ()=> openModal("Assistant reply", text || "");
-
-      tools.appendChild(copyBtn);
-      tools.appendChild(quoteBtn);
-      tools.appendChild(openBtn);
-      aiDiv.appendChild(tools);
-    }
-
-    function addMsg(who, text, scroll=true){
-      const div = document.createElement("div");
-      div.className = "msg " + (who==="user" ? "user" : "ai");
-      div.textContent = text;
-      chatBox.appendChild(div);
-      if(who !== "user") attachMsgTools(div, text);
-      if(scroll) chatBox.scrollTop = chatBox.scrollHeight;
-      return div;
-    }
-
-    function addTypingIndicator(targetDiv){
-      const wrap = document.createElement("div");
-      wrap.className = "typing";
-      wrap.innerHTML = `<span>Raheem AI is responding</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
-      targetDiv.appendChild(wrap);
-      return wrap;
-    }
-
-    function renderChat(){
-      const all = ensureActiveChat();
-      const c = all[activeChatId];
-      chatBox.innerHTML = "";
-      (c.messages||[]).forEach(m=>{
-        addMsg(m.role==="user" ? "user" : "ai", m.content, false);
-      });
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function clearChat(){
-      const all = ensureActiveChat();
-      all[activeChatId].messages = [{ role:"assistant", content:"Cleared. What would you like to do next?" }];
-      all[activeChatId].updated = Date.now();
-      saveAllChats(all);
-      renderChat();
-      renderChatList();
-      showToast("Chat cleared.");
-    }
-
-    btnClear.onclick = clearChat;
-
-    btnNewChat.onclick = ()=>{
-      const all = loadAllChats();
-      activeChatId = newChatId();
-      all[activeChatId] = {
-        title: "New chat",
-        updated: Date.now(),
-        messages: [{ role:"assistant", content:"Hello. How can I help today?" }]
-      };
-      saveAllChats(all);
-      persistActiveChatId();
-      renderChatList();
-      renderChat();
-      showToast("New chat created.");
-    };
-
-    btnDeleteAllChats.onclick = ()=>{
-      const ok = confirm("Delete all saved chats? This cannot be undone.");
-      if(!ok) return;
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(ACTIVE_CHAT_KEY);
-      activeChatId = null;
-      ensureActiveChat();
-      renderChatList();
-      renderChat();
-      showToast("All chats deleted.");
-    };
-
-    chatFilterEl.addEventListener("input", ()=> renderChatList());
-
-    btnExportChat.onclick = ()=>{
-      try{
-        const all = ensureActiveChat();
-        const c = all[activeChatId];
-        const title = (c.title || "raheem-ai-chat").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "raheem-ai-chat";
-        const lines = [];
-        (c.messages||[]).forEach(m=>{
-          const who = m.role === "user" ? "USER" : "ASSISTANT";
-          lines.push("[" + who + "]\n" + (m.content || "") + "\n");
-        });
-        const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = title + ".txt";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-        showToast("Exported chat.");
-      }catch(e){
-        showToast("Export failed.");
-      }
-    };
-
-    ensureActiveChat();
-    renderChatList();
-    renderChat();
-
-    // =========================================================
-    // SSE helpers (FIXED: handles multi-line data: and strips "data:" everywhere)
-    // =========================================================
-    function isSamsungInternet(){
-      try{
-        const ua = (navigator.userAgent || "").toLowerCase();
-        return ua.includes("samsungbrowser");
-      }catch(e){
-        return false;
-      }
-    }
-
-    function parseSSETextToAnswer(sseText){
-      let out = "";
-      const frames = (sseText || "").split(/\n\n/);
-
-      for (const frame of frames){
-        const f = frame.trim();
-        if(!f) continue;
-
-        if (f.includes("event: error")){
-          const line = f.split("\n").find(x => x.startsWith("data:"));
-          const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-          return msg.replaceAll("\\n","\n").trim();
-        }
-
-        const lines = f.split("\n");
-        for (const line of lines){
-          if (line.startsWith("data:")){
-            out += line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-          }
-        }
-      }
-      return out.trim();
-    }
-
-    function typewriterSet(el, text){
-      el.textContent = "";
-      let i = 0;
-      const step = ()=>{
-        i += Math.max(2, Math.floor(text.length / 220));
-        el.textContent = text.slice(0, i);
-        if(i < text.length) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    }
-
-    // =========================================================
-    // Robust fetch with timeout + (optional) one retry
-    // =========================================================
-    async function fetchWithTimeout(url, options, ms, retryOnce){
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), ms);
-
-      try{
-        const res = await fetch(url, {
-          ...options,
-          mode: "cors",
-          cache: "no-store",
-          signal: controller.signal
-        });
-        return res;
-      }catch(e){
-        if(retryOnce){
-          // Small backoff helps cold starts / transient network hiccups
-          await new Promise(r => setTimeout(r, 650));
-          try{
-            const res2 = await fetch(url, {
-              ...options,
-              mode: "cors",
-              cache: "no-store",
-              signal: controller.signal
-            });
-            return res2;
-          }catch(e2){
-            throw e2;
-          }
-        }
-        throw e;
-      }finally{
-        clearTimeout(timeout);
-      }
-    }
-
-    // =========================================================
-    // CHAT SEND (FIXED: SSE parsing + fewer "connection error" false positives)
-    // =========================================================
-    async function send(){
-      const text = (msgEl.value || "").trim();
-      if(!text) return;
-      msgEl.value = "";
-
-      const all = ensureActiveChat();
-      const c = all[activeChatId];
-      c.messages.push({ role:"user", content:text });
-      c.updated = Date.now();
-      setChatTitleFromFirstUser(all, activeChatId);
-      saveAllChats(all);
-
-      addMsg("user", text);
-      const aiDiv = addMsg("ai", "");
-      const tools = aiDiv.querySelector(".msgTools");
-      if(tools) tools.remove();
-
-      const typing = addTypingIndicator(aiDiv);
-
-      let full = "";
-      let gotAnyToken = false;
-
-      const url =
-        apiUrl("/chat")
-        + "?chat_id=" + encodeURIComponent(activeChatId)
-        + "&force_docs=" + (forceDocsEl.checked ? "1" : "0");
-
-      const body = JSON.stringify({
-        message: text,
-        messages: c.messages
-      });
-
-      // NOTE: Render cold starts can take a while. Give it longer than /health.
-      const CHAT_TIMEOUT_MS = 65000; // 65s
-
-      try{
-        const res = await fetchWithTimeout(url, {
-          method: "POST",
-          headers: {
-            "Content-Type":"application/json",
-            "Accept":"text/event-stream"
-          },
-          body
-        }, CHAT_TIMEOUT_MS, true);
-
-        if(!res.ok){
-          const errText = await res.text().catch(()=>"(no error body)");
-          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-          aiDiv.textContent = "Server error " + res.status + ": " + (errText || "").slice(0, 1600);
-          attachMsgTools(aiDiv, aiDiv.textContent);
-          return;
-        }
-
-        // If browser can't stream, read whole body and parse SSE
-        if(isSamsungInternet() || !res.body || !res.body.getReader){
-          const raw = await res.text().catch(()=> "");
-          const reply = parseSSETextToAnswer(raw) || " ";
-          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-
-          if(typewriterEl.checked){
-            typewriterSet(aiDiv, reply);
-          }else{
-            aiDiv.textContent = reply;
-          }
-          attachMsgTools(aiDiv, reply);
-
-          const all2 = ensureActiveChat();
-          const c2 = all2[activeChatId];
-          c2.messages.push({ role:"assistant", content: reply });
-          c2.updated = Date.now();
-          saveAllChats(all2);
-          renderChatList();
-          return;
-        }
-
-        // Streaming SSE
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-
-        while(true){
-          const { value, done } = await reader.read();
-          if(done) break;
-          buffer += decoder.decode(value, { stream:true });
-
-          const parts = buffer.split(/\n\n/);
-          buffer = parts.pop() || "";
-
-          for(const chunk of parts){
-            const cframe = (chunk || "").trim();
-            if(!cframe) continue;
-
-            if(cframe.includes("event: error")){
-              const line = cframe.split("\n").find(x=>x.startsWith("data:"));
-              const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-              if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-              const err = msg.replaceAll("\\n","\n").trim();
-              aiDiv.textContent = err;
-              attachMsgTools(aiDiv, err);
-              continue;
-            }
-
-            if(cframe.includes("event: done")){
-              continue;
-            }
-
-            // FIX: support multiple data: lines inside one event
-            const lines = cframe.split("\n");
-            for(const line of lines){
-              if(line.startsWith("data:")){
-                const delta = line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-                if(delta){
-                  gotAnyToken = true;
-                  if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-                  full += delta;
-                  aiDiv.textContent = full;
-                  chatBox.scrollTop = chatBox.scrollHeight;
-                }
-              }
-            }
-          }
-        }
-
-        if(!gotAnyToken && typing && typing.parentNode){
-          typing.parentNode.removeChild(typing);
-        }
-
-        const finalText = full.trim() || " ";
-
-        if(typewriterEl.checked && finalText.length < 4500){
-          typewriterSet(aiDiv, finalText);
-        }else{
-          aiDiv.textContent = finalText;
-        }
-        attachMsgTools(aiDiv, finalText);
-
-        const all2 = ensureActiveChat();
-        const c2 = all2[activeChatId];
-        c2.messages.push({ role:"assistant", content: finalText });
-        c2.updated = Date.now();
-        saveAllChats(all2);
-        renderChatList();
-
-      }catch(e){
-        console.error("Chat send error:", e);
-        if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-
-        // Better error text (helps you debug if it's timeout vs CORS vs offline)
-        let msg = "Connection error. Try again.";
-        const s = String(e && e.name ? e.name : "");
-        if(s.includes("AbortError")) msg = "Request timed out (backend cold start or slow). Try again.";
-        aiDiv.textContent = msg;
-        attachMsgTools(aiDiv, msg);
-      }
-    }
-
-    sendBtn.onclick = send;
-    msgEl.addEventListener("keydown", (e)=>{
-      if(e.key==="Enter" && !e.shiftKey){
-        e.preventDefault();
-        send();
+    // --------- rotating funny messages ----------
+    const msgs = [
+      "We’re updating things behind the scenes: performance tweaks, a sprinkle of polish, and fewer mysterious gremlins.",
+      "Currently teaching the server how to behave. It’s… a slow learner.",
+      "Applying duct tape to the internet (the premium kind).",
+      "We found a bug. Then we found its entire extended family.",
+      "Polishing pixels. Tightening bolts. Feeding the hamsters.",
+      "If you can read this, you have unlocked Maintenance Vision™."
+    ];
+    let m = 0;
+    setInterval(() => {
+      m = (m + 1) % msgs.length;
+      $("#rotatingMsg").textContent = msgs[m];
+      $("#statusText").textContent = (m % 2 === 0) ? "Deploying fixes" : "Running checks";
+      $("#etaText").textContent = (m % 3 === 0) ? "ETA: “soon™”" : "ETA: “very soon™”";
+    }, 5500);
+
+    // date
+    $("#dateStr").textContent = new Date().toLocaleString();
+
+    // buttons
+    $("#refreshBtn").addEventListener("click", () => location.reload());
+    $("#copyBtn").addEventListener("click", async () => {
+      const text = `Status: ${$("#statusText").textContent} • ${$("#etaText").textContent}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("Copied! ✅");
+      } catch {
+        toast("Couldn’t copy (browser blocked it).");
       }
     });
 
-    // =========================================================
-    // Keyboard shortcuts
-    // =========================================================
-    document.addEventListener("keydown", (e)=>{
-      if(e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey){
-        const tag = (document.activeElement && document.activeElement.tagName || "").toLowerCase();
-        if(tag !== "textarea" && tag !== "input"){
-          e.preventDefault();
-          showView("chat");
-          msgEl.focus();
-        }
-      }
-      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k"){
-        e.preventDefault();
-        clearChat();
-      }
-    });
+    // --------- Mini game: Catch the Bug ----------
+    const arena = $("#arena");
+    const bug = $("#bug");
+    const scoreEl = $("#score");
+    const timeEl = $("#time");
+    const bestEl = $("#best");
+    const gameMsg = $("#gameMsg");
 
-    // =========================================================
-    // Small UX: if offline, warn quickly on send
-    // =========================================================
-    async function quickPing(){
-      try{
-        const r = await fetchWithTimeout(apiUrl("/health"), { method:"GET" }, 8000, false);
-        return r.ok;
-      }catch(e){
-        return false;
+    let score = 0;
+    let timeLeft = 20;
+    let timer = null;
+    let running = false;
+
+    // load best score
+    const bestKey = "maintenance_best_score_v1";
+    const best = Number(localStorage.getItem(bestKey) || 0);
+    bestEl.textContent = best;
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function placeBug() {
+      const rect = arena.getBoundingClientRect();
+      // keep bug fully inside
+      const padding = 26;
+      const x = rand(padding, rect.width - padding);
+      const y = rand(padding, rect.height - padding);
+      bug.style.left = x + "px";
+      bug.style.top = y + "px";
+
+      // rotate emoji for a lil spice
+      const rot = Math.floor(rand(-18, 18));
+      bug.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+    }
+
+    function setMsg(text) {
+      gameMsg.textContent = text;
+    }
+
+    function endGame() {
+      running = false;
+      clearInterval(timer);
+      timer = null;
+
+      bug.style.pointerEvents = "none";
+      $("#startBtn").disabled = false;
+
+      const bestNow = Number(localStorage.getItem(bestKey) || 0);
+      if (score > bestNow) {
+        localStorage.setItem(bestKey, String(score));
+        bestEl.textContent = score;
+        setMsg(`NEW BEST: ${score}! 🏆 Absolute menace to bugs.`);
+        return;
+      }
+
+      if (score >= 15) setMsg(`Score: ${score}. QA Legend status achieved ✅`);
+      else if (score >= 8) setMsg(`Score: ${score}. Respectable. The bug is concerned.`);
+      else setMsg(`Score: ${score}. The bug is laughing (quietly). Try again 😅`);
+    }
+
+    function tick() {
+      timeLeft -= 1;
+      timeEl.textContent = timeLeft;
+
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        timeEl.textContent = 0;
+        endGame();
       }
     }
 
-    const _sendOriginal = send;
-    send = async function(){
-      if((apiPill.textContent || "").toLowerCase().includes("offline")){
-        const ok = await quickPing();
-        if(!ok){
-          showToast("Backend offline. Try again in a moment.");
-          return;
-        }
-      }
-      return _sendOriginal();
-    };
+    function startGame() {
+      if (running) return;
+      running = true;
+
+      score = 0;
+      timeLeft = 20;
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+
+      $("#startBtn").disabled = true;
+      bug.style.pointerEvents = "auto";
+      placeBug();
+      setMsg("GO! Click the bug! 🐛💨");
+
+      timer = setInterval(tick, 1000);
+    }
+
+    function resetGame() {
+      running = false;
+      clearInterval(timer);
+      timer = null;
+
+      score = 0;
+      timeLeft = 20;
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      setMsg("Tip: the bug moves after every hit.");
+      $("#startBtn").disabled = false;
+      bug.style.pointerEvents = "none";
+      placeBug();
+    }
+
+    bug.addEventListener("click", () => {
+      if (!running) return;
+      score += 1;
+      scoreEl.textContent = score;
+
+      // small pop animation without CSS keyframes
+      bug.style.scale = "0.95";
+      setTimeout(() => bug.style.scale = "1", 60);
+
+      // move bug each hit
+      placeBug();
+    });
+
+    $("#startBtn").addEventListener("click", startGame);
+    $("#resetBtn").addEventListener("click", resetGame);
+
+    // init
+    resetGame();
+
+    // allow tapping arena to reposition bug before starting (fun + mobile friendly)
+    arena.addEventListener("pointerdown", (e) => {
+      if (running) return;
+      const rect = arena.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      bug.style.left = x + "px";
+      bug.style.top = y + "px";
+    });
   </script>
 </body>
 </html>
