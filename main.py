@@ -8,18 +8,18 @@ import time
 import tempfile
 import hashlib
 import asyncio
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 from collections import Counter, defaultdict
 
-
 import httpx
 import fitz  # PyMuPDF
 import boto3
 
-from fastapi import FastAPI, UploadFile, File, Query, Body, Header
+from fastapi import FastAPI, UploadFile, File, Query, Header
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -30,6 +30,17 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Content, GenerationConfig
 
 # ============================================================
+# LOGGING
+# ============================================================
+
+LOG_LEVEL = (os.getenv("LOG_LEVEL") or "INFO").upper()
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+log = logging.getLogger("raheemai")
+
+# ============================================================
 # REQUEST MODELS
 # ============================================================
 
@@ -38,17 +49,32 @@ class ChatBody(BaseModel):
     messages: Optional[List[Dict[str, Any]]] = None
 
 # ============================================================
-# BASE DIR (must exist before you build any paths from it)
+# BASE DIR
 # ============================================================
+
 BASE_DIR = Path(__file__).resolve().parent
 
 # ============================================================
 # CONFIG / ENV
 # ============================================================
+
 load_dotenv()
+
+# ---- Creator / Product identity ----
+CREATOR_NAME = os.getenv("CREATOR_NAME", "Abdulraheem Ahmed").strip()
+CREATOR_TITLE = os.getenv(
+    "CREATOR_TITLE",
+    "4th year Architectural Technology student at Technological University Dublin (TUD)",
+).strip()
+PRODUCT_NAME = os.getenv("PRODUCT_NAME", "Raheem AI").strip()
+PRODUCT_VERSION = os.getenv("PRODUCT_VERSION", "1.0.0").strip()
+
+# Optional roadmap file (lets you control "future features" truthfully)
+ROADMAP_FILE = Path(os.getenv("ROADMAP_FILE", str(BASE_DIR / "roadmap.json")))
+
+# ---- Storage / R2 ----
 R2_ENABLED = os.getenv("R2_ENABLED", "false").lower() in ("1", "true", "yes", "on")
 R2_BUCKET = (os.getenv("R2_BUCKET") or "").strip()
-
 R2_ENDPOINT = (os.getenv("R2_ENDPOINT") or "").strip()
 R2_ACCESS_KEY_ID = (os.getenv("R2_ACCESS_KEY_ID") or "").strip()
 R2_SECRET_ACCESS_KEY = (os.getenv("R2_SECRET_ACCESS_KEY") or "").strip()
@@ -59,8 +85,7 @@ if R2_PREFIX and not R2_PREFIX.endswith("/"):
 def r2_client():
     if not (R2_ENDPOINT and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY):
         raise RuntimeError(
-            "Missing R2 creds/env "
-            "(R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)"
+            "Missing R2 creds/env (R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)"
         )
     return boto3.client(
         "s3",
@@ -69,25 +94,21 @@ def r2_client():
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
     )
 
-
-# Optional: Vertex Embeddings (no extra deps)
+# ---- Optional: Vertex Embeddings (no extra deps) ----
 try:
     from vertexai.language_models import TextEmbeddingModel  # type: ignore
-
     _VERTEX_EMBEDDINGS_AVAILABLE = True
 except Exception:
     TextEmbeddingModel = None  # type: ignore
     _VERTEX_EMBEDDINGS_AVAILABLE = False
 
-# Optional: Document AI ingest helper
+# ---- Optional: Document AI ingest helper ----
 try:
     from docai_ingest import docai_extract_pdf_to_text
-
     _DOCAI_HELPER_AVAILABLE = True
 except Exception:
     docai_extract_pdf_to_text = None
     _DOCAI_HELPER_AVAILABLE = False
-
 
 # ============================================================
 # CONFIG
@@ -106,7 +127,7 @@ MODEL_CHAT = (os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001") or "").stri
 MODEL_COMPLIANCE = (os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001") or "").strip()
 
 # Web search (Serper)
-SERPER_API_KEY = (os.getenv("SERPER_API_KEY") or "").strip()  # https://serper.dev
+SERPER_API_KEY = (os.getenv("SERPER_API_KEY") or "").strip()
 WEB_ENABLED = (os.getenv("WEB_ENABLED", "true").lower() in ("1", "true", "yes", "on")) and bool(SERPER_API_KEY)
 
 # Evidence defaults
@@ -121,7 +142,7 @@ TOP_K_WEB = int(os.getenv("TOP_K_WEB", "5"))
 # Vector embeddings (optional)
 EMBED_ENABLED = os.getenv("EMBED_ENABLED", "true").lower() in ("1", "true", "yes", "on")
 EMBED_MODEL_NAME = (os.getenv("VERTEX_EMBED_MODEL", "text-embedding-004") or "").strip()
-EMBED_TOPK = int(os.getenv("EMBED_TOPK", "24"))  # candidate pool for rerank
+EMBED_TOPK = int(os.getenv("EMBED_TOPK", "24"))
 EMBED_BATCH = int(os.getenv("EMBED_BATCH", "64"))
 
 # Rerank (LLM reranker)
@@ -133,7 +154,7 @@ BROAD_DOC_DIVERSITY_K = int(os.getenv("BROAD_DOC_DIVERSITY_K", "5"))
 BROAD_TOPIC_HITS_K = int(os.getenv("BROAD_TOPIC_HITS_K", "3"))
 BROAD_MAX_SUBQUERIES = int(os.getenv("BROAD_MAX_SUBQUERIES", "8"))
 
-# Web allowlist (safe + higher trust)
+# Web allowlist
 WEB_ALLOWLIST_DEFAULT = [
     "irishstatutebook.ie",
     "gov.ie",
@@ -149,42 +170,32 @@ WEB_ALLOWLIST = [d.strip().lower() for d in (os.getenv("WEB_ALLOWLIST", "") or "
 if not WEB_ALLOWLIST:
     WEB_ALLOWLIST = WEB_ALLOWLIST_DEFAULT
 
-# Hard numeric verification
+# Numeric verification
 VERIFY_NUMERIC = os.getenv("VERIFY_NUMERIC", "true").lower() in ("1", "true", "yes", "on")
 
 # Rules layer
 RULES_FILE = Path(os.getenv("RULES_FILE", str(BASE_DIR / "rules.json")))
 RULES_ENABLED = os.getenv("RULES_ENABLED", "true").lower() in ("1", "true", "yes", "on")
 
-# Eval harness
-EVAL_FILE = Path(os.getenv("EVAL_FILE", str(BASE_DIR / "eval_tests.json")))
-
 # Timeouts
 HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "18"))
-# ----------------------------
-# Web fetch behaviour (ChatGPT-like)
-# ----------------------------
 
-MAX_WEB_BYTES = int(os.getenv("MAX_WEB_BYTES", str(2_500_000)))  # 2.5 MB safety cap
-WEB_RETRIES = int(os.getenv("WEB_RETRIES", "2"))                 # retry flaky sites
-WEB_RETRY_BACKOFF = float(os.getenv("WEB_RETRY_BACKOFF", "0.6")) # seconds
+# Web fetch behaviour
+MAX_WEB_BYTES = int(os.getenv("MAX_WEB_BYTES", str(2_500_000)))
+WEB_RETRIES = int(os.getenv("WEB_RETRIES", "2"))
+WEB_RETRY_BACKOFF = float(os.getenv("WEB_RETRY_BACKOFF", "0.6"))
+WEB_CACHE_TTL_SECONDS = int(os.getenv("WEB_CACHE_TTL_SECONDS", str(12 * 60 * 60)))
 
-# Web cache
-WEB_CACHE_TTL_SECONDS = int(os.getenv("WEB_CACHE_TTL_SECONDS", str(12 * 60 * 60)))  # 12h
-# -----------------------------------------
-# DIAGRAMS / IMAGES FROM PDFs (optional)
-# -----------------------------------------
+# PDF images
 PDF_IMAGE_EXTRACT = os.getenv("PDF_IMAGE_EXTRACT", "false").lower() in ("1", "true", "yes", "on")
-PDF_IMAGE_MAX_PAGES = int(os.getenv("PDF_IMAGE_MAX_PAGES", "12"))     # safety cap
-PDF_IMAGE_MAX_IMAGES = int(os.getenv("PDF_IMAGE_MAX_IMAGES", "24"))   # safety cap
-PDF_IMAGE_MIN_PIXELS = int(os.getenv("PDF_IMAGE_MIN_PIXELS", "120000"))  # ignore tiny icons
-
+PDF_IMAGE_MAX_PAGES = int(os.getenv("PDF_IMAGE_MAX_PAGES", "12"))
+PDF_IMAGE_MAX_IMAGES = int(os.getenv("PDF_IMAGE_MAX_IMAGES", "24"))
+PDF_IMAGE_MIN_PIXELS = int(os.getenv("PDF_IMAGE_MIN_PIXELS", "120000"))
 
 if os.getenv("RENDER"):
     DATA_DIR = Path("/tmp/raheemai")
 else:
     DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR))).resolve()
-
 
 PDF_DIR = DATA_DIR / "pdfs"
 DOCAI_DIR = DATA_DIR / "parsed_docai"
@@ -193,8 +204,9 @@ WEB_CACHE_DIR = CACHE_DIR / "web"
 
 for d in (PDF_DIR, DOCAI_DIR, CACHE_DIR, WEB_CACHE_DIR):
     d.mkdir(parents=True, exist_ok=True)
-    
+
 ADMIN_API_KEY = (os.getenv("ADMIN_API_KEY") or "").strip()
+
 def require_admin_key(x_api_key: Optional[str]) -> Optional[JSONResponse]:
     if not ADMIN_API_KEY:
         return None  # dev mode
@@ -202,17 +214,16 @@ def require_admin_key(x_api_key: Optional[str]) -> Optional[JSONResponse]:
         return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
     return None
 
+# ============================================================
+# FASTAPI APP + CORS
+# ============================================================
+
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
-# ---- CORS configuration ----
-# Comma-separated list in env:
-# CORS_ORIGINS="https://raheemai.pages.dev,https://raheemai.ie,http://localhost:5500"
 raw_origins = os.getenv("CORS_ORIGINS", "")
-
 if raw_origins:
     allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
 else:
-    # Sensible defaults for local + current prod
     allowed_origins = [
         "https://raheemai.pages.dev",
         "https://raheem-ai.pages.dev",
@@ -225,11 +236,10 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=False,   # keep false unless you truly need cookies/auth
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # ============================================================
 # VERTEX INIT
@@ -238,7 +248,6 @@ app.add_middleware(
 _VERTEX_READY = False
 _VERTEX_ERR: Optional[str] = None
 _EMBED_MODEL: Any = None
-
 
 def ensure_vertex_ready() -> None:
     global _VERTEX_READY, _VERTEX_ERR, _EMBED_MODEL
@@ -259,40 +268,36 @@ def ensure_vertex_ready() -> None:
 
         vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
 
-        # Lazy init embeddings model (optional)
         _EMBED_MODEL = None
         if EMBED_ENABLED and _VERTEX_EMBEDDINGS_AVAILABLE and TextEmbeddingModel is not None:
             try:
                 _EMBED_MODEL = TextEmbeddingModel.from_pretrained(EMBED_MODEL_NAME)
-            except Exception:
+            except Exception as e:
+                log.warning("Embeddings model init failed: %s", repr(e))
                 _EMBED_MODEL = None
 
         _VERTEX_READY = True
         _VERTEX_ERR = None
+        log.info("Vertex ready (project=%s location=%s)", GCP_PROJECT_ID, GCP_LOCATION)
     except Exception as e:
         _VERTEX_READY = False
         _VERTEX_ERR = str(e)
-
+        log.error("Vertex init failed: %s", _VERTEX_ERR)
 
 def get_model(model_name: str, system_prompt: str) -> GenerativeModel:
     ensure_vertex_ready()
     return GenerativeModel(model_name, system_instruction=[Part.from_text(system_prompt)])
 
-
 def get_generation_config(is_evidence: bool) -> GenerationConfig:
-    # More ChatGPT-like: stable, paragraphy
     if is_evidence:
         return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=3500)
     return GenerationConfig(temperature=0.65, top_p=0.9, max_output_tokens=3500)
 
-
-
 # ============================================================
-# CHAT MEMORY (SERVER SIDE)
+# CHAT MEMORY
 # ============================================================
 
 CHAT_STORE: Dict[str, List[Dict[str, str]]] = {}
-
 
 def _trim_chat(chat_id: str) -> None:
     msgs = CHAT_STORE.get(chat_id, [])
@@ -311,7 +316,6 @@ def _trim_chat(chat_id: str) -> None:
     kept_rev.reverse()
     CHAT_STORE[chat_id] = kept_rev
 
-
 def remember(chat_id: str, role: str, content: str) -> None:
     if not chat_id:
         return
@@ -321,10 +325,8 @@ def remember(chat_id: str, role: str, content: str) -> None:
     CHAT_STORE.setdefault(chat_id, []).append({"role": role, "content": content})
     _trim_chat(chat_id)
 
-
 def get_history(chat_id: str) -> List[Dict[str, str]]:
     return CHAT_STORE.get(chat_id, [])
-
 
 def _normalize_incoming_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
     hist: List[Dict[str, str]] = []
@@ -334,7 +336,6 @@ def _normalize_incoming_messages(messages: List[Dict[str, Any]]) -> List[Dict[st
         if r in ("user", "assistant") and c:
             hist.append({"role": r, "content": c})
     return hist
-
 
 def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[Dict[str, str]]:
     msg = (message or "").strip()
@@ -347,15 +348,14 @@ def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[
         hist = hist + [{"role": "user", "content": msg}]
     return hist
 
-
 # ============================================================
 # TEXT + TOKENIZATION
 # ============================================================
 
 STOPWORDS = {
-    "the", "and", "or", "of", "to", "in", "a", "an", "for", "on", "with", "is", "are", "be", "as", "at", "from", "by",
-    "that", "this", "it", "your", "you", "we", "they", "their", "there", "what", "which", "when", "where", "how",
-    "can", "shall", "should", "must", "may", "not", "than", "then", "into", "onto", "also", "such"
+    "the","and","or","of","to","in","a","an","for","on","with","is","are","be","as","at","from","by",
+    "that","this","it","your","you","we","they","their","there","what","which","when","where","how",
+    "can","shall","should","must","may","not","than","then","into","onto","also","such"
 }
 
 NUM_WITH_UNIT_RE = re.compile(
@@ -369,12 +369,34 @@ TABLE_RE = re.compile(r"\btable\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 DIAGRAM_RE = re.compile(r"\bdiagram\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 
 WEB_CITE_NUM_RE = re.compile(r"\[(\d+)\]")
-
-# ============================================================
-# VISUAL (DIAGRAM/TABLE) INTENT + PAGE RENDERING + VISION
-# ============================================================
-
 VISUAL_TERMS_RE = re.compile(r"\b(diagram|figure|fig\.|table|chart|graph|drawing|schematic)\b", re.I)
+
+def clean_text(s: str) -> str:
+    s = (s or "").replace("\u00ad", "")
+    s = s.replace("\r", "\n")
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+def tokenize(text: str) -> List[str]:
+    t = (text or "").lower()
+    toks = re.findall(r"[a-z0-9][a-z0-9\-/\.%]*", t)
+    toks = [x for x in toks if len(x) >= 2 and x not in STOPWORDS]
+    return toks
+
+def _hash_id(s: str) -> str:
+    return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
+
+def sse_send(text: str) -> str:
+    # SSE format: each line must be prefixed with 'data: ' and event ends with blank line.
+    if text is None:
+        return ""
+    text = str(text).replace("\r", "")
+    return "".join(f"data: {line}\n" for line in text.split("\n")) + "\n"
+
+# ============================================================
+# CHUNK / INDICES
+# ============================================================
 
 @dataclass
 class Chunk:
@@ -389,313 +411,17 @@ class Chunk:
     table: str = ""
     diagram: str = ""
 
-
 CHUNK_INDEX: Dict[str, Dict[str, Any]] = {}
-EMBED_INDEX: Dict[str, Dict[str, Any]] = {}  # pdf_name -> {"vectors": {chunk_id: [..]}, "dim": int}
+EMBED_INDEX: Dict[str, Dict[str, Any]] = {}
 PDF_IMAGE_INDEX: Dict[str, List[Dict[str, Any]]] = {}
 PDF_DISPLAY_NAME: Dict[str, str] = {}
 
 def wants_visual_evidence(q: str) -> bool:
     return bool(VISUAL_TERMS_RE.search(q or ""))
 
-def render_pdf_page_to_png(pdf_path: Path, page_no: int, zoom: float = 2.0) -> Optional[Path]:
-    """
-    Render a PDF page to PNG. Works for vector diagrams + raster.
-    page_no is 1-based.
-    """
-    doc = None
-    try:
-        doc = fitz.open(pdf_path)
-        page = doc.load_page(max(0, page_no - 1))
-        mat = fitz.Matrix(zoom, zoom)
-        pix = page.get_pixmap(matrix=mat, alpha=False)
-
-        out_dir = CACHE_DIR / "page_renders" / pdf_path.stem
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / f"p{page_no}.png"
-        pix.save(str(out_path))
-        return out_path
-    except Exception:
-        return None
-    finally:
-        try:
-            if doc:
-                doc.close()
-        except Exception:
-            pass
-
-def describe_image_with_gemini(image_path: Path, user_question: str) -> str:
-    """
-    Ask Gemini to interpret a diagram/table screenshot.
-    Returns text. If unreadable, it may return OCR_NEEDED.
-    """
-    ensure_vertex_ready()
-    if not _VERTEX_READY:
-        return ""
-
-    img_bytes = image_path.read_bytes()
-
-    prompt = (
-        "You are reading a figure/table/diagram rendered from a PDF page.\n"
-        "1) Describe what the visual shows.\n"
-        "2) If it contains a table, transcribe the table values as clean text.\n"
-        "3) If text is too small/unclear, output 'OCR_NEEDED' and explain what is unreadable.\n\n"
-        f"User question: {user_question}"
-    )
-
-    model = GenerativeModel(MODEL_COMPLIANCE)
-    resp = model.generate_content(
-        [Part.from_text(prompt), Part.from_data(img_bytes, mime_type='image/png')],
-        generation_config=GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=1200),
-        stream=False,
-    )
-    return (getattr(resp, "text", "") or "").strip()
-
-def pick_visual_pages(user_msg: str, chunks: List[Chunk], max_pages: int = 2) -> List[int]:
-    """
-    Choose the most likely pages to render when the user asks about a diagram/table/figure.
-    """
-    a = anchor_from_query(user_msg)
-    pages: List[int] = []
-
-    if a.get("table"):
-        t = a["table"]
-        for c in chunks:
-            if c.table and c.table.lower() == t.lower():
-                pages.append(c.page)
-
-    if a.get("diagram"):
-        d = a["diagram"]
-        for c in chunks:
-            if c.diagram and c.diagram.lower() == d.lower():
-                pages.append(c.page)
-
-    if not pages:
-        pages = [c.page for c in chunks[:6]]
-
-    out: List[int] = []
-    seen = set()
-    for p in pages:
-        if p in seen:
-            continue
-        seen.add(p)
-        out.append(p)
-        if len(out) >= max_pages:
-            break
-    return out
-
-def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
-    """
-    If the model forgot to include inline [n] citations, append a clean Sources list.
-    Never show raw URLs inline inside paragraphs.
-    """
-    answer = (answer or "").rstrip()
-    if not web_pages:
-        return answer
-
-    # If it already includes [n] citations, leave it alone.
-    if WEB_CITE_NUM_RE.search(answer):
-        return answer
-
-    lines = ["", "Sources:"]
-    for i, w in enumerate(web_pages, start=1):
-        title = (w.get("title") or "").strip() or f"Source {i}"
-        url = (w.get("url") or "").strip()
-        if url:
-            lines.append(f"[{i}] {title} — {url}")
-        else:
-            lines.append(f"[{i}] {title}")
-
-    return answer + "\n" + "\n".join(lines)
-
-
-
-def clean_text(s: str) -> str:
-    s = (s or "").replace("\u00ad", "")
-    s = s.replace("\r", "\n")
-    s = re.sub(r"[ \t]+", " ", s)
-    s = re.sub(r"\n{3,}", "\n\n", s)
-    return s.strip()
-    
-def sse_data(text: str) -> str:
-    # SSE format: each line must be prefixed with 'data: '
-    # and the event ends with a blank line.
-    text = (text or "").replace("\r", "")
-    return "".join(f"data: {line}\n" for line in text.split("\n")) + "\n"
-
-def tokenize(text: str) -> List[str]:
-    t = (text or "").lower()
-    toks = re.findall(r"[a-z0-9][a-z0-9\-/\.%]*", t)
-    toks = [x for x in toks if len(x) >= 2 and x not in STOPWORDS]
-    return toks
-
-
-def _hash_id(s: str) -> str:
-    return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
-
-
-def _safe_url(url: str) -> bool:
-    u = (url or "").strip().lower()
-    return u.startswith("http://") or u.startswith("https://")
-
-
-def _host_from_url(url: str) -> str:
-    try:
-        if not _safe_url(url):
-            return ""
-        m = re.match(r"^https?://([^/]+)", url.strip(), re.I)
-        host = (m.group(1).lower() if m else "")
-        host = host.split("@")[-1]  # userinfo
-        host = host.split(":")[0]   # port
-        return host
-    except Exception:
-        return ""
-
-
-# If true, only allow domains in WEB_ALLOWLIST (current behavior).
-# If false, allow most domains except blocked ones.
-WEB_STRICT_ALLOWLIST = os.getenv("WEB_STRICT_ALLOWLIST", "false").lower() in ("1", "true", "yes", "on")
-
-WEB_BLOCKLIST_DEFAULT = [
-    "facebook.com", "instagram.com", "tiktok.com", "x.com", "twitter.com",
-    "pinterest.com", "reddit.com",  # optional; can remove if you want reddit
-]
-WEB_BLOCKLIST = [d.strip().lower() for d in (os.getenv("WEB_BLOCKLIST", "") or "").split(",") if d.strip()]
-if not WEB_BLOCKLIST:
-    WEB_BLOCKLIST = WEB_BLOCKLIST_DEFAULT
-
-def _blocked_url(url: str) -> bool:
-    host = _host_from_url(url)
-    if not host:
-        return True
-    return any(host == d or host.endswith("." + d) for d in WEB_BLOCKLIST)
-
-def _allowed_url(url: str) -> bool:
-    # Blocklist always wins
-    if _blocked_url(url):
-        return False
-
-    # If not strict: allow most domains
-    if not WEB_STRICT_ALLOWLIST:
-        return True
-
-    # Strict mode: allowlist required
-    host = _host_from_url(url)
-    if not host:
-        return False
-    return any(host == d or host.endswith("." + d) for d in WEB_ALLOWLIST)
-
-
 # ============================================================
-# BROAD vs PRECISE + TOPIC COVERAGE
+# PDF UTILITIES
 # ============================================================
-
-BROAD_HINTS = ["tell me about", "explain", "overview", "what about", "guidance on", "info on", "general"]
-PRECISE_HINTS = ["minimum", "maximum", "min", "max", "required", "shall", "must", "limit", "section", "table", "clause"]
-
-PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
-
-
-def question_precision(q: str) -> str:
-    ql = (q or "").lower().strip()
-    if not ql:
-        return "broad"
-    if PART_PATTERN.search(ql):
-        return "precise"
-    if re.search(r"\b(section|table|diagram|clause)\b", ql):
-        return "precise"
-    if NUM_WITH_UNIT_RE.search(ql) or ANY_NUMBER_RE.search(ql):
-        return "precise"
-    if any(h in ql for h in PRECISE_HINTS):
-        return "precise"
-    if any(h in ql for h in BROAD_HINTS):
-        return "broad"
-    if len(ql.split()) <= 6:
-        return "broad"
-    return "mixed"
-
-
-TOPIC_MAP: Dict[str, List[str]] = {
-    "lighting_emergency": ["emergency lighting", "escape lighting", "emergency illumination"],
-    "lighting_daylight": ["daylight", "natural light", "daylighting", "rooflight", "skylight"],
-    "lighting_controls": ["lighting controls", "occupancy sensor", "presence detector", "automatic lighting"],
-    "lighting_energy": ["lighting efficiency", "luminaire efficacy", "lamp efficacy", "controls energy"],
-    "fire_escape": ["means of escape", "escape route", "travel distance", "fire safety"],
-    "access": ["accessible", "wheelchair", "part m", "ramp"],
-}
-
-
-def detect_topic_keys(user_msg: str) -> List[str]:
-    ql = (user_msg or "").lower()
-    hits: List[str] = []
-    for topic, keys in TOPIC_MAP.items():
-        if any(k in ql for k in keys):
-            hits.append(topic)
-
-    # If user says "lighting" without subtype: try a few likely subtopics
-    if "lighting" in ql and not any(t.startswith("lighting_") for t in hits):
-        hits.extend(["lighting_emergency", "lighting_controls", "lighting_daylight", "lighting_energy"])
-
-    seen = set()
-    out = []
-    for h in hits:
-        if h in seen:
-            continue
-        seen.add(h)
-        out.append(h)
-    return out
-
-
-def intent_queries_for_topics(user_msg: str, topics: List[str]) -> List[str]:
-    base = (user_msg or "").strip()
-    out: List[str] = []
-    for t in topics:
-        if t == "lighting_emergency":
-            out.append(base + " emergency lighting escape routes requirements")
-        elif t == "lighting_daylight":
-            out.append(base + " daylight natural lighting requirement guidance")
-        elif t == "lighting_controls":
-            out.append(base + " lighting controls automatic controls occupancy sensor")
-        elif t == "lighting_energy":
-            out.append(base + " lighting energy efficiency requirements")
-        elif t == "fire_escape":
-            out.append(base + " means of escape fire safety travel distance")
-        elif t == "access":
-            out.append(base + " accessibility part m ramp")
-        else:
-            out.append(base + " " + t.replace("_", " "))
-    return out
-
-
-# ============================================================
-# CHUNK INDEX (BM25 + METADATA + OPTIONAL EMBEDDINGS)
-# ============================================================
-
-def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
-    k1 = 1.2
-    b = 0.75
-    score = 0.0
-    for t in query_toks:
-        if t not in tf:
-            continue
-        n = df.get(t, 0)
-        idf = math.log(1 + (N - n + 0.5) / (n + 0.5))
-        f = tf[t]
-        denom = f + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
-        score += idf * (f * (k1 + 1) / (denom or 1.0))
-    return score
-
-def page_hint_boost(chunk_page: int, page_hint: Optional[int], radius: int = 2) -> float:
-    if not page_hint or page_hint <= 0:
-        return 0.0
-    try:
-        dist = abs(int(chunk_page) - int(page_hint))
-    except Exception:
-        return 0.0
-    if dist > radius:
-        return 0.0
-    # closer pages rank higher
-    return 3.0 * ((radius - dist + 1) / (radius + 1))
 
 def _pdf_fingerprint(pdf_path: Path) -> str:
     st = pdf_path.stat()
@@ -703,7 +429,6 @@ def _pdf_fingerprint(pdf_path: Path) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()[:16]
 
 def get_pdf_display_name(pdf_path: Path) -> str:
-    # 1) PDF metadata title (best)
     try:
         d = fitz.open(pdf_path)
         meta = d.metadata or {}
@@ -714,7 +439,6 @@ def get_pdf_display_name(pdf_path: Path) -> str:
     except Exception:
         pass
 
-    # 2) Clean filename fallback
     stem = pdf_path.stem
     stem = re.sub(r"[_\-]+", " ", stem).strip()
     stem = re.sub(r"\s{2,}", " ", stem)
@@ -727,8 +451,7 @@ def list_pdfs() -> List[str]:
             out = []
             token = None
 
-            prefix = R2_PREFIX if "R2_PREFIX" in globals() else "pdfs/"
-            prefix = (prefix or "").strip()
+            prefix = (R2_PREFIX or "").strip()
             if prefix and not prefix.endswith("/"):
                 prefix += "/"
 
@@ -740,7 +463,6 @@ def list_pdfs() -> List[str]:
                     kwargs["ContinuationToken"] = token
 
                 resp = c.list_objects_v2(**kwargs)
-
                 for obj in (resp.get("Contents") or []):
                     key = (obj.get("Key") or "").strip()
                     if key.lower().endswith(".pdf"):
@@ -753,10 +475,9 @@ def list_pdfs() -> List[str]:
 
             out.sort()
             return out
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("R2 list_pdfs failed, falling back to local: %s", repr(e))
 
-    # Local fallback
     files = []
     for p in PDF_DIR.iterdir():
         if p.is_file() and p.suffix.lower() == ".pdf":
@@ -764,8 +485,35 @@ def list_pdfs() -> List[str]:
     files.sort()
     return files
 
+def ensure_pdf_local(pdf_name: str) -> Optional[Path]:
+    pdf_name = Path(pdf_name).name
+    local_path = PDF_DIR / pdf_name
+    if local_path.exists():
+        return local_path
 
+    if not R2_ENABLED:
+        return None
 
+    try:
+        c = r2_client()
+
+        key1 = f"{R2_PREFIX}{pdf_name}" if R2_PREFIX else pdf_name
+        try:
+            c.download_file(R2_BUCKET, key1, str(local_path))
+            if local_path.exists():
+                return local_path
+        except Exception:
+            pass
+
+        c.download_file(R2_BUCKET, pdf_name, str(local_path))
+        return local_path if local_path.exists() else None
+    except Exception as e:
+        log.warning("ensure_pdf_local failed: %s", repr(e))
+        return None
+
+# ============================================================
+# CHUNKING / INDEXING
+# ============================================================
 
 def looks_like_table_block(text: str) -> bool:
     if not text:
@@ -780,13 +528,7 @@ def looks_like_table_block(text: str) -> bool:
 
     return (multi_gap >= 3) or (pipes >= 3) or (many_numbers >= 4 and len(lines) >= 6)
 
-
 def _split_into_chunks(text: str, target: int, overlap: int) -> List[str]:
-    """
-    Table-aware chunker:
-    - keeps table-like blocks as standalone chunks
-    - avoids smearing tables into paragraph chunks
-    """
     text = clean_text(text)
     if not text:
         return []
@@ -822,7 +564,6 @@ def _split_into_chunks(text: str, target: int, overlap: int) -> List[str]:
     flush()
     return out
 
-
 def _detect_context_lines(page_text: str) -> Tuple[str, str, str, str]:
     section = ""
     table = ""
@@ -853,7 +594,6 @@ def _detect_context_lines(page_text: str) -> Tuple[str, str, str, str]:
 
     return section, table, diagram, heading
 
-
 def _index_cache_paths(pdf_path: Path) -> Dict[str, Path]:
     fp = _pdf_fingerprint(pdf_path)
     return {
@@ -861,7 +601,6 @@ def _index_cache_paths(pdf_path: Path) -> Dict[str, Path]:
         "chunks": CACHE_DIR / f"chunks_{fp}.jsonl",
         "emb": CACHE_DIR / f"embed_{fp}.jsonl",
     }
-
 
 def _load_index_from_cache(pdf_path: Path) -> bool:
     pdf_name = pdf_path.name
@@ -875,14 +614,11 @@ def _load_index_from_cache(pdf_path: Path) -> bool:
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
 
-        # Cache belongs to a different PDF filename → ignore
         if (meta.get("pdf_name") or "").strip() != pdf_name:
             return False
 
-        # Restore display name from cache (if present)
         disp = (meta.get("display_name") or "").strip()
         if disp:
-            # IMPORTANT: PDF_DISPLAY_NAME must be a global dict defined once at module level
             PDF_DISPLAY_NAME[pdf_name] = disp
 
         df = Counter(meta.get("df", {}))
@@ -920,10 +656,9 @@ def _load_index_from_cache(pdf_path: Path) -> bool:
             "fingerprint": meta.get("fingerprint", ""),
         }
         return True
-
-    except Exception:
+    except Exception as e:
+        log.warning("Index cache load failed for %s: %s", pdf_name, repr(e))
         return False
-
 
 def _save_index_to_cache(pdf_path: Path, idx: Dict[str, Any]) -> None:
     paths = _index_cache_paths(pdf_path)
@@ -961,80 +696,8 @@ def _save_index_to_cache(pdf_path: Path, idx: Dict[str, Any]) -> None:
                     )
                     + "\n"
                 )
-    except Exception:
-        pass
-
-def extract_pdf_images(pdf_path: Path) -> List[Dict[str, Any]]:
-    """
-    Extract raster images from a PDF using PyMuPDF.
-    Saves to CACHE_DIR/images/<pdf_stem>/...
-    Returns: {page, path, width, height, bytes, ext}
-    """
-    if not PDF_IMAGE_EXTRACT:
-        return []
-
-    out: List[Dict[str, Any]] = []
-    try:
-        doc = fitz.open(pdf_path)
-    except Exception:
-        return []
-
-    img_dir = CACHE_DIR / "images" / pdf_path.stem
-    img_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        pages_to_scan = min(doc.page_count, max(1, PDF_IMAGE_MAX_PAGES))
-        for i in range(pages_to_scan):
-            page = doc.load_page(i)
-            images = page.get_images(full=True) or []
-            for img in images:
-                if len(out) >= PDF_IMAGE_MAX_IMAGES:
-                    return out
-
-                xref = img[0]
-                try:
-                    pix = fitz.Pixmap(doc, xref)
-                except Exception:
-                    continue
-
-                if pix.n > 4:
-                    try:
-                        pix = fitz.Pixmap(fitz.csRGB, pix)
-                    except Exception:
-                        continue
-
-                w, h = int(pix.width), int(pix.height)
-                if w * h < PDF_IMAGE_MIN_PIXELS:
-                    continue
-
-                ext = "png"
-                fname = f"p{i+1}_img{xref}.{ext}"
-                fpath = img_dir / fname
-
-                try:
-                    pix.save(str(fpath))
-                except Exception:
-                    continue
-
-                try:
-                    size_bytes = fpath.stat().st_size
-                except Exception:
-                    size_bytes = 0
-
-                out.append(
-                    {
-                        "page": i + 1,
-                        "path": str(fpath),
-                        "width": w,
-                        "height": h,
-                        "bytes": size_bytes,
-                        "ext": ext,
-                    }
-                )
-    finally:
-        doc.close()
-
-    return out
+    except Exception as e:
+        log.warning("Index cache save failed for %s: %s", pdf_path.name, repr(e))
 
 def index_pdf_to_chunks(pdf_path: Path) -> None:
     pdf_name = pdf_path.name
@@ -1100,37 +763,10 @@ def index_pdf_to_chunks(pdf_path: Path) -> None:
         }
 
         _save_index_to_cache(pdf_path, CHUNK_INDEX[pdf_name])
+        log.info("Indexed %s: pages=%d chunks=%d", pdf_name, doc.page_count, len(chunks))
 
     finally:
         doc.close()
-def ensure_pdf_local(pdf_name: str) -> Optional[Path]:
-    pdf_name = Path(pdf_name).name
-    local_path = PDF_DIR / pdf_name
-    if local_path.exists():
-        return local_path
-
-    if not R2_ENABLED:
-        return None
-
-    try:
-        c = r2_client()
-
-        # Try prefixed key first (matches your dashboard)
-        key1 = f"{R2_PREFIX}{pdf_name}" if R2_PREFIX else pdf_name
-        try:
-            c.download_file(R2_BUCKET, key1, str(local_path))
-            if local_path.exists():
-                return local_path
-        except Exception:
-            pass
-
-        # Fallback: try non-prefixed key (older uploads)
-        c.download_file(R2_BUCKET, pdf_name, str(local_path))
-        return local_path if local_path.exists() else None
-
-    except Exception:
-        return None
-
 
 def ensure_chunk_indexed(pdf_name: str) -> None:
     if pdf_name in CHUNK_INDEX:
@@ -1139,7 +775,9 @@ def ensure_chunk_indexed(pdf_name: str) -> None:
     if p and p.exists():
         index_pdf_to_chunks(p)
 
-
+# ============================================================
+# EMBEDDINGS (OPTIONAL)
+# ============================================================
 
 def _cosine(a: List[float], b: List[float]) -> float:
     dot = 0.0
@@ -1156,12 +794,10 @@ def _cosine(a: List[float], b: List[float]) -> float:
         return 0.0
     return dot / ((na ** 0.5) * (nb ** 0.5))
 
-
 def _embed_cache_path(pdf_name: str) -> Path:
     p = PDF_DIR / pdf_name
     fp = _pdf_fingerprint(p) if p.exists() else _hash_id(pdf_name)
     return CACHE_DIR / f"embed_{fp}.jsonl"
-
 
 def _load_embeddings(pdf_name: str) -> None:
     if pdf_name in EMBED_INDEX:
@@ -1185,9 +821,8 @@ def _load_embeddings(pdf_name: str) -> None:
                     dim = max(dim, len(vec))
         if vectors:
             EMBED_INDEX[pdf_name] = {"vectors": vectors, "dim": dim}
-    except Exception:
-        return
-
+    except Exception as e:
+        log.warning("Embedding cache load failed: %s", repr(e))
 
 def _save_embeddings(pdf_name: str, vectors: Dict[str, List[float]]) -> None:
     try:
@@ -1195,9 +830,8 @@ def _save_embeddings(pdf_name: str, vectors: Dict[str, List[float]]) -> None:
         with path.open("w", encoding="utf-8") as f:
             for cid, vec in vectors.items():
                 f.write(json.dumps({"chunk_id": cid, "vec": vec}) + "\n")
-    except Exception:
-        pass
-
+    except Exception as e:
+        log.warning("Embedding cache save failed: %s", repr(e))
 
 def _ensure_embeddings(pdf_name: str) -> None:
     ensure_vertex_ready()
@@ -1228,13 +862,13 @@ def _ensure_embeddings(pdf_name: str) -> None:
                 if vec:
                     cid = chunks[start + j].chunk_id
                     vectors[cid] = vec
-    except Exception:
+    except Exception as e:
+        log.warning("Embedding generation failed: %s", repr(e))
         return
 
     if vectors:
         EMBED_INDEX[pdf_name] = {"vectors": vectors, "dim": len(next(iter(vectors.values())))}
         _save_embeddings(pdf_name, vectors)
-
 
 def _vector_candidates(question: str, pdf_name: str, top_k: int = EMBED_TOPK) -> List[str]:
     ensure_vertex_ready()
@@ -1264,6 +898,34 @@ def _vector_candidates(question: str, pdf_name: str, top_k: int = EMBED_TOPK) ->
     scored.sort(key=lambda x: x[0], reverse=True)
     return [cid for _, cid in scored[:top_k]]
 
+# ============================================================
+# RETRIEVAL (BM25)
+# ============================================================
+
+def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
+    k1 = 1.2
+    b = 0.75
+    score = 0.0
+    for t in query_toks:
+        if t not in tf:
+            continue
+        n = df.get(t, 0)
+        idf = math.log(1 + (N - n + 0.5) / (n + 0.5))
+        f = tf[t]
+        denom = f + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
+        score += idf * (f * (k1 + 1) / (denom or 1.0))
+    return score
+
+def page_hint_boost(chunk_page: int, page_hint: Optional[int], radius: int = 2) -> float:
+    if not page_hint or page_hint <= 0:
+        return 0.0
+    try:
+        dist = abs(int(chunk_page) - int(page_hint))
+    except Exception:
+        return 0.0
+    if dist > radius:
+        return 0.0
+    return 3.0 * ((radius - dist + 1) / (radius + 1))
 
 def search_chunks(
     question: str,
@@ -1271,12 +933,6 @@ def search_chunks(
     pinned_pdf: Optional[str] = None,
     page_hint: Optional[int] = None,
 ) -> List[Chunk]:
-    """
-    Retrieval:
-      - BM25 everywhere
-      - If embeddings exist: boost vector candidates so they rise naturally
-      - Page hint boosts near the hinted page
-    """
     pdfs = list_pdfs()
     if not pdfs:
         return []
@@ -1310,14 +966,12 @@ def search_chunks(
             s = bm25_score(qt, ch.tf, df, N, ch.length, avgdl)
             s += page_hint_boost(ch.page, page_hint)
             s += doc_boost
-
             if vector_set and ch.chunk_id in vector_set:
                 s += 2.5
             if s > 0:
                 scored.append((s, ch))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-
         take = max(24, top_k * 6)
         candidates.extend(scored[:take])
 
@@ -1333,8 +987,6 @@ def search_chunks(
             break
     return out
 
-
-
 def dedupe_chunks_keep_order(chunks: List[Chunk]) -> List[Chunk]:
     seen = set()
     out: List[Chunk] = []
@@ -1345,11 +997,7 @@ def dedupe_chunks_keep_order(chunks: List[Chunk]) -> List[Chunk]:
         out.append(c)
     return out
 
-
 def diversify_chunks(chunks: List[Chunk], max_docs: int, per_doc: int) -> List[Chunk]:
-    """
-    For broad questions, avoid one doc dominating. Keep up to max_docs and per_doc each.
-    """
     by_doc: Dict[str, List[Chunk]] = defaultdict(list)
     for c in chunks:
         by_doc[c.doc].append(c)
@@ -1372,7 +1020,6 @@ def diversify_chunks(chunks: List[Chunk], max_docs: int, per_doc: int) -> List[C
             used_docs += 1
     return out
 
-
 # ============================================================
 # DOCAI SUPPORT
 # ============================================================
@@ -1386,13 +1033,11 @@ def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
     out.sort(key=lambda x: x.name)
     return out
 
-
 def _parse_range_from_chunk_filename(path: Path) -> Optional[Tuple[int, int]]:
     m = re.search(r"_p(\d+)\-(\d+)\.txt$", path.name)
     if not m:
         return None
     return (int(m.group(1)), int(m.group(2)))
-
 
 def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[str, str]]:
     files = _docai_chunk_files_for(pdf_name)
@@ -1401,6 +1046,7 @@ def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[st
     qt = tokenize(question)
     if not qt:
         return []
+
     scored: List[Tuple[float, str, str]] = []
     for f in files:
         rng = _parse_range_from_chunk_filename(f)
@@ -1417,61 +1063,55 @@ def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[st
         if len(excerpt) > 3500:
             excerpt = excerpt[:3500] + "..."
         scored.append((float(overlap), label, excerpt))
+
     scored.sort(key=lambda x: x[0], reverse=True)
     return [(lab, ex) for _, lab, ex in scored[:k]]
 
+# ============================================================
+# SMALLTALK + INTENT
+# ============================================================
+
 SMALLTALK_RE = re.compile(r"^(hi|hello|hey|yo|howdy|sup|hiya|evening|morning|afternoon)\b", re.I)
+PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
+
+COMPLIANCE_KEYWORDS = [
+    "tgd","technical guidance","building regulations","building regs",
+    "part a","part b","part c","part d","part e","part f","part g","part h",
+    "part j","part k","part l","part m",
+    "fire","escape","travel distance","compartment","smoke","fire cert",
+    "access","accessible","wheelchair","dac",
+    "ber","deap","u-value","y-value","airtight","thermal bridge",
+    "means of escape"
+]
+
+PLANNING_KEYWORDS = [
+    "planning","planning permission","part 8","development plan","planning and development",
+    "exempted development","regulations","statutory instrument","s.i.","site notice","newspaper notice"
+]
+
+BER_KEYWORDS = ["ber","deap","primary energy","renewable","u-value","y-value","airtight","thermal bridge","mpep"]
+
+NUMERIC_TRIGGERS = [
+    "minimum","maximum","min","max","limit",
+    "distance","width","height",
+    "u-value","y-value","rise","riser","going","pitch",
+    "stairs","stair","staircase","landing","headroom",
+    "travel distance",
+    "lux","lumen","lumens"
+]
 
 def is_smalltalk(message: str) -> bool:
     m = (message or "").strip().lower()
     if not m:
         return False
-
-    # Very short greeting-like messages
-    if len(m) <= 12 and (m in {"hi", "hey", "hello", "yo", "hiya", "sup"}):
+    if len(m) <= 12 and (m in {"hi","hey","hello","yo","hiya","sup"}):
         return True
-
-    # Greeting at the start, short overall, and NOT a compliance/planning/ber question
     if SMALLTALK_RE.match(m) and len(m) <= 32:
         if not is_compliance_question(m) and not is_planning_question(m) and not is_ber_question(m):
             return True
-
-    # “thanks”, “ok”, etc. (optional)
-    if len(m) <= 12 and m in {"ok", "okay", "thanks", "thank you", "cool", "nice"}:
+    if len(m) <= 12 and m in {"ok","okay","thanks","thank you","cool","nice"}:
         return True
-
     return False
-
-# ============================================================
-# INTENT DETECTION + DOC TYPE SANITY
-# ============================================================
-
-COMPLIANCE_KEYWORDS = [
-    "tgd", "technical guidance", "building regulations", "building regs",
-    "part a", "part b", "part c", "part d", "part e", "part f", "part g", "part h",
-    "part j", "part k", "part l", "part m",
-    "fire", "escape", "travel distance", "compartment", "smoke", "fire cert",
-    "access", "accessible", "wheelchair", "dac",
-    "ber", "deap", "u-value", "y-value", "airtight", "thermal bridge",
-    "means of escape"
-]
-
-PLANNING_KEYWORDS = [
-    "planning", "planning permission", "part 8", "development plan", "planning and development",
-    "exempted development", "regulations", "statutory instrument", "s.i.", "site notice", "newspaper notice"
-]
-
-BER_KEYWORDS = ["ber", "deap", "primary energy", "renewable", "u-value", "y-value", "airtight", "thermal bridge", "mpep"]
-
-NUMERIC_TRIGGERS = [
-    "minimum", "maximum", "min", "max", "limit",
-    "distance", "width", "height",
-    "u-value", "y-value", "rise", "riser", "going", "pitch",
-    "stairs", "stair", "staircase", "landing", "headroom",
-    "travel distance",
-    "lux", "lumen", "lumens"
-]
-
 
 def is_compliance_question(q: str) -> bool:
     ql = (q or "").lower()
@@ -1479,64 +1119,17 @@ def is_compliance_question(q: str) -> bool:
         return True
     return any(k in ql for k in COMPLIANCE_KEYWORDS)
 
-
 def is_planning_question(q: str) -> bool:
     ql = (q or "").lower()
     return any(k in ql for k in PLANNING_KEYWORDS)
-
 
 def is_ber_question(q: str) -> bool:
     ql = (q or "").lower()
     return any(k in ql for k in BER_KEYWORDS)
 
-
 def is_numeric_compliance(q: str) -> bool:
     ql = (q or "").lower()
     return is_compliance_question(ql) and any(k in ql for k in NUMERIC_TRIGGERS)
-
-
-def auto_pin_pdf(question: str) -> Optional[str]:
-    q = (question or "").lower()
-    pdfs = list_pdfs()
-
-    def pick_by_regex(patterns: List[str]) -> Optional[str]:
-        for pat in patterns:
-            rx = re.compile(pat, re.I)
-            for name in pdfs:
-                if rx.search(name):
-                    return name
-        return None
-
-    if is_planning_question(q):
-        return pick_by_regex([r"planning.*development", r"regulation"])
-
-    if any(w in q for w in ["stairs", "riser", "going", "pitch", "handrail"]):
-        return pick_by_regex([r"\bpart[-_ ]?k\b", r"tgd.*k", r"stairs"])
-
-    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac"]):
-        return pick_by_regex([r"\bpart[-_ ]?m\b", r"tgd.*m", r"access"])
-
-    if any(w in q for w in ["fire", "escape", "travel distance", "emergency lighting"]):
-        return pick_by_regex([r"\bpart[-_ ]?b\b", r"tgd.*b", r"fire"])
-
-    if any(w in q for w in ["ber", "u-value", "y-value", "energy", "lighting controls"]):
-        return pick_by_regex([r"\bpart[-_ ]?l\b", r"tgd.*l", r"energy"])
-
-    return None
-
-
-def _doc_type_from_pdfname(name: str) -> str:
-    n = (name or "").lower()
-    if "planning and development" in n or "regulation" in n:
-        return "planning"
-    if "tgd" in n or "technical guidance" in n:
-        return "building_regs"
-    if "deap" in n or "ber" in n:
-        return "ber"
-    if any(x in n for x in ["part l", "part m", "part k", "part b"]):
-        return "building_regs"
-    return "general"
-
 
 def _question_family(q: str) -> str:
     if is_planning_question(q):
@@ -1547,24 +1140,72 @@ def _question_family(q: str) -> str:
         return "building_regs"
     return "general"
 
-def anchor_from_query(q: str) -> Dict[str, str]:
-    out = {}
-    m = TABLE_RE.search(q)
-    if m:
-        out["table"] = m.group(1)
-    m = DIAGRAM_RE.search(q)
-    if m:
-        out["diagram"] = m.group(1)
-    m = SECTION_RE.search(q)
-    if m:
-        out["section"] = m.group(1)
-    return out
+BROAD_HINTS = ["tell me about","explain","overview","what about","guidance on","info on","general"]
+PRECISE_HINTS = ["minimum","maximum","min","max","required","shall","must","limit","section","table","clause"]
 
-
+def question_precision(q: str) -> str:
+    ql = (q or "").lower().strip()
+    if not ql:
+        return "broad"
+    if PART_PATTERN.search(ql):
+        return "precise"
+    if re.search(r"\b(section|table|diagram|clause)\b", ql):
+        return "precise"
+    if NUM_WITH_UNIT_RE.search(ql) or ANY_NUMBER_RE.search(ql):
+        return "precise"
+    if any(h in ql for h in PRECISE_HINTS):
+        return "precise"
+    if any(h in ql for h in BROAD_HINTS):
+        return "broad"
+    if len(ql.split()) <= 6:
+        return "broad"
+    return "mixed"
 
 # ============================================================
-# WEB SEARCH + FETCH + EXCERPT (allowlist + evidence) + CACHE
+# WEB: SAFETY + FETCH + CACHE
 # ============================================================
+
+def _safe_url(url: str) -> bool:
+    u = (url or "").strip().lower()
+    return u.startswith("http://") or u.startswith("https://")
+
+def _host_from_url(url: str) -> str:
+    try:
+        if not _safe_url(url):
+            return ""
+        m = re.match(r"^https?://([^/]+)", url.strip(), re.I)
+        host = (m.group(1).lower() if m else "")
+        host = host.split("@")[-1]
+        host = host.split(":")[0]
+        return host
+    except Exception:
+        return ""
+
+WEB_STRICT_ALLOWLIST = os.getenv("WEB_STRICT_ALLOWLIST", "false").lower() in ("1","true","yes","on")
+
+WEB_BLOCKLIST_DEFAULT = [
+    "facebook.com","instagram.com","tiktok.com","x.com","twitter.com",
+    "pinterest.com","reddit.com",
+]
+WEB_BLOCKLIST = [d.strip().lower() for d in (os.getenv("WEB_BLOCKLIST", "") or "").split(",") if d.strip()]
+if not WEB_BLOCKLIST:
+    WEB_BLOCKLIST = WEB_BLOCKLIST_DEFAULT
+
+def _blocked_url(url: str) -> bool:
+    host = _host_from_url(url)
+    if not host:
+        return True
+    return any(host == d or host.endswith("." + d) for d in WEB_BLOCKLIST)
+
+def _allowed_url(url: str) -> bool:
+    if _blocked_url(url):
+        return False
+    if not WEB_STRICT_ALLOWLIST:
+        return True
+    host = _host_from_url(url)
+    if not host:
+        return False
+    return any(host == d or host.endswith("." + d) for d in WEB_ALLOWLIST)
 
 async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, str]]:
     if not WEB_ENABLED:
@@ -1577,7 +1218,8 @@ async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, st
             r = await client.post(url, headers=headers, json=payload)
             r.raise_for_status()
             data = r.json()
-    except Exception:
+    except Exception as e:
+        log.warning("Serper search failed: %s", repr(e))
         return []
 
     out: List[Dict[str, str]] = []
@@ -1589,22 +1231,13 @@ async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, st
             out.append({"title": title, "url": link, "snippet": snippet})
     return out[: max(5, k * 2)]
 
-
 def _html_to_text(html: str) -> str:
     html = html or ""
-
-    # Remove junk
     html = re.sub(r"(?is)<script.*?>.*?</script>", " ", html)
     html = re.sub(r"(?is)<style.*?>.*?</style>", " ", html)
     html = re.sub(r"(?is)<noscript.*?>.*?</noscript>", " ", html)
-
-    # Preserve paragraph-ish breaks before stripping tags
     html = re.sub(r"(?i)</(p|div|section|article|br|li|h1|h2|h3|h4|h5|tr)>", "\n", html)
-
-    # Drop remaining tags
     html = re.sub(r"(?is)<[^>]+>", " ", html)
-
-    # Decode common entities
     html = (
         html.replace("&nbsp;", " ")
             .replace("&amp;", "&")
@@ -1613,13 +1246,10 @@ def _html_to_text(html: str) -> str:
             .replace("&lt;", "<")
             .replace("&gt;", ">")
     )
-
-    # Normalize whitespace but keep line breaks somewhat
     html = re.sub(r"[ \t]+", " ", html)
     html = re.sub(r"\n{3,}", "\n\n", html)
     html = re.sub(r"\s+\n", "\n", html)
     return html.strip()
-
 
 def _best_excerpts_from_text(q: str, text: str, max_paras: int = 4, max_chars: int = 2200) -> str:
     text = clean_text(text)
@@ -1657,14 +1287,11 @@ def _best_excerpts_from_text(q: str, text: str, max_paras: int = 4, max_chars: i
         out = out[:max_chars] + "..."
     return out
 
-
 def _web_cache_key(url: str) -> str:
     return hashlib.sha1(url.encode("utf-8", errors="ignore")).hexdigest()[:16]
 
-
 def _web_cache_path(url: str) -> Path:
     return WEB_CACHE_DIR / f"{_web_cache_key(url)}.json"
-
 
 def _load_web_cache(url: str) -> Optional[Dict[str, Any]]:
     try:
@@ -1682,13 +1309,12 @@ def _load_web_cache(url: str) -> Optional[Dict[str, Any]]:
 def _save_web_cache(url: str, content_type: str, text: str) -> None:
     try:
         p = _web_cache_path(url)
-        p.write_text(json.dumps({"ts": time.time(), "url": url, "content_type": content_type, "text": text}), encoding="utf-8")
+        p.write_text(
+            json.dumps({"ts": time.time(), "url": url, "content_type": content_type, "text": text}),
+            encoding="utf-8",
+        )
     except Exception:
         pass
-
-# ============================================================
-# REDIRECT MAP CACHE (orig_url -> final_url)
-# ============================================================
 
 REDIRECT_CACHE_DIR = WEB_CACHE_DIR / "redirects"
 REDIRECT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -1729,7 +1355,7 @@ def _save_redirect_map(orig_url: str, final_url: str) -> None:
         )
     except Exception:
         pass
-        
+
 def _default_headers() -> Dict[str, str]:
     return {
         "User-Agent": "Mozilla/5.0 (compatible; RaheemAI/1.0)",
@@ -1744,16 +1370,7 @@ async def _fetch_one_web_with_final_url(
     client: httpx.AsyncClient,
     orig_url: str
 ) -> Tuple[str, str, str, str, str]:
-    """
-    Returns: (kind, original_url, content_type, raw_text, final_url)
-
-    kind:
-      - "CACHED" -> raw_text is already cleaned plain text (content_type="text/plain")
-      - "FETCH"  -> raw_text is resp.text (html or plain)
-      - "SKIP" / "HTTP" / "ERR" -> raw_text empty
-    """
     orig_url = (orig_url or "").strip()
-
     if not _safe_url(orig_url):
         return ("SKIP", orig_url, "", "", "")
 
@@ -1768,9 +1385,6 @@ async def _fetch_one_web_with_final_url(
         return None
 
     try:
-        # --------------------------------------------------
-        # 1) Try redirect-map cache (NO NETWORK)
-        # --------------------------------------------------
         mapped_final = (_load_redirect_map(orig_url) or "").strip()
 
         if mapped_final and _safe_url(mapped_final) and _allowed_url(mapped_final):
@@ -1790,7 +1404,6 @@ async def _fetch_one_web_with_final_url(
                 if ("text/html" not in ct2_l) and ("text/plain" not in ct2_l):
                     return ("SKIP", orig_url, "", "", final2)
 
-                # size cap (header)
                 try:
                     content_len = int(resp2.headers.get("content-length") or "0")
                     if content_len and content_len > MAX_WEB_BYTES:
@@ -1806,9 +1419,6 @@ async def _fetch_one_web_with_final_url(
 
                 return ("FETCH", orig_url, ct2, text2, final2)
 
-        # --------------------------------------------------
-        # 2) Fallback: fetch orig_url to discover redirects (ONE NETWORK)
-        # --------------------------------------------------
         resp = await _get_with_retries(orig_url)
         if not resp:
             return ("ERR", orig_url, "", "", "")
@@ -1820,14 +1430,12 @@ async def _fetch_one_web_with_final_url(
         ct_l = ct.lower()
         final_url = (str(resp.url) if resp.url else orig_url).strip()
 
-        # Store mapping for next time
         if _safe_url(final_url):
             _save_redirect_map(orig_url, final_url)
 
         if not _allowed_url(final_url):
             return ("SKIP", orig_url, "", "", final_url)
 
-        # Cache lookup by FINAL URL
         cached2 = _load_web_cache(final_url)
         if cached2 and isinstance(cached2.get("text"), str):
             return ("CACHED", orig_url, "text/plain", cached2["text"], final_url)
@@ -1835,7 +1443,6 @@ async def _fetch_one_web_with_final_url(
         if ("text/html" not in ct_l) and ("text/plain" not in ct_l):
             return ("SKIP", orig_url, "", "", final_url)
 
-        # size cap (header)
         try:
             content_len = int(resp.headers.get("content-length") or "0")
             if content_len and content_len > MAX_WEB_BYTES:
@@ -1851,8 +1458,6 @@ async def _fetch_one_web_with_final_url(
 
     except Exception:
         return ("ERR", orig_url, "", "", "")
-
-
 
 async def web_fetch_and_excerpt(
     query: str,
@@ -1896,15 +1501,9 @@ async def web_fetch_and_excerpt(
         if not excerpt:
             continue
 
-        title = (r.get("title") or "").strip()
-        if not title:
-            title = final_url
+        title = (r.get("title") or "").strip() or final_url
 
-        out.append({
-            "title": title,
-            "url": final_url.strip(),
-            "excerpt": excerpt,
-        })
+        out.append({"title": title, "url": final_url.strip(), "excerpt": excerpt})
 
         if kind != "CACHED":
             _save_web_cache(final_url, "text/plain", txt)
@@ -1914,13 +1513,28 @@ async def web_fetch_and_excerpt(
 
     return out[:max_items]
 
+def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
+    answer = (answer or "").rstrip()
+    if not web_pages:
+        return answer
+    if WEB_CITE_NUM_RE.search(answer):
+        return answer
+
+    lines = ["", "Sources:"]
+    for i, w in enumerate(web_pages, start=1):
+        title = (w.get("title") or "").strip() or f"Source {i}"
+        url = (w.get("url") or "").strip()
+        if url:
+            lines.append(f"[{i}] {title} — {url}")
+        else:
+            lines.append(f"[{i}] {title}")
+    return answer + "\n" + "\n".join(lines)
 
 # ============================================================
-# RULES LAYER (top checks)
+# RULES LAYER
 # ============================================================
 
 _RULES: List[Dict[str, Any]] = []
-
 
 def _load_rules() -> None:
     global _RULES
@@ -1937,41 +1551,51 @@ def _load_rules() -> None:
     except Exception:
         _RULES = []
 
-
 def _match_rules(user_msg: str) -> List[Dict[str, Any]]:
     _load_rules()
     if not _RULES:
         return []
-
     q = (user_msg or "").lower()
     hits: List[Tuple[int, Dict[str, Any]]] = []
     for rule in _RULES:
         kws = [str(k).lower() for k in (rule.get("keywords") or []) if str(k).strip()]
         if not kws:
             continue
-        score = 0
-        for k in kws:
-            if k in q:
-                score += 1
+        score = sum(1 for k in kws if k in q)
         if score > 0:
             hits.append((score, rule))
-
     hits.sort(key=lambda x: x[0], reverse=True)
     return [r for _, r in hits[:3]]
 
-
 # ============================================================
-# PROMPTS (ChatGPT-like style + broad/precise controller)
+# SYSTEM PROMPTS (Creator-aware + capability-aware)
 # ============================================================
 
-SYSTEM_PROMPT_NORMAL = """
-You are Raheem AI.
+CAPABILITIES_TEXT = f"""
+Identity:
+- You are {PRODUCT_NAME} v{PRODUCT_VERSION}.
+- You were created by {CREATOR_NAME} ({CREATOR_TITLE}).
+
+Core functions:
+- Answer questions conversationally.
+- If PDF sources are provided in SOURCES, use them as primary evidence.
+- When "Evidence Mode" is enabled, do not invent numeric limits; only state numbers found in evidence.
+- You can use web evidence only when provided; cite web sources as [1], [2], etc.
+
+Limits:
+- You cannot truly predict the future or guarantee outcomes about the creator's life/career.
+- If asked "what will be added later", only describe roadmap items if they are explicitly provided (e.g., via /about or a roadmap file). Otherwise say what could be added in general terms and ask what the creator wants next.
+""".strip()
+
+SYSTEM_PROMPT_NORMAL = f"""
+You are {PRODUCT_NAME}.
+
+{CAPABILITIES_TEXT}
 
 Voice & tone:
 - Write like ChatGPT: natural, confident paragraphs.
-- Match the user's tone: if they’re casual, be friendly; if they’re technical, be crisp and professional.
-- Light, professional humour is okay if it fits the user's tone. Never cheesy.
-- Avoid hashtags, emoji spam, and “blog style” headings.
+- Match the user's tone: if casual be friendly; if technical be crisp and professional.
+- Light, professional humour is okay if it fits. Never cheesy.
 
 Formatting:
 - Do NOT use markdown headings (no #, ##).
@@ -1980,26 +1604,23 @@ Formatting:
 
 Citations:
 - If you used web sources, cite them inline as [1], [2] etc (square bracket numbers).
-- Don’t show raw URLs inline. Put a “Sources” list at the end if needed.
+- Don’t show raw URLs inline in paragraphs. If needed, put a “Sources” list at the end.
 
 If the question is broad: answer well, then ask ONE focused follow-up.
 """.strip()
 
-SYSTEM_PROMPT_EVIDENCE = """
-You are Raheem AI (Evidence Mode).
+SYSTEM_PROMPT_EVIDENCE = f"""
+You are {PRODUCT_NAME} (Evidence Mode).
 
-Voice:
-- Same natural paragraph style as ChatGPT.
-- Professional and careful.
+{CAPABILITIES_TEXT}
 
 Hard rules:
 1) Only state numeric limits (mm, m, %, W/m²K, lux, etc.) if the exact number + unit appears in SOURCES.
 2) When you state a numeric limit, include a short quote (1–2 lines) that contains that number.
-3) Do not guess “typical” values. If the evidence doesn’t contain the number, say you can’t confirm it.
+3) Do not guess “typical” values. If evidence doesn’t contain the number, say you can’t confirm it.
 4) Cite sources clearly:
    - PDF: (Document: <name>, p.<page>) and optionally Section/Table if known
    - Web: [1], [2] etc (no raw URLs inline)
-
 
 Formatting:
 - No markdown headings (#).
@@ -2007,7 +1628,6 @@ Formatting:
 
 If SOURCES don’t contain what’s needed, say so plainly and ask ONE focused follow-up.
 """.strip()
-
 
 RERANK_PROMPT = """
 You are a strict reranker for compliance evidence.
@@ -2028,13 +1648,7 @@ Rules:
 - Keep output to at most 12 ids.
 """.strip()
 
-
 def build_contents(history: List[Dict[str, str]], user_message: str, sources_block: str, precision: str) -> List[Content]:
-    """
-    Adds a small controller hint:
-    - broad => cover all key topics user mentioned + one follow-up
-    - precise => answer only what was asked
-    """
     contents: List[Content] = []
     for m in history or []:
         r = (m.get("role") or "").lower().strip()
@@ -2052,22 +1666,19 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
         controller = (
             "\n\n[CONTROLLER]\n"
             "The user question is BROAD.\n"
-            "- Give a thorough, structured explanation covering each topic implied by the question.\n"
-            "- If multiple documents mention the topic, summarise the key differences/angles.\n"
+            "- Give a thorough explanation covering each topic implied by the question.\n"
             "- Prefer paragraphs; use bullets only when it improves clarity.\n"
             "- End with ONE focused follow-up.\n"
         )
     elif precision == "precise":
         controller = (
             "\n\n[CONTROLLER]\n"
-            "The user question is PRECISE. Answer ONLY what was asked. "
-            "Do not expand into unrelated topics.\n"
+            "The user question is PRECISE. Answer ONLY what was asked. Do not expand into unrelated topics.\n"
         )
     else:
         controller = (
             "\n\n[CONTROLLER]\n"
-            "The user question is MIXED. Answer the core request, and only mention adjacent points "
-            "if they are directly implied.\n"
+            "The user question is MIXED. Answer the core request, and only mention adjacent points if directly implied.\n"
         )
 
     if sources_block.strip():
@@ -2077,7 +1688,6 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
 
     contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
     return contents
-
 
 def _format_pdf_citation(c: Chunk) -> str:
     doc_label = PDF_DISPLAY_NAME.get(c.doc, c.doc)
@@ -2090,19 +1700,12 @@ def _format_pdf_citation(c: Chunk) -> str:
         bits.append(f"Diagram: {c.diagram}")
     return "(" + ", ".join(bits) + ")"
 
-
 def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950) -> str:
-    """
-    Evidence pack builder (query-driven):
-    - keep only the most relevant lines/sentences
-    - boost numeric + requirement statements
-    """
     text = clean_text(c.text)
     if not text:
         return ""
 
     qt = set(tokenize(query))
-
     meta = []
     if c.heading:
         meta.append(f"Heading: {c.heading}")
@@ -2149,7 +1752,6 @@ def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950)
         return meta_line + "\n" + out
     return out
 
-
 def build_sources_block(
     chunks: List[Chunk],
     web_pages: List[Dict[str, str]],
@@ -2158,13 +1760,8 @@ def build_sources_block(
     precision: str,
 ) -> str:
     parts: List[str] = []
-
-    # Keep evidence shorter for broad questions to reduce bullet-y responses
     max_chars = 650 if precision == "broad" else 950
 
-    # -------------------------
-    # PDF evidence
-    # -------------------------
     if chunks:
         parts.append("PDF EVIDENCE:")
         for c in chunks:
@@ -2174,9 +1771,6 @@ def build_sources_block(
             )
             parts.append(f"[PDF] {_format_pdf_citation(c)} | id:{c.chunk_id}\n{excerpt}")
 
-    # -------------------------
-    # DocAI evidence
-    # -------------------------
     if docai_hits:
         parts.append("DOC.AI EVIDENCE (raw extraction, use carefully):")
         for label, text in docai_hits:
@@ -2185,25 +1779,15 @@ def build_sources_block(
                 t = t[:1800] + "..."
             parts.append(f"[DOCAI] {label}\n{t}")
 
-    # -------------------------
-    # Web evidence (numbered to support [1], [2] in-text citations)
-    # -------------------------
     if web_pages:
         parts.append("\nWEB EVIDENCE:")
         for i, w in enumerate(web_pages, start=1):
             url = (w.get("url") or "").strip()
             title = (w.get("title") or "").strip() or f"Source {i}"
             ex = clean_text(w.get("excerpt", ""))
-            parts.append(
-                f"[{i}] {title}\n"
-                f"URL: {url}\n"
-                f"EXCERPT:\n{ex}"
-            )
-
+            parts.append(f"[{i}] {title}\nURL: {url}\nEXCERPT:\n{ex}")
 
     return "\n\n".join(p for p in parts if p).strip()
-
-
 
 # ============================================================
 # RERANK (LLM)
@@ -2255,12 +1839,12 @@ async def _rerank_candidates(user_msg: str, cands: List[Chunk], max_keep: int = 
             if len(ranked) >= max_keep:
                 break
         return ranked[:max_keep]
-    except Exception:
+    except Exception as e:
+        log.warning("Rerank failed: %s", repr(e))
         return small[:max_keep]
 
-
 # ============================================================
-# HARD NUMERIC VERIFIER (server-enforced)
+# HARD NUMERIC VERIFIER
 # ============================================================
 
 def _sources_text_blob_for_verification(
@@ -2277,7 +1861,6 @@ def _sources_text_blob_for_verification(
         parts.append(clean_text(w.get("excerpt", "")))
     return "\n\n".join([p for p in parts if p]).lower()
 
-
 def _contains_exact_numeric_from_answer(answer: str) -> List[str]:
     hits = []
     for m in NUM_WITH_UNIT_RE.finditer(answer or ""):
@@ -2292,7 +1875,6 @@ def _contains_exact_numeric_from_answer(answer: str) -> List[str]:
         out.append(h)
     return out
 
-
 def _hard_verify_numeric(answer: str, sources_blob_lower: str) -> Tuple[bool, str]:
     nums = _contains_exact_numeric_from_answer(answer or "")
     if not nums:
@@ -2301,11 +1883,7 @@ def _hard_verify_numeric(answer: str, sources_blob_lower: str) -> Tuple[bool, st
     if not VERIFY_NUMERIC:
         return True, answer
 
-    missing = []
-    for n in nums:
-        if n.lower() not in (sources_blob_lower or ""):
-            missing.append(n)
-
+    missing = [n for n in nums if n.lower() not in (sources_blob_lower or "")]
     if not missing:
         return True, answer
 
@@ -2316,9 +1894,8 @@ def _hard_verify_numeric(answer: str, sources_blob_lower: str) -> Tuple[bool, st
     )
     return False, safe
 
-
 # ============================================================
-# UPLOAD + INDEXING
+# PDF UPLOAD
 # ============================================================
 
 def _split_docai_combined_to_chunks(combined: str) -> List[Tuple[Tuple[int, int], str]]:
@@ -2343,27 +1920,19 @@ async def upload_pdf(
     file: UploadFile = File(...),
     x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
-    # Admin key gate (dev allows if ADMIN_API_KEY not set)
     unauthorized = require_admin_key(x_api_key)
     if unauthorized:
         return unauthorized
 
-    # Validate file type
     filename = (file.filename or "").lower()
     content_type = (file.content_type or "").lower()
 
     if not filename.endswith(".pdf") and content_type != "application/pdf":
-        return JSONResponse(
-            {"ok": False, "error": "Only PDF files are allowed."},
-            status_code=400,
-        )
+        return JSONResponse({"ok": False, "error": "Only PDF files are allowed."}, status_code=400)
 
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
-        return JSONResponse(
-            {"ok": False, "error": f"File too large. Max {MAX_UPLOAD_MB}MB."},
-            status_code=400,
-        )
+        return JSONResponse({"ok": False, "error": f"File too large. Max {MAX_UPLOAD_MB}MB."}, status_code=400)
 
     safe_name = Path(file.filename or "upload.pdf").name
     dest = PDF_DIR / safe_name
@@ -2378,17 +1947,9 @@ async def upload_pdf(
                 break
             i += 1
 
-    # Save locally
     dest.write_bytes(raw)
 
-    # Optional: extract diagrams/images from PDF into cache
-    if PDF_IMAGE_EXTRACT:
-        try:
-            PDF_IMAGE_INDEX[dest.name] = extract_pdf_images(dest)
-        except Exception:
-            PDF_IMAGE_INDEX[dest.name] = []
-
-    # Upload to R2 for persistence (survives redeploy)
+    # Upload to R2 (optional)
     if R2_ENABLED:
         try:
             c = r2_client()
@@ -2399,10 +1960,7 @@ async def upload_pdf(
                 ContentType="application/pdf",
             )
         except Exception as e:
-            return JSONResponse(
-                {"ok": False, "error": f"R2 upload failed: {repr(e)}"},
-                status_code=500,
-            )
+            return JSONResponse({"ok": False, "error": f"R2 upload failed: {repr(e)}"}, status_code=500)
 
     # Clear indexes for this file
     CHUNK_INDEX.pop(dest.name, None)
@@ -2411,17 +1969,13 @@ async def upload_pdf(
     try:
         index_pdf_to_chunks(dest)
     except Exception as e:
-        return JSONResponse(
-            {"ok": False, "error": f"Index failed: {repr(e)}"},
-            status_code=500,
-        )
+        return JSONResponse({"ok": False, "error": f"Index failed: {repr(e)}"}, status_code=500)
 
     try:
         if EMBED_ENABLED:
             _ensure_embeddings(dest.name)
     except Exception:
         pass
-
 
     # DocAI parse (optional)
     docai_ok = False
@@ -2455,6 +2009,60 @@ async def upload_pdf(
         },
     }
 
+# ============================================================
+# ABOUT / CAPABILITIES / ROADMAP
+# ============================================================
+
+def _load_roadmap() -> Dict[str, Any]:
+    if not ROADMAP_FILE.exists():
+        return {"ok": False, "items": [], "note": "No roadmap file found."}
+    try:
+        data = json.loads(ROADMAP_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return {"ok": True, **data}
+        if isinstance(data, list):
+            return {"ok": True, "items": data}
+        return {"ok": False, "items": [], "note": "Invalid roadmap format."}
+    except Exception as e:
+        return {"ok": False, "items": [], "note": repr(e)}
+
+@app.get("/about")
+def about():
+    return {
+        "ok": True,
+        "product": {"name": PRODUCT_NAME, "version": PRODUCT_VERSION},
+        "creator": {"name": CREATOR_NAME, "title": CREATOR_TITLE},
+        "time_utc": datetime.utcnow().isoformat(),
+        "roadmap": _load_roadmap(),
+    }
+
+@app.get("/capabilities")
+def capabilities():
+    return {
+        "ok": True,
+        "identity": {
+            "product": PRODUCT_NAME,
+            "version": PRODUCT_VERSION,
+            "creator": CREATOR_NAME,
+            "creator_title": CREATOR_TITLE,
+        },
+        "features": [
+            "Chat with optional server-side chat memory (chat_id)",
+            "PDF upload + indexing (BM25); optional Vertex embeddings",
+            "Evidence-mode answering with numeric verification guard",
+            "Optional web search via Serper with allow/block lists + caching",
+            "Optional DocAI extraction support",
+        ],
+        "limits": [
+            "Cannot truly predict the future or guarantee outcomes",
+            "In Evidence Mode: numeric limits must exist in sources",
+        ],
+    }
+
+# ============================================================
+# CHAT ENDPOINT
+# ============================================================
+
 @app.post("/chat")
 async def chat_endpoint(
     body: ChatBody,
@@ -2464,7 +2072,6 @@ async def chat_endpoint(
     page_hint: Optional[int] = Query(None),
     x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
-
     unauthorized = require_admin_key(x_api_key)
     if unauthorized:
         return unauthorized
@@ -2479,29 +2086,9 @@ async def chat_endpoint(
         },
     )
 
-
 @app.get("/pdfs")
 def pdfs():
     return {"pdfs": list_pdfs()}
-    
-@app.get("/pdf-images")
-def pdf_images(pdf: str = Query(...)):
-    name = Path(pdf).name
-    imgs = PDF_IMAGE_INDEX.get(name, [])
-    return {"ok": True, "pdf": name, "count": len(imgs), "images": imgs}
-    
-@app.get("/r2-test")
-def r2_test():
-    if not R2_ENABLED:
-        return {"ok": False, "error": "R2_ENABLED is false"}
-
-    try:
-        c = r2_client()
-        resp = c.list_objects_v2(Bucket=R2_BUCKET, MaxKeys=20)
-        keys = [o.get("Key") for o in (resp.get("Contents") or [])]
-        return {"ok": True, "bucket": R2_BUCKET, "count": len(keys), "keys": keys}
-    except Exception as e:
-        return {"ok": False, "error": repr(e)}
 
 # ============================================================
 # HEALTH + ROOT
@@ -2509,8 +2096,7 @@ def r2_test():
 
 @app.get("/")
 def root():
-    return {"ok": True, "app": "Raheem AI", "time": datetime.utcnow().isoformat()}
-
+    return {"ok": True, "app": PRODUCT_NAME, "version": PRODUCT_VERSION, "time": datetime.utcnow().isoformat()}
 
 @app.get("/health")
 def health():
@@ -2520,15 +2106,10 @@ def health():
         "vertex_ready": _VERTEX_READY,
         "vertex_error": _VERTEX_ERR,
         "pdf_count": len(list_pdfs()),
-        "models": {
-            "chat": MODEL_CHAT,
-            "compliance": MODEL_COMPLIANCE,
-        },
+        "models": {"chat": MODEL_CHAT, "compliance": MODEL_COMPLIANCE},
         "project": GCP_PROJECT_ID,
         "location": GCP_LOCATION,
         "docai_helper": _DOCAI_HELPER_AVAILABLE,
-        "docai_processor_id_present": bool((os.getenv("DOCAI_PROCESSOR_ID") or "").strip()),
-        "docai_location_present": bool((os.getenv("DOCAI_LOCATION") or "").strip()),
         "web_enabled": WEB_ENABLED,
         "web_allowlist": WEB_ALLOWLIST,
         "embed_enabled": bool(EMBED_ENABLED and _EMBED_MODEL is not None),
@@ -2545,17 +2126,9 @@ def health():
         },
     }
 
-
-
 # ============================================================
 # STREAMING CORE
 # ============================================================
-
-def sse_send(text: str) -> str:
-    if text is None:
-        return ""
-    text = str(text).replace("\r", "")
-    return "".join(f"data: {line}\n" for line in text.split("\n")) + "\n"
 
 async def _stream_answer_async(
     chat_id: str,
@@ -2572,9 +2145,9 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
-        # Smalltalk fast-path
+        # Smalltalk
         if is_smalltalk(user_msg):
-            friendly = "Hey — how can I help you today?"
+            friendly = f"Hey — I’m {PRODUCT_NAME}. How can I help you today?"
             if chat_id:
                 remember(chat_id, "user", user_msg)
                 remember(chat_id, "assistant", friendly)
@@ -2604,7 +2177,7 @@ async def _stream_answer_async(
         evidence_mode = force_docs or DEFAULT_EVIDENCE_MODE or fam in ("building_regs", "planning", "ber")
         numeric_needed = is_numeric_compliance(user_msg) and fam == "building_regs"
 
-        pinned = pdf or auto_pin_pdf(user_msg)
+        pinned = pdf  # keep your manual pin behavior (auto-pin removed here to avoid wrong doc surprises)
 
         # Rules first
         rules_hit = _match_rules(user_msg) if RULES_ENABLED else []
@@ -2634,53 +2207,18 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
-        # ----------------------------
-        # Helpers (MUST stay inside _stream_answer_async)
-        # ----------------------------
         async def get_pdf_chunks() -> List[Chunk]:
             if not list_pdfs():
                 return []
-
-            # Broad: topic expansion + dedupe + rerank + doc diversity
             if precision == "broad":
-                topics = detect_topic_keys(user_msg)
-                queries = [user_msg] + intent_queries_for_topics(user_msg, topics)
-                queries = queries[: max(1, BROAD_MAX_SUBQUERIES)]
-
-                collected: List[Chunk] = []
-                for q in queries:
-                    collected.extend(
-                        search_chunks(
-                            q,
-                            top_k=max(TOP_K_CHUNKS, 8),
-                            pinned_pdf=pinned,
-                            page_hint=page_hint,
-                        )
-                    )
-
+                collected = search_chunks(user_msg, top_k=max(TOP_K_CHUNKS, 8), pinned_pdf=pinned, page_hint=page_hint)
                 collected = dedupe_chunks_keep_order(collected)
-
                 if RERANK_ENABLED and collected:
-                    collected = await _rerank_candidates(
-                        user_msg,
-                        collected,
-                        max_keep=max(RERANK_TOPK, 10),
-                    )
-
-                collected = diversify_chunks(
-                    collected,
-                    max_docs=max(1, BROAD_DOC_DIVERSITY_K),
-                    per_doc=max(1, BROAD_TOPIC_HITS_K),
-                )
+                    collected = await _rerank_candidates(user_msg, collected, max_keep=max(RERANK_TOPK, 10))
+                collected = diversify_chunks(collected, max_docs=max(1, BROAD_DOC_DIVERSITY_K), per_doc=max(1, BROAD_TOPIC_HITS_K))
                 return collected[: max(RERANK_TOPK, 10)]
 
-            # Precise/mixed: normal
-            cands = search_chunks(
-                user_msg,
-                top_k=TOP_K_CHUNKS,
-                pinned_pdf=pinned,
-                page_hint=page_hint,
-            )
+            cands = search_chunks(user_msg, top_k=TOP_K_CHUNKS, pinned_pdf=pinned, page_hint=page_hint)
             if RERANK_ENABLED and cands:
                 cands = await _rerank_candidates(user_msg, cands, max_keep=RERANK_TOPK)
             return cands[:RERANK_TOPK]
@@ -2698,9 +2236,6 @@ async def _stream_answer_async(
             serp = await web_search_serper(user_msg, k=TOP_K_WEB)
             return await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
 
-        # Only pull web when allowed:
-        # - generally OK for general/planning/ber
-        # - avoid web when evidence_mode AND numeric_needed (force doc quotes)
         do_web = WEB_ENABLED and (
             (not evidence_mode)
             or fam in ("planning", "general", "ber")
@@ -2713,80 +2248,15 @@ async def _stream_answer_async(
             get_web_evidence() if do_web else asyncio.sleep(0, result=[]),
         )
 
-        # ----------------------------
-        # Visual evidence lane (diagrams/tables/figures)
-        # ----------------------------
-        visual_notes: List[str] = []
-        if wants_visual_evidence(user_msg) and pdf_chunks:
-            # Decide which PDF to render from: use pinned if available, else the top chunk's doc
-            visual_pdf = Path((pinned or pdf_chunks[0].doc) or "").name
-            pdf_path = ensure_pdf_local(visual_pdf) if visual_pdf else None
-
-            if pdf_path and pdf_path.exists():
-                pages_to_render = pick_visual_pages(user_msg, pdf_chunks, max_pages=2)
-
-                # Safety: dedupe + hard cap
-                seen_pages = set()
-                safe_pages: List[int] = []
-                for pno in pages_to_render:
-                    try:
-                        pno = int(pno)
-                    except Exception:
-                        continue
-                    if pno <= 0 or pno in seen_pages:
-                        continue
-                    seen_pages.add(pno)
-                    safe_pages.append(pno)
-                    if len(safe_pages) >= 2:
-                        break
-
-                for pno in safe_pages:
-                    img_path = render_pdf_page_to_png(pdf_path, pno, zoom=2.0)
-                    if not img_path:
-                        continue
-
-                    # describe_image_with_gemini is sync; run in a thread to avoid blocking the event loop
-                    try:
-                        vision_text = await asyncio.to_thread(describe_image_with_gemini, img_path, user_msg)
-                    except Exception:
-                        vision_text = ""
-
-                    if vision_text:
-                        visual_notes.append(
-                            f"[VISUAL] (Document: {visual_pdf}, p.{pno})\n{vision_text}"
-                        )
-
-        # ----------------------------
-        # Doc-family sanity: pinned doc mismatch
-        # ----------------------------
-        if pinned:
-            pinned_type = _doc_type_from_pdfname(pinned)
-            if fam != "general" and pinned_type not in ("general", fam):
-                safe = (
-                    "I think you’re asking about **"
-                    + fam.replace("_", " ")
-                    + "**, but the document I’m currently using looks like **"
-                    + pinned_type.replace("_", " ")
-                    + "**.\n\n"
-                    "Tell me which document to use (or upload the relevant one) and I’ll answer directly from it with a quote."
-                )
-                if chat_id:
-                    remember(chat_id, "assistant", safe)
-                yield sse_send(safe)
-                yield "event: done\ndata: ok\n\n"
-                return
-
-        # ----------------------------
-        # Numeric compliance: must have doc evidence
-        # ----------------------------
+        # Numeric compliance must have doc evidence
         if numeric_needed and not pdf_chunks and not docai_hits:
-            refusal = (
-                "I can’t confirm the exact numeric requirement yet because I don’t have relevant TGD evidence loaded for this question.\n\n"
-                "Upload the correct TGD (or tell me which one: K, M, B, L), and I’ll quote the exact line containing the number."
+            msg = (
+                "I can’t confirm the exact numeric requirement yet because I don’t have relevant TGD evidence loaded for this.\n\n"
+                "Upload the correct TGD (or tell me which Part: K, M, B, L), and I’ll quote the exact line containing the number."
             )
             if chat_id:
-                remember(chat_id, "assistant", refusal)
-            yield sse_send(refusal)
+                remember(chat_id, "assistant", msg)
+            yield sse_send(msg)
             yield "event: done\ndata: ok\n\n"
             return
 
@@ -2798,13 +2268,9 @@ async def _stream_answer_async(
             precision=precision,
         )
 
-        # Append visual notes into sources (so the model can use them)
-        if visual_notes:
-            sources_block = (sources_block + "\n\nVISUAL EVIDENCE:\n" + "\n\n".join(visual_notes)).strip()
-
         ensure_vertex_ready()
         if not _VERTEX_READY:
-            msg = (_VERTEX_ERR or "Vertex not ready").replace("\r", "").replace("\n", " ")
+            msg = (_VERTEX_ERR or "Vertex not ready").replace("\r", " ").replace("\n", " ")
             yield f"data: [ERROR] {msg}\n\n"
             yield "event: done\ndata: ok\n\n"
             return
@@ -2829,21 +2295,18 @@ async def _stream_answer_async(
             full.append(delta)
             yield sse_send(delta)
 
-
         draft = "".join(full).strip()
 
-        # Enforce web citations (only if we actually fetched web pages)
         if do_web and web_pages:
             draft = _enforce_web_citations(draft, web_pages)
 
-        # Hard verify numeric against evidence blob
         sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
         ok, final_text = _hard_verify_numeric(draft, sources_blob)
 
-        if not ok and final_text:
-            upd = "\n\n---\n\nFinal (verified):\n\n" + final_text
-            yield sse_send(rendered)
-            draft = (draft + upd).strip()
+        # ✅ FIXED: previously referenced undefined "rendered"
+        if not ok:
+            yield sse_send("\n\n---\n\nFinal (verified):\n\n" + final_text + "\n")
+            draft = (draft + "\n\n---\n\nFinal (verified):\n\n" + final_text).strip()
 
         if chat_id:
             remember(chat_id, "assistant", draft)
@@ -2851,14 +2314,8 @@ async def _stream_answer_async(
         yield "event: done\ndata: ok\n\n"
 
     except Exception as e:
-        msg = str(e).replace("\r", "").replace("\n", " ")
+        msg = str(e).replace("\r", " ").replace("\n", " ")
+        log.exception("Chat stream error: %s", msg)
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
-
-
-
-
-
-
-
