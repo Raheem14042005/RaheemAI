@@ -718,6 +718,24 @@
       outline-offset: 2px;
       border-radius: 14px;
     }
+
+    /* Creative upgrade: small status pulse animation when online */
+    .tag.live{ position: relative; }
+    .tag.live::after{
+      content:"";
+      position:absolute;
+      inset:-3px;
+      border-radius:999px;
+      border:1px solid rgba(80,255,215,.22);
+      opacity:0;
+      animation: pulse 2.2s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%{ transform:scale(1); opacity:0; }
+      25%{ opacity:.55; }
+      70%{ transform:scale(1.12); opacity:0; }
+      100%{ transform:scale(1.12); opacity:0; }
+    }
   </style>
 </head>
 
@@ -780,12 +798,23 @@
           <span class="tag">↗</span>
         </button>
 
+        <button class="navbtn" id="navTools" type="button" aria-label="Go to Tools">
+          <div class="left">
+            <span class="tag">Tools</span>
+            <div style="min-width:0">
+              <div style="font-weight:900">Generators</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Fire, DAC, Specs, BER</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+
         <button class="navbtn" id="navFuture" type="button" aria-label="Go to Roadmap">
           <div class="left">
             <span class="tag">Roadmap</span>
             <div style="min-width:0">
               <div style="font-weight:900">Future Features</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, integrations</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">BIM, multi-agent, layout</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -832,10 +861,9 @@
       <!-- HOME -->
       <section class="view show" id="viewHome">
         <div class="hero">
-          <h2>AI chat for compliance, specifications and technical workflows</h2>
+          <h2>AI for compliance, specifications and technical workflows</h2>
           <p>
-            Ask questions in plain language. When you need higher confidence, enable Evidence mode to nudge the assistant
-            toward traceable, structured replies.
+            Ask questions in plain language. Use Evidence mode for stricter answers with citations and traceable logic.
           </p>
           <div class="quote">
             Built for practical building workflows: clear outputs, consistent structure, and faster review cycles.
@@ -849,7 +877,7 @@
                 <div class="icon">AI</div>
                 <div>
                   <h4>Chat</h4>
-                  <p>Continue conversations, keep context, and retrieve past work by session.</p>
+                  <p>TGD & Planning Copilot. Saved sessions, continuous context.</p>
                 </div>
               </div>
               <span class="pill live">Live</span>
@@ -863,17 +891,17 @@
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">+</div>
+                <div class="icon">🧰</div>
                 <div>
-                  <h4>Roadmap</h4>
-                  <p>Structured reports, BIM review helpers, manufacturer search, and automated workflows.</p>
+                  <h4>Generators</h4>
+                  <p>Fire Cert, DAC, NBS Spec, BER/DEAP (start building these as guided tools).</p>
                 </div>
               </div>
-              <span class="pill">Preview</span>
+              <span class="pill">Starter</span>
             </div>
             <div class="cta">
-              <span class="pill">Planned modules</span>
-              <button class="btn" id="btnOpenFuture" type="button">View</button>
+              <span class="pill">Questionnaires</span>
+              <button class="btn" id="btnOpenTools" type="button">Open</button>
             </div>
           </article>
         </div>
@@ -889,11 +917,11 @@
         <div class="hero">
           <h2>Chat</h2>
           <p>
-            Select a saved chat on the left to continue. Start a new chat to keep topics separated.
+            Continue a saved chat on the left, or start a new one to keep topics clean.
           </p>
           <div class="quote" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
             <div style="max-width:780px">
-              Tip: Use Evidence mode for stricter answers and citations. For best results, ask one question per message.
+              Tip: Evidence mode is best for regulations and reports. Ask one question per message.
             </div>
             <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
           </div>
@@ -913,6 +941,10 @@
               <label class="toggle" title="Enable streaming typewriter effect (cosmetic)">
                 <input type="checkbox" id="typewriter" />
                 Typewriter
+              </label>
+              <label class="toggle" title="Stop responses quickly if needed">
+                <input type="checkbox" id="fastMode" />
+                Fast mode
               </label>
             </div>
             <div class="row">
@@ -934,12 +966,100 @@
         </div>
       </section>
 
+      <!-- TOOLS (NEW) -->
+      <section class="view" id="viewTools">
+        <div class="hero">
+          <h2>Generators</h2>
+          <p>
+            These are guided workflows. You answer questions; Raheem AI produces structured outputs ready for review.
+          </p>
+          <div class="quote">
+            Start here next: <b>NBS-style Spec Generator</b> + <b>Fire (TGD B) & DAC (TGD M) questionnaires</b>.
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">FCS</div>
+                <div>
+                  <h4>Fire Safety (TGD B) – Questionnaire</h4>
+                  <p>Step-by-step yes/no + project inputs. Outputs a structured report draft + submission checklist.</p>
+                </div>
+              </div>
+              <span class="pill">Next</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Non-dwellings</span>
+              <button class="btn" data-soon="Fire Safety Questionnaire" type="button">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">DAC</div>
+                <div>
+                  <h4>DAC (TGD M) – Questionnaire</h4>
+                  <p>Captures access strategy details and outputs a DAC report with highlighted non-compliance risks.</p>
+                </div>
+              </div>
+              <span class="pill">Next</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Access & use</span>
+              <button class="btn" data-soon="DAC Questionnaire" type="button">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">NBS</div>
+                <div>
+                  <h4>NBS-Style Specification Generator</h4>
+                  <p>Turn a brief into structured spec clauses with placeholders and performance requirements.</p>
+                </div>
+              </div>
+              <span class="pill live">Start here</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Specs</span>
+              <button class="btn" data-soon="NBS Spec Generator" type="button">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">BER</div>
+                <div>
+                  <h4>BER / DEAP Copilot</h4>
+                  <p>Import IFC/gbXML later. Extract areas, pre-fill DEAP style inputs, and guide the remaining data.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Energy</span>
+              <button class="btn" data-soon="BER / DEAP Copilot" type="button">Preview</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Generators preview</div>
+        </div>
+      </section>
+
       <!-- ROADMAP -->
       <section class="view" id="viewFuture">
         <div class="hero">
           <h2>Future Features</h2>
           <p>
-            This roadmap shows planned modules and workflows. Each feature is shipped with a focus on reliability and clarity.
+            Planned modules: multi-agent debate, BIM layout generation, reg-aware hints, and submission pack building.
           </p>
           <div class="quote">
             Roadmap items are previews. Availability depends on testing, performance, and data coverage.
@@ -950,85 +1070,68 @@
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">ED</div>
+                <div class="icon">DB</div>
                 <div>
-                  <h4>Early Design</h4>
-                  <p>Capture requirements and explore options with structured prompts and refinements.</p>
+                  <h4>Design Debate Room</h4>
+                  <p>Two AIs argue for/against an option and converge on the best recommendation with clear reasoning.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Concept workflows</span>
-              <button class="btn" data-soon="Early Design" type="button">Preview</button>
+              <span class="pill">Decisions</span>
+              <button class="btn" data-soon="Design Debate Room" type="button">Preview</button>
             </div>
           </article>
 
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">DAC</div>
+                <div class="icon">LAY</div>
                 <div>
-                  <h4>DAC Report Generator</h4>
-                  <p>Generate structured report drafts aligned to guidance and project inputs, ready for review.</p>
+                  <h4>AI Layout Generator (Revit-first)</h4>
+                  <p>Send areas/adjacencies/constraints → generate native Revit rooms/walls/doors + reg-aware hints.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Access and use</span>
-              <button class="btn" data-soon="DAC Report Generator" type="button">Preview</button>
+              <span class="pill">BIM</span>
+              <button class="btn" data-soon="AI Layout Generator" type="button">Preview</button>
             </div>
           </article>
 
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">FCS</div>
+                <div class="icon">SIM</div>
                 <div>
-                  <h4>Fire Safety Report Generator</h4>
-                  <p>Produce consistent report drafts with traceable checks and repeatable structure.</p>
+                  <h4>“What-If” Reg Simulator</h4>
+                  <p>Change height/area/occupancy and see implications across Fire, DAC, Planning, and energy.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Fire safety workflow</span>
-              <button class="btn" data-soon="Fire Safety Report Generator" type="button">Preview</button>
+              <span class="pill">Sim</span>
+              <button class="btn" data-soon="What-If Reg Simulator" type="button">Preview</button>
             </div>
           </article>
 
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">MFG</div>
+                <div class="icon">PK</div>
                 <div>
-                  <h4>Manufacturer and Spec Search</h4>
-                  <p>Search suppliers and specs using model parameters and project context.</p>
+                  <h4>Submission Pack Builder</h4>
+                  <p>Combine Fire + DAC outputs into a ready-to-use submission bundle with cover letters and indices.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill">Product discovery</span>
-              <button class="btn" data-soon="Manufacturer and Spec Search" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">BER</div>
-                <div>
-                  <h4>BER Workflow</h4>
-                  <p>Guide DEAP logic, import model data, and generate consistent reports for review.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">DEAP and BIM</span>
-              <button class="btn" data-soon="BER Workflow" type="button">Preview</button>
+              <span class="pill">Docs</span>
+              <button class="btn" data-soon="Submission Pack Builder" type="button">Preview</button>
             </div>
           </article>
         </div>
@@ -1056,7 +1159,7 @@
 
   <script>
     // =========================================================
-    // FRONTEND HARD BLOCK: prevent users from viewing /docs, etc on THIS site.
+    // Frontend hard block: prevent users from browsing docs endpoints on the PAGES site.
     // =========================================================
     (function blockDocsRoutes(){
       const p = (location.pathname || "").toLowerCase();
@@ -1067,12 +1170,12 @@
     })();
 
     // =========================================================
-    // BACKEND ROUTING
+    // Backend routing
     // =========================================================
     const API_BASE_DEFAULT = "https://complyr.onrender.com";
     let API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
 
-    // Safety: prevent arbitrary API_BASE overrides without redirect loops
+    // Safety: prevent arbitrary API base overrides
     if (!API_BASE.startsWith(API_BASE_DEFAULT)) {
       localStorage.removeItem("RAHEEM_API_BASE");
       API_BASE = API_BASE_DEFAULT;
@@ -1098,12 +1201,13 @@
     }
 
     // =========================================================
-    // Modal helpers (for status + shortcuts)
+    // Modal
     // =========================================================
     const modalOverlay = document.getElementById("modalOverlay");
     const modalTitle = document.getElementById("modalTitle");
     const modalBody = document.getElementById("modalBody");
     const modalClose = document.getElementById("modalClose");
+
     function openModal(title, bodyText){
       modalTitle.textContent = title || "Info";
       modalBody.textContent = bodyText || "";
@@ -1115,28 +1219,31 @@
     document.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && modalOverlay.classList.contains("show")) closeModal(); });
 
     // =========================================================
-    // Navigation (with active highlight)
+    // Navigation
     // =========================================================
     const viewTitleEl = document.getElementById("viewTitle");
     const viewHintEl  = document.getElementById("viewHint");
     const viewHome    = document.getElementById("viewHome");
     const viewChat    = document.getElementById("viewChat");
+    const viewTools   = document.getElementById("viewTools");
     const viewFuture  = document.getElementById("viewFuture");
     const chatList    = document.getElementById("chatList");
 
-    const navHome = document.getElementById("navHome");
-    const navChat = document.getElementById("navChat");
+    const navHome   = document.getElementById("navHome");
+    const navChat   = document.getElementById("navChat");
+    const navTools  = document.getElementById("navTools");
     const navFuture = document.getElementById("navFuture");
 
     function setNavActive(which){
-      [navHome, navChat, navFuture].forEach(b=>b.classList.remove("active"));
-      if(which==="home") navHome.classList.add("active");
-      if(which==="chat") navChat.classList.add("active");
+      [navHome, navChat, navTools, navFuture].forEach(b=>b.classList.remove("active"));
+      if(which==="home")   navHome.classList.add("active");
+      if(which==="chat")   navChat.classList.add("active");
+      if(which==="tools")  navTools.classList.add("active");
       if(which==="future") navFuture.classList.add("active");
     }
 
     function showView(which){
-      [viewHome, viewChat, viewFuture].forEach(v=>v.classList.remove("show"));
+      [viewHome, viewChat, viewTools, viewFuture].forEach(v=>v.classList.remove("show"));
       chatList.classList.remove("show");
 
       if(which==="home"){
@@ -1144,15 +1251,24 @@
         viewTitleEl.textContent = "Overview";
         viewHintEl.textContent  = "Product summary and quick start";
       }
+
       if(which==="chat"){
         viewChat.classList.add("show");
         viewTitleEl.textContent = "Chat";
         viewHintEl.textContent  = "Saved sessions and continuous context";
         chatList.classList.add("show");
+        ensureActiveChat();         // ✅ critical: prevents activeChatId timing bugs
         renderChatList();
         renderChat();
         setTimeout(()=> msgEl.focus(), 50);
       }
+
+      if(which==="tools"){
+        viewTools.classList.add("show");
+        viewTitleEl.textContent = "Generators";
+        viewHintEl.textContent  = "Fire, DAC, Specs, BER";
+      }
+
       if(which==="future"){
         viewFuture.classList.add("show");
         viewTitleEl.textContent = "Future Features";
@@ -1163,21 +1279,31 @@
       localStorage.setItem("RAHEEM_VIEW", which);
     }
 
-    navHome.onclick  = ()=>showView("home");
-    navChat.onclick  = ()=>showView("chat");
-    navFuture.onclick= ()=>showView("future");
-    document.getElementById("btnStartChat").onclick = ()=>showView("chat");
-    document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
+    navHome.onclick   = ()=>showView("home");
+    navChat.onclick   = ()=>showView("chat");
+    navTools.onclick  = ()=>showView("tools");
+    navFuture.onclick = ()=>showView("future");
 
-    // Restore last view
-    (function restoreView(){
+    document.getElementById("btnStartChat").onclick  = ()=>showView("chat");
+    document.getElementById("btnOpenTools").onclick  = ()=>showView("tools");
+
+    // Safe restore view: run only when DOM is ready AND after functions exist
+    function restoreView(){
       const saved = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
-      if(saved === "chat" || saved === "future" || saved === "home") showView(saved);
+      if(["home","chat","tools","future"].includes(saved)) showView(saved);
       else showView("home");
-    })();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      try{ restoreView(); }
+      catch(e){
+        console.error("restoreView failed:", e);
+        showView("home");
+      }
+    });
 
     // =========================================================
-    // Future feature preview buttons
+    // Future preview buttons
     // =========================================================
     document.querySelectorAll("[data-soon]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
@@ -1235,7 +1361,7 @@
     }
 
     // =========================================================
-    // Status pill + Status button
+    // Status pill + Status button (Render cold-start friendly)
     // =========================================================
     const apiPill = document.getElementById("apiPill");
     const btnStatus = document.getElementById("btnStatus");
@@ -1251,7 +1377,7 @@
     async function refreshStatusPill(){
       setPill("warn", "Checking…");
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 25000); // ✅ longer for Render cold start
 
       try{
         const r = await fetch(apiUrl("/health"), {
@@ -1284,7 +1410,7 @@
 
     btnStatus.onclick = async ()=>{
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 25000);
 
       try{
         const r = await fetch(apiUrl("/health"), {
@@ -1341,6 +1467,8 @@
     const sendBtn = document.getElementById("send");
     const forceDocsEl = document.getElementById("forceDocs");
     const typewriterEl = document.getElementById("typewriter");
+    const fastModeEl = document.getElementById("fastMode");
+
     const btnClear = document.getElementById("btnClear");
     const btnNewChat = document.getElementById("btnNewChat");
     const chatItemsWrap = document.getElementById("chatItems");
@@ -1348,7 +1476,7 @@
     const chatFilterEl = document.getElementById("chatFilter");
     const btnExportChat = document.getElementById("btnExportChat");
 
-    const STORAGE_KEY = "raheem_ai_chats_v4";
+    const STORAGE_KEY = "raheem_ai_chats_v5";
     const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
 
     function loadAllChats(){
@@ -1641,12 +1769,11 @@
       }
     };
 
+    // Initialize chat state safely AFTER everything is declared
     ensureActiveChat();
-    renderChatList();
-    renderChat();
 
     // =========================================================
-    // SSE helpers (FIXED: handles multi-line data: and strips "data:" everywhere)
+    // SSE helpers
     // =========================================================
     function isSamsungInternet(){
       try{
@@ -1693,7 +1820,7 @@
     }
 
     // =========================================================
-    // Robust fetch with timeout + (optional) one retry
+    // Robust fetch with timeout + optional retry
     // =========================================================
     async function fetchWithTimeout(url, options, ms, retryOnce){
       const controller = new AbortController();
@@ -1709,19 +1836,14 @@
         return res;
       }catch(e){
         if(retryOnce){
-          // Small backoff helps cold starts / transient network hiccups
           await new Promise(r => setTimeout(r, 650));
-          try{
-            const res2 = await fetch(url, {
-              ...options,
-              mode: "cors",
-              cache: "no-store",
-              signal: controller.signal
-            });
-            return res2;
-          }catch(e2){
-            throw e2;
-          }
+          const res2 = await fetch(url, {
+            ...options,
+            mode: "cors",
+            cache: "no-store",
+            signal: controller.signal
+          });
+          return res2;
         }
         throw e;
       }finally{
@@ -1730,7 +1852,7 @@
     }
 
     // =========================================================
-    // CHAT SEND (FIXED: SSE parsing + fewer "connection error" false positives)
+    // Chat send (adds watchdog so "thinking forever" can't happen)
     // =========================================================
     async function send(){
       const text = (msgEl.value || "").trim();
@@ -1739,6 +1861,7 @@
 
       const all = ensureActiveChat();
       const c = all[activeChatId];
+
       c.messages.push({ role:"user", content:text });
       c.updated = Date.now();
       setChatTitleFromFirstUser(all, activeChatId);
@@ -1746,8 +1869,8 @@
 
       addMsg("user", text);
       const aiDiv = addMsg("ai", "");
-      const tools = aiDiv.querySelector(".msgTools");
-      if(tools) tools.remove();
+      const existingTools = aiDiv.querySelector(".msgTools");
+      if(existingTools) existingTools.remove();
 
       const typing = addTypingIndicator(aiDiv);
 
@@ -1757,35 +1880,38 @@
       const url =
         apiUrl("/chat")
         + "?chat_id=" + encodeURIComponent(activeChatId)
-        + "&force_docs=" + (forceDocsEl.checked ? "1" : "0");
+        + "&force_docs=" + (forceDocsEl.checked ? "1" : "0")
+        + "&fast=" + (fastModeEl && fastModeEl.checked ? "1" : "0");
 
-      const body = JSON.stringify({
-        message: text,
-        messages: c.messages
-      });
+      const body = JSON.stringify({ message: text, messages: c.messages });
 
-      // NOTE: Render cold starts can take a while. Give it longer than /health.
-      const CHAT_TIMEOUT_MS = 65000; // 65s
+      const CHAT_TIMEOUT_MS = 75000; // ✅ a bit longer
+      const watchdog = setTimeout(() => {
+        try{
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          const msg = "No response received (timeout). Try again.";
+          aiDiv.textContent = msg;
+          attachMsgTools(aiDiv, msg);
+        }catch(e){}
+      }, CHAT_TIMEOUT_MS + 1500);
 
       try{
         const res = await fetchWithTimeout(url, {
           method: "POST",
-          headers: {
-            "Content-Type":"application/json",
-            "Accept":"text/event-stream"
-          },
+          headers: { "Content-Type":"application/json", "Accept":"text/event-stream" },
           body
         }, CHAT_TIMEOUT_MS, true);
 
         if(!res.ok){
           const errText = await res.text().catch(()=>"(no error body)");
           if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-          aiDiv.textContent = "Server error " + res.status + ": " + (errText || "").slice(0, 1600);
-          attachMsgTools(aiDiv, aiDiv.textContent);
+          const msg = "Server error " + res.status + ": " + (errText || "").slice(0, 1600);
+          aiDiv.textContent = msg;
+          attachMsgTools(aiDiv, msg);
           return;
         }
 
-        // If browser can't stream, read whole body and parse SSE
+        // Non-stream fallback
         if(isSamsungInternet() || !res.body || !res.body.getReader){
           const raw = await res.text().catch(()=> "");
           const reply = parseSSETextToAnswer(raw) || " ";
@@ -1815,6 +1941,7 @@
         while(true){
           const { value, done } = await reader.read();
           if(done) break;
+
           buffer += decoder.decode(value, { stream:true });
 
           const parts = buffer.split(/\n\n/);
@@ -1838,7 +1965,6 @@
               continue;
             }
 
-            // FIX: support multiple data: lines inside one event
             const lines = cframe.split("\n");
             for(const line of lines){
               if(line.startsWith("data:")){
@@ -1879,12 +2005,14 @@
         console.error("Chat send error:", e);
         if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
 
-        // Better error text (helps you debug if it's timeout vs CORS vs offline)
         let msg = "Connection error. Try again.";
-        const s = String(e && e.name ? e.name : "");
-        if(s.includes("AbortError")) msg = "Request timed out (backend cold start or slow). Try again.";
+        if(String(e && e.name).includes("AbortError")){
+          msg = "Request timed out (backend cold start or slow). Try again.";
+        }
         aiDiv.textContent = msg;
         attachMsgTools(aiDiv, msg);
+      }finally{
+        clearTimeout(watchdog);
       }
     }
 
@@ -1915,17 +2043,18 @@
     });
 
     // =========================================================
-    // Small UX: if offline, warn quickly on send
+    // Quick ping (slightly longer)
     // =========================================================
     async function quickPing(){
       try{
-        const r = await fetchWithTimeout(apiUrl("/health"), { method:"GET" }, 8000, false);
+        const r = await fetchWithTimeout(apiUrl("/health"), { method:"GET" }, 12000, false);
         return r.ok;
       }catch(e){
         return false;
       }
     }
 
+    // Wrap send so you don't waste time when offline
     const _sendOriginal = send;
     send = async function(){
       if((apiPill.textContent || "").toLowerCase().includes("offline")){
@@ -1937,7 +2066,9 @@
       }
       return _sendOriginal();
     };
+
+    // Make sure chat list renders once if the user starts on Chat view
+    // (restoreView handles the actual showView call)
   </script>
 </body>
 </html>
-
