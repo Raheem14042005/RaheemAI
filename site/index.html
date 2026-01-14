@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Maintenance Mode (but make it fun)</title>
+  <title>Maintenance Mode (Comedy Edition)</title>
   <style>
     :root{
       --bg:#0b0f17;
@@ -13,7 +13,8 @@
       --muted:rgba(255,255,255,.68);
       --accent:#7c3aed;
       --accent2:#22c55e;
-      --danger:#ef4444;
+      --warn:#fde68a;
+      --bad:#fca5a5;
       --shadow: 0 20px 60px rgba(0,0,0,.35);
       --radius: 18px;
     }
@@ -32,14 +33,13 @@
       padding:24px;
     }
     .wrap{
-      width:min(980px, 100%);
+      width:min(1100px, 100%);
       display:grid;
       gap:18px;
-      grid-template-columns: 1.2fr .8fr;
+      grid-template-columns: 1.25fr .75fr;
     }
-    @media (max-width: 900px){
-      .wrap{grid-template-columns:1fr}
-    }
+    @media (max-width: 980px){ .wrap{grid-template-columns:1fr} }
+
     .card{
       background:linear-gradient(180deg, var(--card), var(--card2));
       border:1px solid rgba(255,255,255,.10);
@@ -48,14 +48,16 @@
       overflow:hidden;
     }
     .pad{padding:18px 18px 14px}
+
     .top{
       display:flex;
       gap:12px;
       align-items:flex-start;
       justify-content:space-between;
+      flex-wrap:wrap;
     }
     .title{
-      font-size:clamp(22px, 3vw, 32px);
+      font-size:clamp(22px, 3vw, 34px);
       line-height:1.1;
       margin:0;
       letter-spacing:-0.02em;
@@ -65,8 +67,9 @@
       color:var(--muted);
       font-size:14px;
       line-height:1.5;
-      max-width:62ch;
+      max-width:70ch;
     }
+
     .pillrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
     .pill{
       font-size:12px;
@@ -76,8 +79,10 @@
       padding:7px 10px;
       border-radius:999px;
       user-select:none;
+      white-space:nowrap;
     }
     .pill b{color:white}
+
     .progress{
       margin-top:14px;
       height:10px;
@@ -111,7 +116,36 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
 
-    /* Snake area */
+    /* Buttons */
+    .btns{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    button{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.92);
+      padding:9px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+    }
+    button:hover{background:rgba(255,255,255,.10)}
+    button:active{transform:translateY(1px)}
+    .primary{
+      background:rgba(124,58,237,.22);
+      border-color:rgba(124,58,237,.45);
+    }
+    .danger{
+      background:rgba(239,68,68,.18);
+      border-color:rgba(239,68,68,.35);
+    }
+
+    /* Snake */
+    canvas{
+      width:100%;
+      height:auto;
+      display:block;
+      background:rgba(0,0,0,.25);
+    }
     .gameHeader{
       display:flex;
       justify-content:space-between;
@@ -120,57 +154,10 @@
       padding:14px 18px;
       border-top:1px solid rgba(255,255,255,.10);
       background:rgba(0,0,0,.18);
+      flex-wrap:wrap;
     }
     .stats{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
     .stats span{color:rgba(255,255,255,.85)}
-    .btns{display:flex; gap:8px; flex-wrap:wrap}
-    button{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:rgba(255,255,255,.92);
-      padding:9px 12px;
-      border-radius:12px;
-      cursor:pointer;
-      font-weight:600;
-      font-size:13px;
-    }
-    button:hover{background:rgba(255,255,255,.10)}
-    button:active{transform:translateY(1px)}
-    .primary{
-      background:rgba(124,58,237,.20);
-      border-color:rgba(124,58,237,.45);
-    }
-    .primary:hover{background:rgba(124,58,237,.28)}
-
-    canvas{
-      width:100%;
-      height:auto;
-      display:block;
-      background:rgba(0,0,0,.25);
-    }
-
-    /* Right column: funny status + tips */
-    .side .pad{padding:18px}
-    .h2{
-      margin:0 0 10px;
-      font-size:16px;
-      letter-spacing:-0.01em;
-    }
-    .log{
-      border:1px dashed rgba(255,255,255,.16);
-      border-radius:14px;
-      padding:12px;
-      background:rgba(0,0,0,.18);
-      min-height:190px;
-      font-size:13px;
-      color:rgba(255,255,255,.86);
-      line-height:1.5;
-    }
-    .log .muted{color:var(--muted)}
-    .log .ok{color: #86efac}
-    .log .warn{color: #fde68a}
-    .log .nope{color: #fca5a5}
-
     .kbd{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-size: 12px;
@@ -181,30 +168,114 @@
       color:rgba(255,255,255,.88);
     }
 
+    /* Right column */
+    .h2{margin:0 0 10px; font-size:16px; letter-spacing:-0.01em;}
+    .log{
+      border:1px dashed rgba(255,255,255,.16);
+      border-radius:14px;
+      padding:12px;
+      background:rgba(0,0,0,.18);
+      min-height:170px;
+      font-size:13px;
+      color:rgba(255,255,255,.86);
+      line-height:1.5;
+    }
+    .log .muted{color:var(--muted)}
+    .log .ok{color: #86efac}
+    .log .warn{color: #fde68a}
+    .log .nope{color: #fca5a5}
+
+    .panel{
+      margin-top:12px;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.12);
+    }
+
+    .meter{
+      height:10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      margin-top:8px;
+    }
+    .meter > div{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg, #22c55e, #fde68a, #ef4444);
+      transition:width .4s ease;
+    }
+
+    .bingo{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:8px;
+      margin-top:10px;
+    }
+    .tile{
+      padding:10px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+      line-height:1.2;
+    }
+    .tile.on{
+      background:rgba(34,197,94,.18);
+      border-color:rgba(34,197,94,.35);
+    }
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.65);
+      border:1px solid rgba(255,255,255,.14);
+      padding:10px 14px;
+      border-radius:999px;
+      box-shadow:var(--shadow);
+      font-size:13px;
+      color:rgba(255,255,255,.92);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s ease, transform .25s ease;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(-4px);
+    }
+
     .footer{
       margin-top:12px;
       font-size:12px;
       color:var(--muted);
     }
-    a{color:rgba(255,255,255,.9)}
   </style>
 </head>
 <body>
+  <div class="toast" id="toast"></div>
+
   <main class="wrap">
-    <!-- Left: Main maintenance + game -->
+    <!-- Left -->
     <section class="card">
       <div class="pad">
         <div class="top">
           <div>
-            <h1 class="title">We’re doing maintenance 🧰</h1>
+            <h1 class="title">Maintenance Mode 🧰 (but make it ✨unserious✨)</h1>
             <p class="subtitle">
-              The site is currently being lovingly reassembled with the care of someone trying to plug in USB the correct way… on the first attempt.
-              <br><span class="muted">While we fix things, please enjoy the official distraction device below.</span>
+              We’re upgrading the site. Translation: we touched one thing and now three unrelated things are emotionally damaged.
+              <br><span class="muted">While we fix it, here’s a snake game so your procrastination feels premium.</span>
             </p>
+
             <div class="pillrow">
-              <div class="pill">Status: <b id="statusText">Turning it off and on again</b></div>
-              <div class="pill">Coffee level: <b id="coffeeLevel">critical</b></div>
-              <div class="pill">Bug count: <b id="bugCount">too confident</b></div>
+              <div class="pill">Status: <b id="statusText">Negotiating with the database</b></div>
+              <div class="pill">Coffee: <b id="coffeeLevel">critical</b></div>
+              <div class="pill">Bug count: <b id="bugCount">plotting</b></div>
+              <div class="pill">Server mood: <b id="serverMood">moody</b></div>
             </div>
 
             <div class="progress" aria-label="fake progress bar">
@@ -212,25 +283,36 @@
             </div>
             <div class="small">
               <span>Estimated completion: <code id="eta">soon™</code></span>
-              <span>Truthful completion: <code id="truth">unknown (but vibes are good)</code></span>
+              <span>Actual completion: <code id="truth">ask again later</code></span>
+            </div>
+
+            <div class="pillrow" style="margin-top:12px">
+              <button class="danger" id="panicBtn">🚨 PANIC BUTTON</button>
+              <button id="blameBtn">🧾 Generate Blame</button>
+              <button class="primary" id="deployBtn">🚀 Deploy Now</button>
             </div>
           </div>
 
-          <div style="text-align:right; min-width:190px">
-            <div class="pill">Hotfix ritual: <b>✨ performed ✨</b></div>
-            <div class="pill" style="margin-top:8px">Server mood: <b id="serverMood">moody</b></div>
+          <div class="panel" style="min-width:250px; flex:1">
+            <div style="font-weight:800; letter-spacing:-0.01em">Rage Meter</div>
+            <div class="footer">Increases when you die. Decreases when you touch grass.</div>
+            <div class="meter"><div id="rageBar"></div></div>
+            <div class="footer"><span id="rageLabel">Calm-ish.</span></div>
           </div>
         </div>
       </div>
 
-      <canvas id="game" width="720" height="480" aria-label="Snake game"></canvas>
+      <canvas id="game" width="720" height="480"></canvas>
 
       <div class="gameHeader">
         <div class="stats">
           <div>Score: <span id="score">0</span></div>
           <div>Best: <span id="best">0</span></div>
           <div>Speed: <span id="speed">1.0x</span></div>
-          <div class="muted">Controls: <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">←</span> <span class="kbd">→</span> or <span class="kbd">WASD</span> • Pause <span class="kbd">P</span></div>
+          <div class="muted">
+            Controls: <span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">←</span><span class="kbd">→</span> /
+            <span class="kbd">WASD</span> • Pause <span class="kbd">P</span>
+          </div>
         </div>
         <div class="btns">
           <button class="primary" id="startBtn">Start / Restart</button>
@@ -240,15 +322,23 @@
       </div>
     </section>
 
-    <!-- Right: funny logs -->
-    <aside class="card side">
+    <!-- Right -->
+    <aside class="card">
       <div class="pad">
-        <h2 class="h2">Live Engineering Updates (definitely real)</h2>
+        <h2 class="h2">Live Engineering Updates (100% not made up)</h2>
         <div class="log" id="log"></div>
 
+        <div class="panel">
+          <div style="font-weight:800">Developer Excuse Bingo</div>
+          <div class="footer">Tap excuses until you get a BINGO. Yes, this is a real feature. No, it won’t fix the site.</div>
+          <div class="bingo" id="bingo"></div>
+          <div class="pillrow" style="margin-top:10px">
+            <button id="resetBingo">Reset Bingo</button>
+          </div>
+        </div>
+
         <div class="footer">
-          If you need us urgently, try shouting “<b>IT WORKED ON MY MACHINE</b>” into the void.
-          <br>It won’t help, but it’s traditional.
+          Emergency support: whisper “<b>it worked on my machine</b>” three times into your router.
         </div>
       </div>
     </aside>
@@ -256,97 +346,222 @@
 
   <script>
     // ---------------------------
+    // Helpers
+    // ---------------------------
+    const $ = (id) => document.getElementById(id);
+    const toast = $("toast");
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(()=>toast.classList.remove("show"), 1600);
+    }
+    function randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    // ---------------------------
     // Funny maintenance fluff
     // ---------------------------
-    const statusText = document.getElementById("statusText");
-    const coffeeLevel = document.getElementById("coffeeLevel");
-    const bugCount = document.getElementById("bugCount");
-    const serverMood = document.getElementById("serverMood");
-    const progressBar = document.getElementById("progressBar");
-    const eta = document.getElementById("eta");
-    const truth = document.getElementById("truth");
-    const logEl = document.getElementById("log");
-
-    const statuses = [
-      "Turning it off and on again",
-      "Negotiating with the database",
-      "Asking the server nicely",
-      "Applying duct tape (digital)",
-      "Reading the error message this time",
-      "Sacrificing a semicolon to the gods",
-      "Making it ‘responsive’ (emotionally)",
-      "Updating dependencies… cautiously"
-    ];
-    const coffee = ["critical", "low", "acceptable", "dangerously optimistic", "basically espresso"];
-    const bugs = ["too confident", "less than yesterday", "multiplied overnight", "in witness protection", "plotting"];
-    const moods = ["moody", "confused", "surprisingly cooperative", "needs attention", "vibing"];
+    const statusText = $("statusText");
+    const coffeeLevel = $("coffeeLevel");
+    const bugCount = $("bugCount");
+    const serverMood = $("serverMood");
+    const progressBar = $("progressBar");
+    const eta = $("eta");
+    const truth = $("truth");
+    const logEl = $("log");
 
     function addLog(line, cls="muted"){
       const p = document.createElement("div");
       p.innerHTML = `<span class="${cls}">• ${line}</span>`;
       logEl.prepend(p);
-      // Keep it tidy
-      while(logEl.childNodes.length > 10) logEl.removeChild(logEl.lastChild);
+      while(logEl.childNodes.length > 12) logEl.removeChild(logEl.lastChild);
     }
 
-    function randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+    const statuses = [
+      "Negotiating with the database",
+      "Turning it off and on again (for spiritual reasons)",
+      "Applying duct tape (digital edition)",
+      "Reading the error message this time. Maybe.",
+      "Updating dependencies (a.k.a. summoning chaos)",
+      "Teaching the server empathy",
+      "Refactoring (aka rearranging the deck chairs)",
+      "Asking the API nicely"
+    ];
+    const coffees = ["critical", "low", "acceptable", "dangerously optimistic", "espresso-powered"];
+    const bugs = ["plotting", "multiplying", "in witness protection", "too confident", "doing parkour"];
+    const moods = ["moody", "confused", "surprisingly cooperative", "needs attention", "vibing"];
 
     let fakeProgress = 0;
     function tickMaintenance(){
       statusText.textContent = randomPick(statuses);
-      coffeeLevel.textContent = randomPick(coffee);
+      coffeeLevel.textContent = randomPick(coffees);
       bugCount.textContent = randomPick(bugs);
       serverMood.textContent = randomPick(moods);
 
-      // Fake progress: climbs, sometimes goes backwards for comedic realism.
-      const delta = (Math.random() * 9) - 2; // -2..7
+      const delta = (Math.random() * 10) - 3; // -3..7
       fakeProgress = Math.max(0, Math.min(97, fakeProgress + delta));
       progressBar.style.width = fakeProgress.toFixed(0) + "%";
 
-      const etas = ["soon™", "in a bit", "after one more coffee", "when the hamster finishes running", "shortly-ish"];
-      eta.textContent = randomPick(etas);
-
-      const truths = [
-        "unknown (but vibes are good)",
+      eta.textContent = randomPick(["soon™", "in a sec", "after one more coffee", "shortly-ish", "when Mercury stops retrograding"]);
+      truth.textContent = randomPick([
+        "ask again later",
+        "depends on the bug’s vibe",
         "classified information",
-        "depends on the bug’s emotional state",
-        "whenever JavaScript feels like it",
+        "when JavaScript feels like it",
         "after we stop touching it"
-      ];
-      truth.textContent = randomPick(truths);
+      ]);
 
       const logLines = [
-        ["Cleared cache. The cache fought back.", "warn"],
-        ["Found bug. Bug found friends.", "warn"],
-        ["Deployed fix. Immediately undeployed fix.", "nope"],
-        ["Server responded ‘lol’. Investigating.", "warn"],
-        ["Added console.log(). Problem intimidated.", "ok"],
+        ["Cleared cache. Cache cleared *us* emotionally.", "warn"],
+        ["Found a bug. It had a family.", "warn"],
+        ["Deployed a fix. Undeployed it for character development.", "nope"],
+        ["Server replied: ‘lol’. Investigating.", "warn"],
+        ["Added console.log(). Problem got shy.", "ok"],
         ["Refactored code. Now it’s ‘art’.", "ok"],
-        ["Database asked for boundaries. We respect that.", "ok"],
+        ["Database requested boundaries. Respecting that.", "ok"],
         ["Reduced bugs by 0.3%. We take wins.", "muted"],
       ];
       const [line, cls] = randomPick(logLines);
       addLog(line, cls);
     }
 
-    addLog("Booting maintenance mode… please hold your snacks.", "ok");
-    addLog("Loading sarcasm module… done.", "ok");
+    addLog("Booting maintenance mode… please secure your snacks.", "ok");
+    addLog("Loading comedy module… done.", "ok");
     tickMaintenance();
-    setInterval(tickMaintenance, 3500);
+    setInterval(tickMaintenance, 3200);
 
     // ---------------------------
-    // Snake Game (canvas)
+    // Comedy buttons
     // ---------------------------
-    const canvas = document.getElementById("game");
+    $("panicBtn").addEventListener("click", ()=>{
+      const msgs = [
+        "Panic activated ✅ Nothing changed ✅ (as expected)",
+        "Emergency meeting scheduled with the hamster running the server.",
+        "You pressed PANIC. The site pressed PANIC back.",
+        "We screamed internally. Thanks for your contribution."
+      ];
+      showToast(randomPick(msgs));
+      addLog("PANIC BUTTON pressed. Confidence decreased by 14%.", "warn");
+    });
+
+    $("blameBtn").addEventListener("click", ()=>{
+      const blame = [
+        "Blame assigned to: Wi-Fi spirits.",
+        "Blame assigned to: Mercury retrograde.",
+        "Blame assigned to: the intern (we don’t have an intern).",
+        "Blame assigned to: a missing semicolon living its best life.",
+        "Blame assigned to: ‘that one plugin’ nobody remembers installing.",
+        "Blame assigned to: cosmic rays flipping a bit somewhere (probably).",
+        "Blame assigned to: user error (respectfully)."
+      ];
+      const msg = randomPick(blame);
+      showToast(msg);
+      addLog(msg, "warn");
+    });
+
+    $("deployBtn").addEventListener("click", ()=>{
+      const steps = [
+        ["Starting deployment…", "ok"],
+        ["Packing pixels into boxes…", "ok"],
+        ["Launching rocket 🚀 …", "ok"],
+        ["Rocket has feelings. Comforting rocket…", "warn"],
+        ["Deployment complete ✅", "ok"],
+        ["Site status: still maintenance 💀", "nope"]
+      ];
+      showToast("Deploying… (dramatic music)");
+      let i = 0;
+      const t = setInterval(()=>{
+        addLog(steps[i][0], steps[i][1]);
+        i++;
+        if(i >= steps.length) clearInterval(t);
+      }, 450);
+    });
+
+    // ---------------------------
+    // Bingo
+    // ---------------------------
+    const excuses = [
+      "It works on my machine",
+      "DNS is haunted",
+      "Caching issue (trust me)",
+      "We’re ‘optimizing’",
+      "A ‘quick’ hotfix",
+      "Third-party API changed",
+      "We’re ‘migrating’ stuff",
+      "Someone pushed to main",
+      "It’s a feature",
+    ];
+
+    const bingoEl = $("bingo");
+    function renderBingo(){
+      bingoEl.innerHTML = "";
+      excuses.forEach((t, idx)=>{
+        const d = document.createElement("div");
+        d.className = "tile";
+        d.textContent = t;
+        d.addEventListener("click", ()=>{
+          d.classList.toggle("on");
+          checkBingo();
+        });
+        bingoEl.appendChild(d);
+      });
+    }
+
+    function checkBingo(){
+      const tiles = [...bingoEl.querySelectorAll(".tile")];
+      const on = tiles.map(t=>t.classList.contains("on"));
+
+      const lines = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+      const bingo = lines.some(line => line.every(i => on[i]));
+      if(bingo){
+        showToast("BINGO! You have unlocked: absolutely nothing 🏆");
+        addLog("BINGO achieved. Still not fixing the site though.", "ok");
+      }
+    }
+
+    $("resetBingo").addEventListener("click", ()=>{
+      renderBingo();
+      showToast("Bingo reset. Lies reloaded.");
+      addLog("Excuse Bingo reset. Accountability avoided.", "muted");
+    });
+
+    renderBingo();
+
+    // ---------------------------
+    // Snake Game
+    // ---------------------------
+    const canvas = $("game");
     const ctx = canvas.getContext("2d");
 
-    const scoreEl = document.getElementById("score");
-    const bestEl  = document.getElementById("best");
-    const speedEl = document.getElementById("speed");
+    const scoreEl = $("score");
+    const bestEl  = $("best");
+    const speedEl = $("speed");
 
-    const startBtn = document.getElementById("startBtn");
-    const pauseBtn = document.getElementById("pauseBtn");
-    const hardBtn  = document.getElementById("hardBtn");
+    const startBtn = $("startBtn");
+    const pauseBtn = $("pauseBtn");
+    const hardBtn  = $("hardBtn");
+
+    const rageBar = $("rageBar");
+    const rageLabel = $("rageLabel");
+    let rage = 5; // 0..100
+
+    function setRage(n){
+      rage = Math.max(0, Math.min(100, n));
+      rageBar.style.width = rage + "%";
+      rageLabel.textContent =
+        rage < 15 ? "Calm-ish." :
+        rage < 35 ? "Mildly annoyed (British level)." :
+        rage < 60 ? "Spicy frustration." :
+        rage < 85 ? "Keyboard looking throwable." :
+        "Full gamer rage. Drink water.";
+    }
+
+    // Rage naturally cools down
+    setRage(rage);
+    setInterval(()=> setRage(rage - 1), 3500);
 
     const GRID = 24;
     const COLS = Math.floor(canvas.width / GRID);
@@ -369,7 +584,7 @@
       placeFood();
       scoreEl.textContent = score;
       updateSpeedLabel();
-      addLog(hardMode ? "Hard mode enabled. May your reflexes be blessed." : "Snake restarted. Your procrastination is now interactive.", "ok");
+      addLog(hardMode ? "Hard mode enabled. Reflexes required." : "Snake restarted. Productivity paused.", "ok");
     }
 
     function updateSpeedLabel(){
@@ -389,23 +604,30 @@
       }
     }
 
+    function overlayText(big, small){
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "white";
+      ctx.font = "800 42px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(big, canvas.width/2, canvas.height/2 - 10);
+      ctx.font = "500 16px system-ui, sans-serif";
+      ctx.fillText(small, canvas.width/2, canvas.height/2 + 24);
+      ctx.restore();
+    }
+
     function draw(){
-      // background
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
-      // subtle grid
+      // grid (subtle)
       ctx.globalAlpha = 0.18;
       for(let x=0;x<=COLS;x++){
-        ctx.beginPath();
-        ctx.moveTo(x*GRID, 0);
-        ctx.lineTo(x*GRID, canvas.height);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x*GRID,0); ctx.lineTo(x*GRID,canvas.height); ctx.stroke();
       }
       for(let y=0;y<=ROWS;y++){
-        ctx.beginPath();
-        ctx.moveTo(0, y*GRID);
-        ctx.lineTo(canvas.width, y*GRID);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0,y*GRID); ctx.lineTo(canvas.width,y*GRID); ctx.stroke();
       }
       ctx.globalAlpha = 1;
 
@@ -425,37 +647,22 @@
       }
     }
 
-    function overlayText(big, small){
-      ctx.save();
-      ctx.globalAlpha = 0.85;
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "white";
-      ctx.font = "700 42px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(big, canvas.width/2, canvas.height/2 - 10);
-      ctx.font = "500 16px system-ui, sans-serif";
-      ctx.fillText(small, canvas.width/2, canvas.height/2 + 24);
-      ctx.restore();
-    }
-
     function step(){
       if(!running || paused) return;
 
       dir = nextDir;
-
       const head = snake[0];
       const newHead = {x: head.x + dir.x, y: head.y + dir.y};
 
       // wall collision
       if(newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS){
-        die("Snake attempted to escape the maintenance page. Denied.");
+        die("Snake tried to leave. Same, honestly.");
         return;
       }
 
       // self collision
       if(snake.some(s => s.x === newHead.x && s.y === newHead.y)){
-        die("Snake got too philosophical and ate its own tail.");
+        die("Snake got philosophical and ate itself.");
         return;
       }
 
@@ -466,7 +673,6 @@
         score++;
         scoreEl.textContent = score;
 
-        // speed up gradually
         if(score % 4 === 0){
           tickMs = Math.max(55, tickMs - (hardMode ? 6 : 4));
           updateSpeedLabel();
@@ -476,17 +682,16 @@
           best = score;
           localStorage.setItem(STORAGE_KEY, String(best));
           bestEl.textContent = best;
+          showToast("New best! Your procrastination is evolving.");
         }
 
         placeFood();
-
-        const snackLines = [
-          "Snack acquired. Productivity decreased by 12%.",
-          "The snake approves this meal.",
+        addLog(randomPick([
+          "Snack acquired. Performance review pending.",
+          "Apple defeated. Again.",
           "Crunchy pixels consumed successfully.",
-          "You have defeated the apple. Again."
-        ];
-        addLog(randomPick(snackLines), "ok");
+          "The snake approves your life choices (for now)."
+        ]), "ok");
       } else {
         snake.pop();
       }
@@ -494,13 +699,13 @@
 
     function die(message){
       running = false;
+      setRage(rage + 18);
       addLog(message, "nope");
-      addLog("Maintenance tip: if it breaks, stare at it until it fixes itself.", "warn");
+      addLog("Maintenance tip: stare at the bug until it feels guilty.", "warn");
+      showToast("Oof. Rage meter increased.");
     }
 
-    // Input
     function setDirection(x,y){
-      // prevent reversing directly
       if((dir.x === 1 && x === -1) || (dir.x === -1 && x === 1) ||
          (dir.y === 1 && y === -1) || (dir.y === -1 && y === 1)) return;
       nextDir = {x,y};
@@ -512,38 +717,29 @@
       if(k === "arrowdown" || k === "s") setDirection(0,1);
       if(k === "arrowleft" || k === "a") setDirection(-1,0);
       if(k === "arrowright" || k === "d") setDirection(1,0);
-
-      if(k === "p"){
-        togglePause();
-      }
+      if(k === "p") togglePause();
     });
 
     function togglePause(){
       if(!running) return;
       paused = !paused;
-      addLog(paused ? "Paused. Go pretend you’re working." : "Unpaused. Back to important snake business.", paused ? "warn" : "ok");
+      addLog(paused ? "Paused. Look busy." : "Unpaused. Back to snake business.", paused ? "warn" : "ok");
       draw();
     }
 
-    startBtn.addEventListener("click", ()=>{
-      resetGame();
-      draw();
-    });
-
+    startBtn.addEventListener("click", ()=>{ resetGame(); draw(); });
     pauseBtn.addEventListener("click", togglePause);
 
     hardBtn.addEventListener("click", ()=>{
       hardMode = !hardMode;
       hardBtn.classList.toggle("primary", hardMode);
-      addLog(hardMode ? "Hard mode toggled ON. Blame yourself later." : "Hard mode toggled OFF. Peace has returned.", hardMode ? "warn" : "ok");
-      resetGame();
-      draw();
+      showToast(hardMode ? "Hard mode ON 😈" : "Hard mode OFF 😌");
+      resetGame(); draw();
     });
 
-    // Game loop
+    // Start loop
     hardMode = false;
-    resetGame();
-    draw();
+    resetGame(); draw();
 
     let last = performance.now();
     function loop(now){
