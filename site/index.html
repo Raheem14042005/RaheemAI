@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Maintenance Mode (Comedy Edition)</title>
+  <title>Raheem AI — Maintenance</title>
   <style>
     :root{
       --bg:#0b0f17;
@@ -32,6 +32,7 @@
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
       padding:24px;
     }
+
     .wrap{
       width:min(1100px, 100%);
       display:grid;
@@ -67,7 +68,7 @@
       color:var(--muted);
       font-size:14px;
       line-height:1.5;
-      max-width:70ch;
+      max-width:76ch;
     }
 
     .pillrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
@@ -125,7 +126,7 @@
       padding:9px 12px;
       border-radius:12px;
       cursor:pointer;
-      font-weight:700;
+      font-weight:800;
       font-size:13px;
     }
     button:hover{background:rgba(255,255,255,.10)}
@@ -144,7 +145,8 @@
       width:100%;
       height:auto;
       display:block;
-      background:rgba(0,0,0,.25);
+      /* not black anymore */
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.05));
     }
     .gameHeader{
       display:flex;
@@ -157,7 +159,7 @@
       flex-wrap:wrap;
     }
     .stats{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
-    .stats span{color:rgba(255,255,255,.85)}
+    .stats span{color:rgba(255,255,255,.88)}
     .kbd{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-size: 12px;
@@ -228,36 +230,87 @@
       background:rgba(34,197,94,.18);
       border-color:rgba(34,197,94,.35);
     }
-    .toast{
-      position:fixed;
-      left:50%;
-      bottom:18px;
-      transform:translateX(-50%);
-      background:rgba(0,0,0,.65);
-      border:1px solid rgba(255,255,255,.14);
-      padding:10px 14px;
-      border-radius:999px;
-      box-shadow:var(--shadow);
-      font-size:13px;
-      color:rgba(255,255,255,.92);
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .25s ease, transform .25s ease;
-    }
-    .toast.show{
-      opacity:1;
-      transform:translateX(-50%) translateY(-4px);
-    }
 
     .footer{
       margin-top:12px;
       font-size:12px;
       color:var(--muted);
     }
+
+    /* Modal (real popup) */
+    .modalOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.60);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:9999;
+    }
+    .modalOverlay.show{display:flex;}
+    .modal{
+      width:min(560px, 100%);
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.28));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modalTop{
+      padding:14px 16px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.18);
+    }
+    .modalTop b{letter-spacing:-0.01em}
+    .modalBody{
+      padding:16px;
+      color:rgba(255,255,255,.92);
+      line-height:1.45;
+      font-size:14px;
+    }
+    .modalBody .tiny{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .modalActions{
+      padding:14px 16px;
+      border-top:1px solid rgba(255,255,255,.10);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      background:rgba(0,0,0,.12);
+    }
   </style>
 </head>
 <body>
-  <div class="toast" id="toast"></div>
+
+  <!-- Panic Modal -->
+  <div class="modalOverlay" id="panicOverlay" role="dialog" aria-modal="true" aria-labelledby="panicTitle">
+    <div class="modal">
+      <div class="modalTop">
+        <b id="panicTitle">🚨 PANIC REPORT</b>
+        <button id="panicCloseTop" title="Close">✖</button>
+      </div>
+      <div class="modalBody">
+        <div id="panicMsg" style="font-weight:800; font-size:15px"></div>
+        <div id="panicSub" style="margin-top:10px"></div>
+        <div class="tiny">
+          Note: Raheem AI knows TGDs & planning regs by heart… but even Raheem can’t fight a rogue semicolon at 3am.
+        </div>
+      </div>
+      <div class="modalActions">
+        <button id="panicCopy">Copy official excuse</button>
+        <button class="primary" id="panicClose">Close (I’m calm now)</button>
+      </div>
+    </div>
+  </div>
 
   <main class="wrap">
     <!-- Left -->
@@ -265,10 +318,11 @@
       <div class="pad">
         <div class="top">
           <div>
-            <h1 class="title">Maintenance Mode 🧰 (but make it ✨unserious✨)</h1>
+            <h1 class="title">Raheem AI 🧠📘 — Maintenance Mode</h1>
             <p class="subtitle">
-              We’re upgrading the site. Translation: we touched one thing and now three unrelated things are emotionally damaged.
-              <br><span class="muted">While we fix it, here’s a snake game so your procrastination feels premium.</span>
+              Raheem AI knows <b>TGDs</b> and <b>planning regs</b> by heart.
+              Unfortunately… the server knows <b>chaos</b> by heart.
+              <br><span class="muted">While we fix it, enjoy Snake + maximum nonsense.</span>
             </p>
 
             <div class="pillrow">
@@ -276,6 +330,7 @@
               <div class="pill">Coffee: <b id="coffeeLevel">critical</b></div>
               <div class="pill">Bug count: <b id="bugCount">plotting</b></div>
               <div class="pill">Server mood: <b id="serverMood">moody</b></div>
+              <div class="pill">Raheem AI accuracy: <b>99.9%</b> (site uptime: <b>emotionally unavailable</b>)</div>
             </div>
 
             <div class="progress" aria-label="fake progress bar">
@@ -294,8 +349,8 @@
           </div>
 
           <div class="panel" style="min-width:250px; flex:1">
-            <div style="font-weight:800; letter-spacing:-0.01em">Rage Meter</div>
-            <div class="footer">Increases when you die. Decreases when you touch grass.</div>
+            <div style="font-weight:900; letter-spacing:-0.01em">Rage Meter</div>
+            <div class="footer">Increases when you die. Decreases when you stop caring.</div>
             <div class="meter"><div id="rageBar"></div></div>
             <div class="footer"><span id="rageLabel">Calm-ish.</span></div>
           </div>
@@ -325,12 +380,12 @@
     <!-- Right -->
     <aside class="card">
       <div class="pad">
-        <h2 class="h2">Live Engineering Updates (100% not made up)</h2>
+        <h2 class="h2">Live Engineering Updates (definitely not copium)</h2>
         <div class="log" id="log"></div>
 
         <div class="panel">
-          <div style="font-weight:800">Developer Excuse Bingo</div>
-          <div class="footer">Tap excuses until you get a BINGO. Yes, this is a real feature. No, it won’t fix the site.</div>
+          <div style="font-weight:900">Developer Excuse Bingo</div>
+          <div class="footer">Tap excuses until BINGO. (Still won’t fix the site, but it’s character development.)</div>
           <div class="bingo" id="bingo"></div>
           <div class="pillrow" style="margin-top:10px">
             <button id="resetBingo">Reset Bingo</button>
@@ -338,7 +393,7 @@
         </div>
 
         <div class="footer">
-          Emergency support: whisper “<b>it worked on my machine</b>” three times into your router.
+          If you urgently need Raheem AI, please consult the nearest TGD and whisper “<b>Part B</b>” three times.
         </div>
       </div>
     </aside>
@@ -349,16 +404,10 @@
     // Helpers
     // ---------------------------
     const $ = (id) => document.getElementById(id);
-    const toast = $("toast");
-    function showToast(msg){
-      toast.textContent = msg;
-      toast.classList.add("show");
-      setTimeout(()=>toast.classList.remove("show"), 1600);
-    }
     function randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
     // ---------------------------
-    // Funny maintenance fluff
+    // Maintenance fluff
     // ---------------------------
     const statusText = $("statusText");
     const coffeeLevel = $("coffeeLevel");
@@ -381,9 +430,9 @@
       "Turning it off and on again (for spiritual reasons)",
       "Applying duct tape (digital edition)",
       "Reading the error message this time. Maybe.",
-      "Updating dependencies (a.k.a. summoning chaos)",
+      "Updating dependencies (summoning chaos)",
       "Teaching the server empathy",
-      "Refactoring (aka rearranging the deck chairs)",
+      "Refactoring (rearranging deck chairs)",
       "Asking the API nicely"
     ];
     const coffees = ["critical", "low", "acceptable", "dangerously optimistic", "espresso-powered"];
@@ -401,7 +450,7 @@
       fakeProgress = Math.max(0, Math.min(97, fakeProgress + delta));
       progressBar.style.width = fakeProgress.toFixed(0) + "%";
 
-      eta.textContent = randomPick(["soon™", "in a sec", "after one more coffee", "shortly-ish", "when Mercury stops retrograding"]);
+      eta.textContent = randomPick(["soon™", "in a sec", "after one more coffee", "shortly-ish", "after Part L stops judging us"]);
       truth.textContent = randomPick([
         "ask again later",
         "depends on the bug’s vibe",
@@ -419,30 +468,83 @@
         ["Refactored code. Now it’s ‘art’.", "ok"],
         ["Database requested boundaries. Respecting that.", "ok"],
         ["Reduced bugs by 0.3%. We take wins.", "muted"],
+        ["Raheem AI passed compliance. Server failed vibes.", "warn"],
       ];
       const [line, cls] = randomPick(logLines);
       addLog(line, cls);
     }
 
-    addLog("Booting maintenance mode… please secure your snacks.", "ok");
-    addLog("Loading comedy module… done.", "ok");
+    addLog("Raheem AI is warming up… the server is not.", "ok");
+    addLog("Loading TGDs into RAM… loading patience into humans… failed.", "warn");
     tickMaintenance();
     setInterval(tickMaintenance, 3200);
 
     // ---------------------------
-    // Comedy buttons
+    // Panic Modal (real popup)
     // ---------------------------
-    $("panicBtn").addEventListener("click", ()=>{
-      const msgs = [
-        "Panic activated ✅ Nothing changed ✅ (as expected)",
-        "Emergency meeting scheduled with the hamster running the server.",
-        "You pressed PANIC. The site pressed PANIC back.",
-        "We screamed internally. Thanks for your contribution."
-      ];
-      showToast(randomPick(msgs));
-      addLog("PANIC BUTTON pressed. Confidence decreased by 14%.", "warn");
+    const overlay = $("panicOverlay");
+    const panicMsg = $("panicMsg");
+    const panicSub = $("panicSub");
+
+    const panicLines = [
+      {
+        title: "CRITICAL ALERT: The server has entered its ‘main character arc’.",
+        sub: "Recommended action: step away from the keyboard and speak gently to your Wi-Fi router."
+      },
+      {
+        title: "EMERGENCY: A semicolon has escaped containment.",
+        sub: "If seen, do not approach. Call Raheem AI or deploy snacks as a distraction."
+      },
+      {
+        title: "WARNING: The database is currently ‘thinking about its life choices’.",
+        sub: "Please allow it space. Emotional growth takes time."
+      },
+      {
+        title: "CODE RED: Someone said ‘quick change’ in production.",
+        sub: "This is how legends begin… and how outages are born."
+      },
+      {
+        title: "ALERT: The site is down, but our confidence is up.",
+        sub: "This is not helpful. But it is consistent."
+      },
+      {
+        title: "URGENT: Part B is staring at us.",
+        sub: "We are staring back. Nobody is blinking."
+      }
+    ];
+
+    function openPanic(){
+      const m = randomPick(panicLines);
+      panicMsg.textContent = m.title;
+      panicSub.textContent = m.sub;
+      overlay.classList.add("show");
+      addLog("PANIC BUTTON pressed. Official meltdown initiated.", "warn");
+    }
+    function closePanic(){
+      overlay.classList.remove("show");
+      addLog("Panic resolved. (Not the issue. Just the panic.)", "ok");
+    }
+
+    $("panicBtn").addEventListener("click", openPanic);
+    $("panicClose").addEventListener("click", closePanic);
+    $("panicCloseTop").addEventListener("click", closePanic);
+    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closePanic(); });
+
+    $("panicCopy").addEventListener("click", async ()=>{
+      const excuse = "Official excuse: ‘The server is currently reviewing TGDs and refusing to comply with vibes.’";
+      try{
+        await navigator.clipboard.writeText(excuse);
+        addLog("Copied an official excuse to clipboard. Accountability avoided.", "muted");
+        alert("Copied!\n\n" + excuse);
+      }catch{
+        // fallback popup box
+        alert("Copy this excuse manually:\n\n" + excuse);
+      }
     });
 
+    // ---------------------------
+    // Comedy buttons (keep your blame/deploy)
+    // ---------------------------
     $("blameBtn").addEventListener("click", ()=>{
       const blame = [
         "Blame assigned to: Wi-Fi spirits.",
@@ -451,10 +553,11 @@
         "Blame assigned to: a missing semicolon living its best life.",
         "Blame assigned to: ‘that one plugin’ nobody remembers installing.",
         "Blame assigned to: cosmic rays flipping a bit somewhere (probably).",
-        "Blame assigned to: user error (respectfully)."
+        "Blame assigned to: user error (respectfully).",
+        "Blame assigned to: Part L judging us again."
       ];
       const msg = randomPick(blame);
-      showToast(msg);
+      alert(msg); // POPUP BOX (since you like popups 😭)
       addLog(msg, "warn");
     });
 
@@ -467,13 +570,15 @@
         ["Deployment complete ✅", "ok"],
         ["Site status: still maintenance 💀", "nope"]
       ];
-      showToast("Deploying… (dramatic music)");
       let i = 0;
       const t = setInterval(()=>{
         addLog(steps[i][0], steps[i][1]);
         i++;
-        if(i >= steps.length) clearInterval(t);
-      }, 450);
+        if(i >= steps.length){
+          clearInterval(t);
+          alert("Deployment complete ✅\n\nResult: still in maintenance 💀\n\n(But we looked very busy.)");
+        }
+      }, 420);
     });
 
     // ---------------------------
@@ -494,7 +599,7 @@
     const bingoEl = $("bingo");
     function renderBingo(){
       bingoEl.innerHTML = "";
-      excuses.forEach((t, idx)=>{
+      excuses.forEach((t)=>{
         const d = document.createElement("div");
         d.className = "tile";
         d.textContent = t;
@@ -517,21 +622,20 @@
       ];
       const bingo = lines.some(line => line.every(i => on[i]));
       if(bingo){
-        showToast("BINGO! You have unlocked: absolutely nothing 🏆");
+        alert("BINGO! 🏆\n\nYou have unlocked:\n• Nothing\n• More maintenance\n• Character development");
         addLog("BINGO achieved. Still not fixing the site though.", "ok");
       }
     }
 
     $("resetBingo").addEventListener("click", ()=>{
       renderBingo();
-      showToast("Bingo reset. Lies reloaded.");
       addLog("Excuse Bingo reset. Accountability avoided.", "muted");
     });
 
     renderBingo();
 
     // ---------------------------
-    // Snake Game
+    // Snake Game (with visible colors)
     // ---------------------------
     const canvas = $("game");
     const ctx = canvas.getContext("2d");
@@ -553,13 +657,11 @@
       rageBar.style.width = rage + "%";
       rageLabel.textContent =
         rage < 15 ? "Calm-ish." :
-        rage < 35 ? "Mildly annoyed (British level)." :
+        rage < 35 ? "Mildly annoyed (Irish queue energy)." :
         rage < 60 ? "Spicy frustration." :
         rage < 85 ? "Keyboard looking throwable." :
         "Full gamer rage. Drink water.";
     }
-
-    // Rage naturally cools down
     setRage(rage);
     setInterval(()=> setRage(rage - 1), 3500);
 
@@ -567,11 +669,24 @@
     const COLS = Math.floor(canvas.width / GRID);
     const ROWS = Math.floor(canvas.height / GRID);
 
-    const STORAGE_KEY = "maintenance_snake_best";
+    const STORAGE_KEY = "raheem_snake_best";
     let best = Number(localStorage.getItem(STORAGE_KEY) || 0);
     bestEl.textContent = best;
 
     let snake, dir, nextDir, food, score, running, paused, tickMs, hardMode;
+
+    // Colors (so it’s not black-on-black)
+    const COLORS = {
+      grid: "rgba(255,255,255,0.10)",
+      boardA: "rgba(255,255,255,0.06)",
+      boardB: "rgba(0,0,0,0.10)",
+      snakeHead: "rgba(34,197,94,0.95)",   // green
+      snakeBody: "rgba(59,130,246,0.90)",   // blue
+      food: "rgba(248,113,113,0.95)",       // red
+      text: "white",
+      overlay: "rgba(0,0,0,0.55)"
+   a
+    };
 
     function resetGame(){
       snake = [{x: Math.floor(COLS/2), y: Math.floor(ROWS/2)}];
@@ -606,11 +721,10 @@
 
     function overlayText(big, small){
       ctx.save();
-      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = COLORS.overlay;
       ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "white";
-      ctx.font = "800 42px system-ui, sans-serif";
+      ctx.fillStyle = COLORS.text;
+      ctx.font = "900 42px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(big, canvas.width/2, canvas.height/2 - 10);
       ctx.font = "500 16px system-ui, sans-serif";
@@ -619,24 +733,32 @@
     }
 
     function draw(){
+      // board background
       ctx.clearRect(0,0,canvas.width,canvas.height);
+      const g = ctx.createLinearGradient(0,0,0,canvas.height);
+      g.addColorStop(0, COLORS.boardA);
+      g.addColorStop(1, COLORS.boardB);
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,canvas.width,canvas.height);
 
-      // grid (subtle)
-      ctx.globalAlpha = 0.18;
+      // grid
+      ctx.strokeStyle = COLORS.grid;
+      ctx.globalAlpha = 1;
       for(let x=0;x<=COLS;x++){
         ctx.beginPath(); ctx.moveTo(x*GRID,0); ctx.lineTo(x*GRID,canvas.height); ctx.stroke();
       }
       for(let y=0;y<=ROWS;y++){
         ctx.beginPath(); ctx.moveTo(0,y*GRID); ctx.lineTo(canvas.width,y*GRID); ctx.stroke();
       }
-      ctx.globalAlpha = 1;
 
       // food
+      ctx.fillStyle = COLORS.food;
       ctx.fillRect(food.x*GRID+4, food.y*GRID+4, GRID-8, GRID-8);
 
       // snake
       snake.forEach((s,i)=>{
         const pad = i===0 ? 3 : 5;
+        ctx.fillStyle = i===0 ? COLORS.snakeHead : COLORS.snakeBody;
         ctx.fillRect(s.x*GRID+pad, s.y*GRID+pad, GRID-(pad*2), GRID-(pad*2));
       });
 
@@ -654,13 +776,11 @@
       const head = snake[0];
       const newHead = {x: head.x + dir.x, y: head.y + dir.y};
 
-      // wall collision
       if(newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS){
         die("Snake tried to leave. Same, honestly.");
         return;
       }
 
-      // self collision
       if(snake.some(s => s.x === newHead.x && s.y === newHead.y)){
         die("Snake got philosophical and ate itself.");
         return;
@@ -668,7 +788,6 @@
 
       snake.unshift(newHead);
 
-      // eat
       if(newHead.x === food.x && newHead.y === food.y){
         score++;
         scoreEl.textContent = score;
@@ -682,15 +801,14 @@
           best = score;
           localStorage.setItem(STORAGE_KEY, String(best));
           bestEl.textContent = best;
-          showToast("New best! Your procrastination is evolving.");
         }
 
         placeFood();
         addLog(randomPick([
-          "Snack acquired. Performance review pending.",
-          "Apple defeated. Again.",
+          "Snack acquired. TGDs approved. Server still crying.",
+          "Apple defeated. Planning regs remain undefeated.",
           "Crunchy pixels consumed successfully.",
-          "The snake approves your life choices (for now)."
+          "Raheem AI applauds. The server does not."
         ]), "ok");
       } else {
         snake.pop();
@@ -701,8 +819,7 @@
       running = false;
       setRage(rage + 18);
       addLog(message, "nope");
-      addLog("Maintenance tip: stare at the bug until it feels guilty.", "warn");
-      showToast("Oof. Rage meter increased.");
+      addLog("Maintenance tip: blame ‘compliance’ and walk away confidently.", "warn");
     }
 
     function setDirection(x,y){
@@ -718,12 +835,13 @@
       if(k === "arrowleft" || k === "a") setDirection(-1,0);
       if(k === "arrowright" || k === "d") setDirection(1,0);
       if(k === "p") togglePause();
+      if(k === "escape" && overlay.classList.contains("show")) closePanic();
     });
 
     function togglePause(){
       if(!running) return;
       paused = !paused;
-      addLog(paused ? "Paused. Look busy." : "Unpaused. Back to snake business.", paused ? "warn" : "ok");
+      addLog(paused ? "Paused. Pretend you’re doing planning research." : "Unpaused. Back to snake business.", paused ? "warn" : "ok");
       draw();
     }
 
@@ -733,11 +851,9 @@
     hardBtn.addEventListener("click", ()=>{
       hardMode = !hardMode;
       hardBtn.classList.toggle("primary", hardMode);
-      showToast(hardMode ? "Hard mode ON 😈" : "Hard mode OFF 😌");
       resetGame(); draw();
     });
 
-    // Start loop
     hardMode = false;
     resetGame(); draw();
 
