@@ -435,6 +435,78 @@ def _light_normalize_for_stream(text: str) -> str:
 def normalize_model_output(text: str) -> str:
     return _light_normalize_for_stream(text).strip()
 
+SENT_END_RE = re.compile(r"([.!?])\s+")
+HEADING_LINE_RE = re.compile(r"^(?:[A-Z][A-Za-z0-9 \-/]{3,}|📅|🧾|📝)\b", re.M)
+
+def enforce_chatgpt_paragraphs(text: str) -> str:
+    """
+    Make output read like ChatGPT:
+    - No mega-paragraphs
+    - 2–4 sentences per paragraph
+    - Keeps bullet blocks intact
+    """
+    t = (text or "").replace("\r", "").strip()
+    if not t:
+        return t
+
+    lines = t.split("\n")
+    out_lines: List[str] = []
+
+    para: List[str] = []
+    sent_count = 0
+    in_bullets = False
+
+    def flush_para():
+        nonlocal para, sent_count
+        if para:
+            out_lines.append(" ".join(para).strip())
+            out_lines.append("")  # blank line between paragraphs
+        para = []
+        sent_count = 0
+
+    for ln in lines:
+        raw = ln.rstrip()
+
+        # preserve bullet blocks
+        if raw.strip().startswith(("-", "•")):
+            if para:
+                flush_para()
+            in_bullets = True
+            out_lines.append(raw)
+            continue
+        else:
+            if in_bullets and raw.strip() == "":
+                out_lines.append("")
+                in_bullets = False
+                continue
+            if in_bullets:
+                out_lines.append(raw)
+                continue
+
+        if raw.strip() == "":
+            flush_para()
+            continue
+
+        # if line looks like a heading, force paragraph break around it
+        if HEADING_LINE_RE.match(raw.strip()) and len(raw.strip()) <= 60:
+            flush_para()
+            out_lines.append(raw.strip())
+            out_lines.append("")
+            continue
+
+        # normal text line -> sentence-based paragraphing
+        piece = raw.strip()
+        para.append(piece)
+        sent_count += len(SENT_END_RE.findall(piece))
+        if sent_count >= 3:
+            flush_para()
+
+    flush_para()
+
+    t2 = "\n".join(out_lines)
+    t2 = re.sub(r"\n{3,}", "\n\n", t2).strip()
+    return t2
+
 def sse_send(text: str, max_frame_chars: int = 6000) -> str:
     if text is None:
         return ""
@@ -588,6 +660,19 @@ def list_pdfs() -> List[str]:
     files.sort()
     return files
 
+def is_planning_relevant_pdf(pdf_name: str) -> bool:
+    name = (PDF_DISPLAY_NAME.get(pdf_name, pdf_name) or "").lower()
+    planning_markers = [
+        "planning", "development plan", "planning and development",
+        "an bord plean", "coimisiún plean", "appeal", "part 8",
+        "dublin city", "dlr", "county council", "city council",
+        "irish statute", "statutebook", "regulations", "s.i."
+    ]
+    tgd_markers = ["tgd", "technical guidance document", "part a", "part b", "part m"]
+    if any(m in name for m in tgd_markers):
+        return False
+    return any(m in name for m in planning_markers)
+    
 def ensure_pdf_local(pdf_name: str) -> Optional[Path]:
     pdf_name = Path(pdf_name).name
     local_path = PDF_DIR / pdf_name
@@ -1048,6 +1133,8 @@ def search_chunks(
         return []
 
     search_space = [pinned_pdf] if pinned_pdf and pinned_pdf in pdfs else pdfs
+    if _question_family(question) == "planning":
+        search_space = [p for p in search_space if is_planning_relevant_pdf(p)]
     candidates: List[Tuple[float, Chunk]] = []
 
     for pdf_name in search_space:
@@ -1723,73 +1810,70 @@ def _match_rules(user_msg: str) -> List[Dict[str, Any]]:
 
 
 # ============================================================
-# CITATIONS + SOURCES FOOTER (flexible parsing)
+# CITATIONS + REFERENCES FOOTER (professional footnotes)
 # ============================================================
 
-# Accept: [D1:81], [D1 p81], [D1-81], [W1]
-CITE_TAG_RE = re.compile(r"\[(D\d+)\s*(?::|p|P|-)\s*(\d+)\]|\[(W\d+)\]")
+# Accept footnotes like [1], [2], [12]
+FOOTNOTE_RE = re.compile(r"\[(\d{1,2})\]")
 
-def _extract_cites(answer: str) -> Tuple[List[Tuple[str, str]], List[str]]:
-    """
-    Returns:
-      pdf: [(D#, page_str), ...]
-      web: [W#, ...]
-    """
-    pdf: List[Tuple[str, str]] = []
-    web: List[str] = []
-    for m in CITE_TAG_RE.finditer(answer or ""):
-        if m.group(1) and m.group(2):
-            pdf.append((m.group(1), m.group(2)))
-        elif m.group(3):
-            web.append(m.group(3))
-    # de-dupe while keeping order
-    seen_pdf = set()
-    pdf_out = []
-    for d, p in pdf:
-        k = (d, p)
-        if k in seen_pdf:
+def extract_footnotes(answer: str) -> List[int]:
+    nums: List[int] = []
+    for m in FOOTNOTE_RE.finditer(answer or ""):
+        try:
+            nums.append(int(m.group(1)))
+        except Exception:
+            pass
+    # de-dupe keep order
+    seen = set()
+    out: List[int] = []
+    for n in nums:
+        if n in seen:
             continue
-        seen_pdf.add(k)
-        pdf_out.append((d, p))
-    seen_w = set()
-    web_out = []
-    for w in web:
-        if w in seen_w:
-            continue
-        seen_w.add(w)
-        web_out.append(w)
-    return pdf_out, web_out
+        seen.add(n)
+        out.append(n)
+    return out
 
-def build_sources_footer(answer: str, evidence: Dict[str, Any]) -> str:
-    pdf_cites, web_cites = _extract_cites(answer or "")
-    if not pdf_cites and not web_cites:
+def _format_table_diagram(table: str, diagram: str) -> str:
+    bits = []
+    if diagram:
+        bits.append(f"Diagram {diagram}")
+    if table:
+        bits.append(f"Table {table}")
+    return ", ".join(bits)
+
+def _format_pdf_ref(doc_title: str, page: int, table: str = "", diagram: str = "") -> str:
+    td = _format_table_diagram(table, diagram)
+    if td:
+        return f"{doc_title} — {td}, p. {page}"
+    return f"{doc_title} — p. {page}"
+
+def build_references_footer(answer: str, evidence: Dict[str, Any]) -> str:
+    used = extract_footnotes(answer)
+    if not used:
         return ""
 
-    lines = ["", "Sources (from loaded evidence):"]
+    refs = evidence.get("refs") or []
+    by_n = {}
+    for r in refs:
+        try:
+            n = int(r.get("n"))
+            by_n[n] = r
+        except Exception:
+            continue
 
-    pdf_docs = evidence.get("pdf_docs") or {}
-    # list unique docs used (by D#)
-    used_doc_codes = []
-    seen_docs = set()
-    for d, _p in pdf_cites:
-        if d not in seen_docs:
-            seen_docs.add(d)
-            used_doc_codes.append(d)
+    lines = ["", "References"]
+    for n in used:
+        r = by_n.get(n)
+        if not r:
+            continue
+        label = (r.get("label") or "").strip()
+        if label:
+            lines.append(f"[{n}] {label}")
 
-    for code in used_doc_codes:
-        title = pdf_docs.get(code, code)
-        lines.append(f"- {code}: {title}")
-
-    web_items = evidence.get("web") or []
-    if web_cites and web_items:
-        web_by_code = {w.get("code"): w for w in web_items}
-        for wcode in web_cites:
-            w = web_by_code.get(wcode) or {}
-            title = (w.get("title") or wcode).strip()
-            host = (w.get("host") or "").strip()
-            lines.append(f"- {wcode}: {title}" + (f" ({host})" if host else ""))
-
+    if len(lines) <= 2:
+        return ""
     return "\n".join(lines).strip()
+
 
 
 # ============================================================
@@ -1824,8 +1908,11 @@ Writing style (important):
 - Avoid robotic phrases like “According to the provided evidence pack…”.
 
 Citations:
-- If you use evidence, cite it compactly: [D1:81] or [D1 p81] for PDFs; [W1] for web.
-- Don’t paste raw URLs in the body.
+- Use professional footnotes like [1], [2] (numbers only).
+- Only add a footnote when you used evidence from the Evidence JSON.
+- Do NOT use D1/W1 codes.
+- Keep citations light: usually 1–3 per answer unless strict compliance requires more.
+
 
 When strictness is high:
 - If the user asks for minimum/maximum/required values, only state numbers present in evidence.
@@ -2019,48 +2106,62 @@ def build_evidence_packets(
     precision: str,
 ) -> Dict[str, Any]:
     max_chars = 520 if precision == "broad" else 780
-    doc_codes = _doc_code_map(chunks)
+
+    refs: List[Dict[str, Any]] = []
+    ref_n = 1
 
     pdf_items = []
     for c in chunks[: max(12, RERANK_TOPK)]:
-        code = doc_codes.get(c.doc, "D?")
-        cite = f"[{code}:{c.page}]"
+        doc_title = PDF_DISPLAY_NAME.get(c.doc, c.doc)
+        label = _format_pdf_ref(doc_title, c.page, table=(c.table or ""), diagram=(c.diagram or ""))
+        refs.append({"n": ref_n, "kind": "pdf", "label": label})
+
         pdf_items.append({
-            "code": code,
-            "cite": cite,
-            "doc": PDF_DISPLAY_NAME.get(c.doc, c.doc),
+            "ref_n": ref_n,
+            "doc": doc_title,
             "page": c.page,
             "section": c.section or "",
             "heading": c.heading or "",
             "table": c.table or "",
             "diagram": c.diagram or "",
-            "excerpt": _tight_excerpt(_tighten_chunk_text_for_evidence(c, user_query, max_chars=max_chars) or c.text, max_chars=max_chars),
+            "excerpt": _tight_excerpt(
+                _tighten_chunk_text_for_evidence(c, user_query, max_chars=max_chars) or c.text,
+                max_chars=max_chars
+            ),
         })
+        ref_n += 1
 
     web_items = []
-    for i, w in enumerate(web_pages[:TOP_K_WEB], start=1):
+    for w in web_pages[:TOP_K_WEB]:
+        host = _host_from_url(w.get("url") or "")
+        title = (w.get("title") or host or "Web source").strip()
+        label = f"{title}" + (f" ({host})" if host else "")
+        refs.append({"n": ref_n, "kind": "web", "label": label})
+
         web_items.append({
-            "code": f"W{i}",
-            "title": (w.get("title") or "").strip(),
-            "host": _host_from_url(w.get("url") or ""),
+            "ref_n": ref_n,
+            "title": title,
+            "host": host,
             "excerpt": _tight_excerpt(w.get("excerpt") or "", max_chars=520),
         })
+        ref_n += 1
 
     docai_items = []
-    for i, (label, txt) in enumerate(docai_hits[:3], start=1):
+    for (label, txt) in docai_hits[:3]:
+        refs.append({"n": ref_n, "kind": "docai", "label": f"Document AI extract — {label}"})
         docai_items.append({
-            "code": f"A{i}",
+            "ref_n": ref_n,
             "label": label,
             "excerpt": _tight_excerpt(txt, max_chars=700),
         })
+        ref_n += 1
 
     return {
-        "pdf_docs": {v: PDF_DISPLAY_NAME.get(k, k) for k, v in doc_codes.items()},
+        "refs": refs,
         "pdf": pdf_items,
         "web": web_items,
         "docai": docai_items,
     }
-
 
 # ============================================================
 # RERANK (LLM)
@@ -2651,9 +2752,9 @@ async def _stream_answer_async(
                 yield fr
 
         # Final pass: normalize + footer + numeric verify note (append-only)
-        draft = normalize_model_output(full_text)
+        draft = enforce_chatgpt_paragraphs(normalize_model_output(full_text))
 
-        footer = build_sources_footer(draft, evidence_pack)
+        footer = build_references_footer(draft, evidence_pack)
         if footer:
             yield sse_send("\n\n" + footer)
 
@@ -2673,3 +2774,4 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
