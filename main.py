@@ -48,19 +48,14 @@ class ChatBody(BaseModel):
     message: str
     messages: Optional[List[Dict[str, Any]]] = None
 
+
 # ============================================================
-# BASE DIR
+# BASE DIR + ENV
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# ============================================================
-# CONFIG / ENV
-# ============================================================
-
 load_dotenv()
 
-# ---- Creator / Product identity ----
 CREATOR_NAME = os.getenv("CREATOR_NAME", "Abdulraheem Ahmed").strip()
 CREATOR_TITLE = os.getenv(
     "CREATOR_TITLE",
@@ -69,7 +64,6 @@ CREATOR_TITLE = os.getenv(
 PRODUCT_NAME = os.getenv("PRODUCT_NAME", "Raheem AI").strip()
 PRODUCT_VERSION = os.getenv("PRODUCT_VERSION", "1.0.0").strip()
 
-# Optional roadmap file (lets you control "future features" truthfully)
 ROADMAP_FILE = Path(os.getenv("ROADMAP_FILE", str(BASE_DIR / "roadmap.json")))
 
 # ---- Storage / R2 ----
@@ -94,7 +88,7 @@ def r2_client():
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
     )
 
-# ---- Optional: Vertex Embeddings (no extra deps) ----
+# ---- Optional: Vertex Embeddings ----
 try:
     from vertexai.language_models import TextEmbeddingModel  # type: ignore
     _VERTEX_EMBEDDINGS_AVAILABLE = True
@@ -186,7 +180,7 @@ WEB_RETRIES = int(os.getenv("WEB_RETRIES", "2"))
 WEB_RETRY_BACKOFF = float(os.getenv("WEB_RETRY_BACKOFF", "0.6"))
 WEB_CACHE_TTL_SECONDS = int(os.getenv("WEB_CACHE_TTL_SECONDS", str(12 * 60 * 60)))
 
-# PDF images
+# PDF images (kept for later; not used here)
 PDF_IMAGE_EXTRACT = os.getenv("PDF_IMAGE_EXTRACT", "false").lower() in ("1", "true", "yes", "on")
 PDF_IMAGE_MAX_PAGES = int(os.getenv("PDF_IMAGE_MAX_PAGES", "12"))
 PDF_IMAGE_MAX_IMAGES = int(os.getenv("PDF_IMAGE_MAX_IMAGES", "24"))
@@ -214,6 +208,7 @@ def require_admin_key(x_api_key: Optional[str]) -> Optional[JSONResponse]:
         return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
     return None
 
+
 # ============================================================
 # FASTAPI APP + CORS
 # ============================================================
@@ -240,6 +235,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ============================================================
 # VERTEX INIT
@@ -279,6 +275,7 @@ def ensure_vertex_ready() -> None:
         _VERTEX_READY = True
         _VERTEX_ERR = None
         log.info("Vertex ready (project=%s location=%s)", GCP_PROJECT_ID, GCP_LOCATION)
+
     except Exception as e:
         _VERTEX_READY = False
         _VERTEX_ERR = str(e)
@@ -288,13 +285,25 @@ def get_model(model_name: str, system_prompt: str) -> GenerativeModel:
     ensure_vertex_ready()
     return GenerativeModel(model_name, system_instruction=[Part.from_text(system_prompt)])
 
-def get_generation_config(is_evidence: bool) -> GenerationConfig:
-    if is_evidence:
-        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=3500)
-    return GenerationConfig(temperature=0.65, top_p=0.9, max_output_tokens=3500)
+def get_generation_config(strictness: int) -> GenerationConfig:
+    """
+    strictness:
+      0 = chatty
+      1 = cite-if-available
+      2 = cite + avoid guessing on requirements
+      3 = hard evidence mode (numbers must be in evidence; quote lines for numbers)
+    """
+    if strictness >= 3:
+        return GenerationConfig(temperature=0.15, top_p=0.8, max_output_tokens=3500)
+    if strictness == 2:
+        return GenerationConfig(temperature=0.25, top_p=0.85, max_output_tokens=3500)
+    if strictness == 1:
+        return GenerationConfig(temperature=0.55, top_p=0.9, max_output_tokens=3500)
+    return GenerationConfig(temperature=0.7, top_p=0.92, max_output_tokens=3500)
+
 
 # ============================================================
-# CHAT MEMORY
+# CHAT MEMORY (server-side, optional via chat_id)
 # ============================================================
 
 CHAT_STORE: Dict[str, List[Dict[str, str]]] = {}
@@ -303,6 +312,7 @@ def _trim_chat(chat_id: str) -> None:
     msgs = CHAT_STORE.get(chat_id, [])
     if not msgs:
         return
+
     if len(msgs) > CHAT_MAX_MESSAGES:
         msgs = msgs[-CHAT_MAX_MESSAGES:]
 
@@ -348,6 +358,7 @@ def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[
         hist = hist + [{"role": "user", "content": msg}]
     return hist
 
+
 # ============================================================
 # TEXT + TOKENIZATION
 # ============================================================
@@ -380,50 +391,7 @@ SECTION_RE = re.compile(r"^\s*(?:section\s+)?(\d+(?:\.\d+){0,4})\b", re.I)
 TABLE_RE = re.compile(r"\btable\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 DIAGRAM_RE = re.compile(r"\bdiagram\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 
-WEB_CITE_W_RE = re.compile(r"\[(W\d+)\]")
 VISUAL_TERMS_RE = re.compile(r"\b(diagram|figure|fig\.|table|chart|graph|drawing|schematic)\b", re.I)
-
-# ============================================================
-# OUTPUT NORMALISATION + SOURCES FOOTER
-# ============================================================
-
-BULLET_STAR_RE = re.compile(r"(?m)^\s*\*\s+")
-EXCESS_SPACES_RE = re.compile(r"[ \t]{2,}")
-MULTI_BLANKLINES_RE = re.compile(r"\n{3,}")
-
-def normalize_model_output(text: str) -> str:
-    t = (text or "").replace("\r", "")
-    t = BULLET_STAR_RE.sub("- ", t)
-    t = EXCESS_SPACES_RE.sub(" ", t)
-    t = MULTI_BLANKLINES_RE.sub("\n\n", t)
-    return t.strip()
-
-CITE_TAG_RE = re.compile(r"\[(D\d+:\d+|W\d+)\]")
-
-def build_sources_footer(answer: str, evidence: Dict[str, Any]) -> str:
-    used = set(CITE_TAG_RE.findall(answer or ""))
-    if not used:
-        return ""
-
-    lines = ["", "Sources (from loaded evidence):"]
-
-    pdf_docs = evidence.get("pdf_docs") or {}
-    cited_doc_codes = sorted({u.split(":")[0] for u in used if u.startswith("D")})
-    for code in cited_doc_codes:
-        title = pdf_docs.get(code, code)
-        lines.append(f"- {code}: {title}")
-
-    web_items = evidence.get("web") or []
-    cited_web = sorted([u for u in used if u.startswith("W")])
-    if cited_web and web_items:
-        web_by_code = {w.get("code"): w for w in web_items}
-        for wcode in cited_web:
-            w = web_by_code.get(wcode) or {}
-            title = (w.get("title") or wcode).strip()
-            host = (w.get("host") or "").strip()
-            lines.append(f"- {wcode}: {title}" + (f" ({host})" if host else ""))
-
-    return "\n".join(lines).strip()
 
 def clean_text(s: str) -> str:
     s = (s or "").replace("\u00ad", "")
@@ -441,6 +409,32 @@ def tokenize(text: str) -> List[str]:
 def _hash_id(s: str) -> str:
     return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
 
+def wants_visual_evidence(q: str) -> bool:
+    return bool(VISUAL_TERMS_RE.search(q or ""))
+
+
+# ============================================================
+# SSE HELPERS (real streaming, not “buffer then dump”)
+# ============================================================
+
+BULLET_STAR_RE = re.compile(r"(?m)^\s*\*\s+")
+EXCESS_SPACES_RE = re.compile(r"[ \t]{2,}")
+MULTI_BLANKLINES_RE = re.compile(r"\n{3,}")
+
+def _light_normalize_for_stream(text: str) -> str:
+    """
+    Don't do heavy rewriting on streamed chunks.
+    Just keep bullets sane and whitespace readable.
+    """
+    t = (text or "").replace("\r", "")
+    t = BULLET_STAR_RE.sub("- ", t)
+    t = EXCESS_SPACES_RE.sub(" ", t)
+    t = MULTI_BLANKLINES_RE.sub("\n\n", t)
+    return t
+
+def normalize_model_output(text: str) -> str:
+    return _light_normalize_for_stream(text).strip()
+
 def sse_send(text: str, max_frame_chars: int = 6000) -> str:
     if text is None:
         return ""
@@ -452,7 +446,7 @@ def sse_send(text: str, max_frame_chars: int = 6000) -> str:
     size = 0
 
     for ln in lines:
-        add = len(ln) + 1  # + newline
+        add = len(ln) + 1
         if size + add > max_frame_chars and buff:
             frames.append("".join(f"data: {x}\n" for x in buff) + "\n")
             buff = []
@@ -465,6 +459,46 @@ def sse_send(text: str, max_frame_chars: int = 6000) -> str:
 
     return "".join(frames)
 
+def _should_flush(buf: str) -> bool:
+    """
+    Flush on paragraph breaks, or on sentence endings once buffer gets big enough.
+    """
+    if not buf:
+        return False
+    if "\n\n" in buf and len(buf) >= 250:
+        return True
+    if len(buf) >= 700 and re.search(r"[\.!?]\s+$", buf):
+        return True
+    if len(buf) >= 1200:
+        return True
+    return False
+
+async def stream_llm_text_as_sse(stream_obj) -> Tuple[str, List[str]]:
+    """
+    Streams model output in clean-ish chunks.
+    Returns: (all_text, sse_frames_list)
+    """
+    full_parts: List[str] = []
+    frames: List[str] = []
+    buf = ""
+
+    for ch in stream_obj:
+        delta = getattr(ch, "text", None)
+        if not delta:
+            continue
+
+        full_parts.append(delta)
+        buf += delta
+
+        if _should_flush(buf):
+            chunk = _light_normalize_for_stream(buf)
+            frames.append(sse_send(chunk))
+            buf = ""
+
+    if buf.strip():
+        frames.append(sse_send(_light_normalize_for_stream(buf)))
+
+    return ("".join(full_parts), frames)
 
 
 # ============================================================
@@ -486,11 +520,7 @@ class Chunk:
 
 CHUNK_INDEX: Dict[str, Dict[str, Any]] = {}
 EMBED_INDEX: Dict[str, Dict[str, Any]] = {}
-PDF_IMAGE_INDEX: Dict[str, List[Dict[str, Any]]] = {}
 PDF_DISPLAY_NAME: Dict[str, str] = {}
-
-def wants_visual_evidence(q: str) -> bool:
-    return bool(VISUAL_TERMS_RE.search(q or ""))
 
 # ============================================================
 # PDF UTILITIES
@@ -583,6 +613,7 @@ def ensure_pdf_local(pdf_name: str) -> Optional[Path]:
     except Exception as e:
         log.warning("ensure_pdf_local failed: %s", repr(e))
         return None
+
 
 # ============================================================
 # CHUNKING / INDEXING
@@ -848,6 +879,7 @@ def ensure_chunk_indexed(pdf_name: str) -> None:
     if p and p.exists():
         index_pdf_to_chunks(p)
 
+
 # ============================================================
 # EMBEDDINGS (OPTIONAL)
 # ============================================================
@@ -971,6 +1003,7 @@ def _vector_candidates(question: str, pdf_name: str, top_k: int = EMBED_TOPK) ->
     scored.sort(key=lambda x: x[0], reverse=True)
     return [cid for _, cid in scored[:top_k]]
 
+
 # ============================================================
 # RETRIEVAL (BM25)
 # ============================================================
@@ -1093,6 +1126,7 @@ def diversify_chunks(chunks: List[Chunk], max_docs: int, per_doc: int) -> List[C
             used_docs += 1
     return out
 
+
 # ============================================================
 # DOCAI SUPPORT
 # ============================================================
@@ -1140,8 +1174,9 @@ def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[st
     scored.sort(key=lambda x: x[0], reverse=True)
     return [(lab, ex) for _, lab, ex in scored[:k]]
 
+
 # ============================================================
-# SMALLTALK + INTENT
+# SMALLTALK + INTENT + STRICTNESS
 # ============================================================
 
 FOLLOWUP_RE = re.compile(r"^(why|why\?|how come|can you explain( why)?|explain why)\s*$", re.I)
@@ -1178,6 +1213,11 @@ NUMERIC_TRIGGERS = [
     "lux","lumen","lumens"
 ]
 
+COMPLIANCE_CONFIRM_TRIGGERS = [
+    "compliant", "compliance", "does this comply", "is this compliant", "meets part", "meets tgd",
+    "requirement", "required", "shall", "must"
+]
+
 def is_smalltalk(message: str) -> bool:
     m = (message or "").strip().lower()
     if not m:
@@ -1209,6 +1249,10 @@ def is_numeric_compliance(q: str) -> bool:
     ql = (q or "").lower()
     return is_compliance_question(ql) and any(k in ql for k in NUMERIC_TRIGGERS)
 
+def is_compliance_confirmation(q: str) -> bool:
+    ql = (q or "").lower()
+    return any(t in ql for t in COMPLIANCE_CONFIRM_TRIGGERS)
+
 def _question_family(q: str) -> str:
     if is_planning_question(q):
         return "planning"
@@ -1236,31 +1280,71 @@ def question_precision(q: str) -> str:
     if not ql:
         return "broad"
 
-    # If user provides any explicit numbers/units, almost always specific
     if NUM_WITH_UNIT_RE.search(ql) or ANY_NUMBER_RE.search(ql):
         return "precise"
 
-    # If user references sections/tables/clauses => specific
     if re.search(r"\b(section|clause|table|diagram)\b", ql):
         return "precise"
 
-    # If strong “must/shall/min/max” language => specific
     if any(re.search(p, ql) for p in SPECIFIC_PATTERNS):
         return "precise"
 
-    # Broad phrasing => broad
     if any(re.search(p, ql) for p in BROAD_PATTERNS):
         return "broad"
 
-    # Short questions usually need interpretation => broad/mixed
     if len(ql.split()) <= 7:
         return "broad"
 
     return "mixed"
 
+def determine_strictness(
+    fam: str,
+    user_msg: str,
+    force_docs: bool,
+    default_evidence_mode: bool,
+) -> int:
+    """
+    0 = relaxed
+    1 = cite-if-available
+    2 = compliance-ish (avoid guessing requirements)
+    3 = hard evidence (numbers + quotes)
+    """
+    ql = (user_msg or "").lower()
+    numeric_needed = is_numeric_compliance(ql) and fam == "building_regs"
+    confirm = is_compliance_confirmation(ql) and fam in ("building_regs", "ber", "planning")
+
+    if force_docs:
+        return 3 if numeric_needed else 2
+
+    if default_evidence_mode:
+        return 3 if numeric_needed else 2
+
+    if numeric_needed:
+        return 3
+
+    if fam in ("building_regs", "ber") and confirm:
+        return 2
+
+    if fam in ("planning",) and confirm:
+        return 2
+
+    # Otherwise: be friendly and helpful, cite when you have it.
+    return 1 if fam in ("building_regs", "planning", "ber") else 0
+
+
 # ============================================================
 # WEB: SAFETY + FETCH + CACHE
 # ============================================================
+
+WEB_STRICT_ALLOWLIST = os.getenv("WEB_STRICT_ALLOWLIST", "false").lower() in ("1","true","yes","on")
+
+WEB_BLOCKLIST_DEFAULT = [
+    "facebook.com","instagram.com","tiktok.com","x.com","twitter.com",
+    "pinterest.com","reddit.com",
+]
+WEB_BLOCKLIST = [d.strip().lower() for d in (os.getenv("WEB_BLOCKLIST", "") or "").split(",") if d.strip()]
+if not WEB_BLOCKLIST:
+    WEB_BLOCKLIST = WEB_BLOCKLIST_DEFAULT
 
 def _safe_url(url: str) -> bool:
     u = (url or "").strip().lower()
@@ -1277,16 +1361,6 @@ def _host_from_url(url: str) -> str:
         return host
     except Exception:
         return ""
-
-WEB_STRICT_ALLOWLIST = os.getenv("WEB_STRICT_ALLOWLIST", "false").lower() in ("1","true","yes","on")
-
-WEB_BLOCKLIST_DEFAULT = [
-    "facebook.com","instagram.com","tiktok.com","x.com","twitter.com",
-    "pinterest.com","reddit.com",
-]
-WEB_BLOCKLIST = [d.strip().lower() for d in (os.getenv("WEB_BLOCKLIST", "") or "").split(",") if d.strip()]
-if not WEB_BLOCKLIST:
-    WEB_BLOCKLIST = WEB_BLOCKLIST_DEFAULT
 
 def _blocked_url(url: str) -> bool:
     host = _host_from_url(url)
@@ -1599,7 +1673,6 @@ async def web_fetch_and_excerpt(
             continue
 
         title = (r.get("title") or "").strip() or final_url
-
         out.append({"title": title, "url": final_url.strip(), "excerpt": excerpt})
 
         if kind != "CACHED":
@@ -1609,27 +1682,6 @@ async def web_fetch_and_excerpt(
             break
 
     return out[:max_items]
-
-def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
-    answer = (answer or "").rstrip()
-    if not web_pages:
-        return answer
-
-    # If the model already used [W1] style, leave it.
-    if WEB_CITE_W_RE.search(answer):
-        return answer
-
-    # Otherwise append a compact [W#] sources list
-    lines = ["", "Sources:"]
-    for i, w in enumerate(web_pages, start=1):
-        title = (w.get("title") or "").strip() or f"Source {i}"
-        host = _host_from_url((w.get("url") or "").strip())
-        tag = f"[W{i}]"
-        if host:
-            lines.append(f"{tag} {title} ({host})")
-        else:
-            lines.append(f"{tag} {title}")
-    return answer + "\n" + "\n".join(lines)
 
 
 # ============================================================
@@ -1669,8 +1721,79 @@ def _match_rules(user_msg: str) -> List[Dict[str, Any]]:
     hits.sort(key=lambda x: x[0], reverse=True)
     return [r for _, r in hits[:3]]
 
+
 # ============================================================
-# SYSTEM PROMPTS (Creator-aware + capability-aware)
+# CITATIONS + SOURCES FOOTER (flexible parsing)
+# ============================================================
+
+# Accept: [D1:81], [D1 p81], [D1-81], [W1]
+CITE_TAG_RE = re.compile(r"\[(D\d+)\s*(?::|p|P|-)\s*(\d+)\]|\[(W\d+)\]")
+
+def _extract_cites(answer: str) -> Tuple[List[Tuple[str, str]], List[str]]:
+    """
+    Returns:
+      pdf: [(D#, page_str), ...]
+      web: [W#, ...]
+    """
+    pdf: List[Tuple[str, str]] = []
+    web: List[str] = []
+    for m in CITE_TAG_RE.finditer(answer or ""):
+        if m.group(1) and m.group(2):
+            pdf.append((m.group(1), m.group(2)))
+        elif m.group(3):
+            web.append(m.group(3))
+    # de-dupe while keeping order
+    seen_pdf = set()
+    pdf_out = []
+    for d, p in pdf:
+        k = (d, p)
+        if k in seen_pdf:
+            continue
+        seen_pdf.add(k)
+        pdf_out.append((d, p))
+    seen_w = set()
+    web_out = []
+    for w in web:
+        if w in seen_w:
+            continue
+        seen_w.add(w)
+        web_out.append(w)
+    return pdf_out, web_out
+
+def build_sources_footer(answer: str, evidence: Dict[str, Any]) -> str:
+    pdf_cites, web_cites = _extract_cites(answer or "")
+    if not pdf_cites and not web_cites:
+        return ""
+
+    lines = ["", "Sources (from loaded evidence):"]
+
+    pdf_docs = evidence.get("pdf_docs") or {}
+    # list unique docs used (by D#)
+    used_doc_codes = []
+    seen_docs = set()
+    for d, _p in pdf_cites:
+        if d not in seen_docs:
+            seen_docs.add(d)
+            used_doc_codes.append(d)
+
+    for code in used_doc_codes:
+        title = pdf_docs.get(code, code)
+        lines.append(f"- {code}: {title}")
+
+    web_items = evidence.get("web") or []
+    if web_cites and web_items:
+        web_by_code = {w.get("code"): w for w in web_items}
+        for wcode in web_cites:
+            w = web_by_code.get(wcode) or {}
+            title = (w.get("title") or wcode).strip()
+            host = (w.get("host") or "").strip()
+            lines.append(f"- {wcode}: {title}" + (f" ({host})" if host else ""))
+
+    return "\n".join(lines).strip()
+
+
+# ============================================================
+# PROMPTS (more “ChatGPT paragraph” feel)
 # ============================================================
 
 CAPABILITIES_TEXT = f"""
@@ -1678,133 +1801,163 @@ Identity:
 - You are {PRODUCT_NAME} v{PRODUCT_VERSION}.
 - You were created by {CREATOR_NAME} ({CREATOR_TITLE}).
 
-Core functions:
-- Answer questions conversationally.
-- If PDF sources are provided in SOURCES, use them as primary evidence.
-- When "Evidence Mode" is enabled, do not invent numeric limits; only state numbers found in evidence.
-- You can use web evidence only when provided; cite web sources as [W1], [W2], etc.
+Core:
+- Be helpful, clear, and natural to read.
+- If PDF evidence is provided, treat it as primary for requirements/numbers.
+- Web evidence (if provided) is supporting context unless it is an official source.
+- If evidence is missing for a hard compliance claim, say what’s missing and ask 1 focused question.
 
 Limits:
-- You cannot truly predict the future or guarantee outcomes about the creator's life/career.
-- If asked "what will be added later", only describe roadmap items if they are explicitly provided (e.g., via /about or a roadmap file). Otherwise say what could be added in general terms and ask what the creator wants next.
+- Don’t claim you can predict the future or guarantee outcomes.
+- Don’t invent numeric limits when strictness is high.
 """.strip()
 
-SYSTEM_PROMPT_NORMAL = f"""
+SYSTEM_PROMPT_WRITER = f"""
 You are {PRODUCT_NAME}.
 
 {CAPABILITIES_TEXT}
 
-Voice & tone:
-- Write like ChatGPT: natural, confident paragraphs.
-- Match the user's tone: if casual be friendly; if technical be crisp and professional.
-- Light, professional humour is okay if it fits. Never cheesy.
-
-Formatting:
-- Do NOT use markdown headings (no #, ##).
-- Use short paragraphs.
-- Only use bullet points when the user asks for a list or when comparing options.
+Writing style (important):
+- Write like a good ChatGPT answer: short paragraphs, smooth flow.
+- Default: 2–5 paragraphs.
+- Use bullet points only when it improves clarity (comparisons, steps, checklists).
+- Avoid robotic phrases like “According to the provided evidence pack…”.
 
 Citations:
-- You can use web evidence only when provided; cite web sources as [W1], [W2], etc.
-- Don’t show raw URLs inline in paragraphs. If needed, put a “Sources” list at the end.
+- If you use evidence, cite it compactly: [D1:81] or [D1 p81] for PDFs; [W1] for web.
+- Don’t paste raw URLs in the body.
 
-If the question is broad: answer well, then ask ONE focused follow-up.
+When strictness is high:
+- If the user asks for minimum/maximum/required values, only state numbers present in evidence.
+- If you state a number, include a short quoted line that contains it (1–2 lines).
 """.strip()
 
-SYSTEM_PROMPT_EVIDENCE = f"""
-You are {PRODUCT_NAME} (Evidence Mode).
+SYSTEM_PROMPT_PLANNER = f"""
+You are {PRODUCT_NAME} (Planner).
 
-{CAPABILITIES_TEXT}
+Return ONLY JSON. No commentary.
 
-Hard rules:
-1) Only state numeric limits (mm, m, %, W/m²K, lux, etc.) if the exact number + unit appears in SOURCES.
-2) When you state a numeric limit, include a short quote (1–2 lines) that contains that number.
-3) Do not guess “typical” values. If evidence doesn’t contain the number, say you can’t confirm it.
-4) Cite sources clearly:
-   - PDF: (Document: <name>, p.<page>) and optionally Section/Table if known
-   - Web: [1], [2] etc (no raw URLs inline)
-
-Formatting:
-- No markdown headings (#).
-- Bullets only if it genuinely improves clarity.
-
-If SOURCES don’t contain what’s needed, say so plainly and ask ONE focused follow-up.
-""".strip()
-
-RERANK_PROMPT = """
-You are a strict reranker for compliance evidence.
-
-You will be given:
-- USER_QUESTION
-- CANDIDATES: a JSON array of objects with fields {id, doc, page, section, heading, table, text}
-
-Return ONLY valid JSON:
-{
-  "ranked_ids": ["id1","id2",...]
-}
+Schema:
+{{
+  "intent": "string",
+  "family": "general|planning|ber|building_regs",
+  "precision": "broad|mixed|precise",
+  "strictness": 0|1|2|3,
+  "needs_docs": true|false,
+  "needs_web": true|false,
+  "needs_docai": true|false,
+  "subqueries": ["... up to 6 ..."],
+  "missing_info_question": "string or empty"
+}}
 
 Rules:
-- Put the most directly relevant candidates first.
-- Prefer candidates that contain numeric limits or clear requirement statements relevant to the question.
-- Prefer candidates that mention a matching Part/TGD topic.
-- Keep output to at most 12 ids.
+- strictness 3 if numeric compliance.
+- needs_docai true if user mentions table/diagram/figure or wants visuals.
+- needs_web true for planning/general/ber when it helps, but do not require it.
+- missing_info_question only if absolutely required to answer.
 """.strip()
 
-def build_contents(history: List[Dict[str, str]], user_message: str, evidence: Dict[str, Any], precision: str) -> List[Content]:
-    contents: List[Content] = []
-    for m in history or []:
-        r = (m.get("role") or "").lower().strip()
-        c = (m.get("content") or "").strip()
-        if not c:
-            continue
-        if r == "user":
-            contents.append(Content(role="user", parts=[Part.from_text(c)]))
-        elif r == "assistant":
-            contents.append(Content(role="model", parts=[Part.from_text(c)]))
+def _safe_json_extract(raw: str) -> Optional[Dict[str, Any]]:
+    if not raw:
+        return None
+    raw = raw.strip()
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+    # try to grab first JSON object
+    m = re.search(r"\{.*\}", raw, re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except Exception:
+        return None
 
-    controller = f"""
-[STYLE]
-- Write clean, structured paragraphs. Only use lists if it truly helps.
-- NEVER use '*' as a bullet. If you must list, use '-' only.
-- Do not say "Document:" in the answer body.
-- Use compact citations like [D1:81] for PDFs and [W1] for web.
-- Do not repeat the same citation after every sentence; cite once per paragraph/group.
+async def plan_request(
+    user_msg: str,
+    fam: str,
+    precision: str,
+    strictness: int,
+) -> Dict[str, Any]:
+    """
+    Lightweight planner. If anything fails, fall back to heuristic plan.
+    """
+    # Heuristic baseline (always available)
+    baseline = {
+        "intent": "answer_user",
+        "family": fam,
+        "precision": precision,
+        "strictness": strictness,
+        "needs_docs": fam in ("building_regs", "planning", "ber"),
+        "needs_web": bool(WEB_ENABLED and fam in ("planning", "general", "ber")),
+        "needs_docai": bool(wants_visual_evidence(user_msg)),
+        "subqueries": [],
+        "missing_info_question": "",
+    }
 
-[PRECISION]
-- precision = {precision}
-- If precise: answer exactly what was asked, then stop.
-- If broad: give a comprehensive overview with clear grouping.
+    ensure_vertex_ready()
+    if not _VERTEX_READY:
+        return baseline
 
-[OUTPUT STRUCTURE]
-If broad:
-1) Brief summary (2–4 lines)
-2) Main points grouped logically (stairs: geometry / landings / headroom / handrails-guards / special cases, etc.)
-3) Practical pitfalls (3–5 items)
-4) Ask ONE follow-up question
+    try:
+        model = get_model(MODEL_COMPLIANCE, SYSTEM_PROMPT_PLANNER)
+        payload = {
+            "user_msg": user_msg,
+            "family_guess": fam,
+            "precision_guess": precision,
+            "strictness_guess": strictness,
+            "visual_terms": wants_visual_evidence(user_msg),
+        }
+        resp = model.generate_content(
+            [Content(role="user", parts=[Part.from_text(json.dumps(payload))])],
+            generation_config=GenerationConfig(temperature=0.1, top_p=0.6, max_output_tokens=450),
+            stream=False,
+        )
+        raw = (getattr(resp, "text", "") or "").strip()
+        data = _safe_json_extract(raw) or {}
+        # Merge with baseline safely
+        out = dict(baseline)
+        for k in out.keys():
+            if k in data:
+                out[k] = data[k]
+        # sanitize
+        out["family"] = out.get("family") if out.get("family") in ("general","planning","ber","building_regs") else fam
+        out["precision"] = out.get("precision") if out.get("precision") in ("broad","mixed","precise") else precision
+        try:
+            out["strictness"] = int(out.get("strictness", strictness))
+        except Exception:
+            out["strictness"] = strictness
+        out["strictness"] = max(0, min(3, int(out["strictness"])))
+        out["subqueries"] = [str(x) for x in (out.get("subqueries") or []) if str(x).strip()][:6]
+        out["missing_info_question"] = (out.get("missing_info_question") or "").strip()
+        out["needs_docai"] = bool(out.get("needs_docai")) or wants_visual_evidence(user_msg)
+        out["needs_docs"] = bool(out.get("needs_docs"))
+        out["needs_web"] = bool(out.get("needs_web")) and WEB_ENABLED
+        return out
+    except Exception as e:
+        log.warning("Planner failed (fallback to heuristic): %s", repr(e))
+        return baseline
 
-If precise:
-- Answer in a tight way (1–3 short paragraphs), include the exact requirement if available.
 
-[EVIDENCE]
-Here is the evidence pack (JSON). Use it. Cite it.
-""".strip()
+# ============================================================
+# EVIDENCE PACK (structured, compact)
+# ============================================================
 
-    final_user = (user_message or "").strip() + "\n\n" + controller + "\n\n" + json.dumps(evidence, ensure_ascii=False)
-    contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
-    return contents
+def _doc_code_map(chunks: List[Chunk]) -> Dict[str, str]:
+    docs = []
+    seen = set()
+    for c in chunks:
+        if c.doc not in seen:
+            seen.add(c.doc)
+            docs.append(c.doc)
+    return {doc: f"D{i+1}" for i, doc in enumerate(docs)}
 
-
-def _format_pdf_citation(c: Chunk) -> str:
-    doc_label = PDF_DISPLAY_NAME.get(c.doc, c.doc)
-    bits: List[str] = [f"Document: {doc_label}", f"p.{c.page}"]
-    if c.section:
-        bits.append(f"Section: {c.section}")
-    if c.table:
-        bits.append(f"Table: {c.table}")
-    if c.diagram:
-        bits.append(f"Diagram: {c.diagram}")
-    return "(" + ", ".join(bits) + ")"
-
+def _tight_excerpt(text: str, max_chars: int = 700) -> str:
+    t = clean_text(text or "")
+    if len(t) <= max_chars:
+        return t
+    return t[:max_chars].rstrip() + "…"
 
 def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950) -> str:
     text = clean_text(c.text)
@@ -1858,22 +2011,6 @@ def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950)
         return meta_line + "\n" + out
     return out
 
-def _doc_code_map(chunks: List[Chunk]) -> Dict[str, str]:
-    # Assign stable short codes per doc: D1, D2, ...
-    docs = []
-    seen = set()
-    for c in chunks:
-        if c.doc not in seen:
-            seen.add(c.doc)
-            docs.append(c.doc)
-    return {doc: f"D{i+1}" for i, doc in enumerate(docs)}
-
-def _tight_excerpt(text: str, max_chars: int = 700) -> str:
-    t = clean_text(text or "")
-    if len(t) <= max_chars:
-        return t
-    return t[:max_chars].rstrip() + "…"
-
 def build_evidence_packets(
     chunks: List[Chunk],
     web_pages: List[Dict[str, str]],
@@ -1881,14 +2018,16 @@ def build_evidence_packets(
     user_query: str,
     precision: str,
 ) -> Dict[str, Any]:
-    # Smaller excerpts for broad questions so model doesn't drown
     max_chars = 520 if precision == "broad" else 780
-
     doc_codes = _doc_code_map(chunks)
+
     pdf_items = []
-    for c in chunks[: max(10, RERANK_TOPK)]:
+    for c in chunks[: max(12, RERANK_TOPK)]:
+        code = doc_codes.get(c.doc, "D?")
+        cite = f"[{code}:{c.page}]"
         pdf_items.append({
-            "code": doc_codes.get(c.doc, "D?"),
+            "code": code,
+            "cite": cite,
             "doc": PDF_DISPLAY_NAME.get(c.doc, c.doc),
             "page": c.page,
             "section": c.section or "",
@@ -1907,7 +2046,6 @@ def build_evidence_packets(
             "excerpt": _tight_excerpt(w.get("excerpt") or "", max_chars=520),
         })
 
-    # DocAI hits are optional — keep them but compact
     docai_items = []
     for i, (label, txt) in enumerate(docai_hits[:3], start=1):
         docai_items.append({
@@ -1927,6 +2065,25 @@ def build_evidence_packets(
 # ============================================================
 # RERANK (LLM)
 # ============================================================
+
+RERANK_PROMPT = """
+You are a strict reranker for compliance evidence.
+
+You will be given:
+- USER_QUESTION
+- CANDIDATES: a JSON array of objects with fields {id, doc, page, section, heading, table, text}
+
+Return ONLY valid JSON:
+{
+  "ranked_ids": ["id1","id2",...]
+}
+
+Rules:
+- Put the most directly relevant candidates first.
+- Prefer candidates that contain numeric limits or clear requirement statements relevant to the question.
+- Prefer candidates that mention a matching Part/TGD topic.
+- Keep output to at most 12 ids.
+""".strip()
 
 async def _rerank_candidates(user_msg: str, cands: List[Chunk], max_keep: int = RERANK_TOPK) -> List[Chunk]:
     if not RERANK_ENABLED or not cands:
@@ -1958,10 +2115,7 @@ async def _rerank_candidates(user_msg: str, cands: List[Chunk], max_keep: int = 
             stream=False
         )
         raw = (getattr(resp, "text", "") or "").strip()
-        m = re.search(r"\{.*\}", raw, re.S)
-        if m:
-            raw = m.group(0)
-        data = json.loads(raw)
+        data = _safe_json_extract(raw) or {}
         ranked_ids = [x for x in (data.get("ranked_ids") or []) if isinstance(x, str)]
         if not ranked_ids:
             return small[:max_keep]
@@ -1977,6 +2131,7 @@ async def _rerank_candidates(user_msg: str, cands: List[Chunk], max_keep: int = 
     except Exception as e:
         log.warning("Rerank failed: %s", repr(e))
         return small[:max_keep]
+
 
 # ============================================================
 # HARD NUMERIC VERIFIER
@@ -2023,11 +2178,12 @@ def _hard_verify_numeric(answer: str, sources_blob_lower: str) -> Tuple[bool, st
         return True, answer
 
     safe = (
-        "I can’t confirm those exact numeric values from the evidence loaded for this answer.\n"
-        "If you point me to the correct document/edition (or upload it), I’ll quote the exact line containing each number.\n\n"
+        "Quick note: I can’t confirm those exact numeric values from the evidence loaded for this answer.\n"
+        "If you pin/upload the right document (or tell me which edition), I’ll quote the exact line for each number.\n\n"
         "Numbers not found in the current evidence: " + ", ".join(missing)
     )
     return False, safe
+
 
 # ============================================================
 # PDF UPLOAD
@@ -2084,7 +2240,6 @@ async def upload_pdf(
 
     dest.write_bytes(raw)
 
-    # Upload to R2 (optional)
     if R2_ENABLED:
         try:
             c = r2_client()
@@ -2144,6 +2299,7 @@ async def upload_pdf(
         },
     }
 
+
 # ============================================================
 # ABOUT / CAPABILITIES / ROADMAP
 # ============================================================
@@ -2184,15 +2340,17 @@ def capabilities():
         "features": [
             "Chat with optional server-side chat memory (chat_id)",
             "PDF upload + indexing (BM25); optional Vertex embeddings",
-            "Evidence-mode answering with numeric verification guard",
+            "Adaptive strictness (chatty -> evidence mode)",
             "Optional web search via Serper with allow/block lists + caching",
             "Optional DocAI extraction support",
+            "Real streaming output (paragraph chunks)",
         ],
         "limits": [
             "Cannot truly predict the future or guarantee outcomes",
-            "In Evidence Mode: numeric limits must exist in sources",
+            "In strictness 3: numeric limits must exist in sources",
         ],
     }
+
 
 # ============================================================
 # CHAT ENDPOINT
@@ -2224,6 +2382,7 @@ async def chat_endpoint(
 @app.get("/pdfs")
 def pdfs():
     return {"pdfs": list_pdfs()}
+
 
 # ============================================================
 # HEALTH + ROOT
@@ -2261,9 +2420,48 @@ def health():
         },
     }
 
+
 # ============================================================
 # STREAMING CORE
 # ============================================================
+
+def build_writer_contents(
+    history: List[Dict[str, str]],
+    user_message: str,
+    evidence: Dict[str, Any],
+    plan: Dict[str, Any],
+) -> List[Content]:
+    contents: List[Content] = []
+    for m in history or []:
+        r = (m.get("role") or "").lower().strip()
+        c = (m.get("content") or "").strip()
+        if not c:
+            continue
+        if r == "user":
+            contents.append(Content(role="user", parts=[Part.from_text(c)]))
+        elif r == "assistant":
+            contents.append(Content(role="model", parts=[Part.from_text(c)]))
+
+    # Controller is short on purpose (so it reads natural, not “RAG dump”)
+    controller = {
+        "precision": plan.get("precision"),
+        "strictness": plan.get("strictness"),
+        "notes": [
+            "Write in short paragraphs.",
+            "Use bullets only if helpful.",
+            "Cite only when using evidence.",
+            "If strictness >= 3 and you state a number, include a short quote line containing it.",
+        ],
+    }
+
+    final_user = (
+        (user_message or "").strip()
+        + "\n\n"
+        + "Context for you (JSON):\n"
+        + json.dumps({"plan": controller, "evidence": evidence}, ensure_ascii=False)
+    )
+    contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
+    return contents
 
 async def _stream_answer_async(
     chat_id: str,
@@ -2282,7 +2480,7 @@ async def _stream_answer_async(
 
         # Smalltalk
         if is_smalltalk(user_msg):
-            friendly = f"Hey — I’m {PRODUCT_NAME}. How can I help you today?"
+            friendly = f"Hey — I’m {PRODUCT_NAME}. What can I help you with?"
             if chat_id:
                 remember(chat_id, "user", user_msg)
                 remember(chat_id, "assistant", friendly)
@@ -2308,19 +2506,9 @@ async def _stream_answer_async(
 
         fam = _question_family(user_msg)
         precision = question_precision(user_msg)
+        strictness = determine_strictness(fam, user_msg, force_docs, DEFAULT_EVIDENCE_MODE)
 
-        # Evidence mode behavior
-        numeric_needed = is_numeric_compliance(user_msg) and fam == "building_regs"
-        evidence_mode = bool(
-            force_docs
-            or DEFAULT_EVIDENCE_MODE
-            or numeric_needed
-            or fam in ("building_regs", "planning", "ber")
-        )
-
-        pinned = pdf  # keep manual pin
-
-        # Rules first
+        # Rules first (fast path)
         rules_hit = _match_rules(user_msg) if RULES_ENABLED else []
         if rules_hit:
             rule = rules_hit[0]
@@ -2351,61 +2539,77 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
+        pinned = pdf
+
+        # Planner step (makes responses feel more “ChatGPT-like”)
+        plan = await plan_request(user_msg, fam=fam, precision=precision, strictness=strictness)
+        # force pinned doc preference if user pinned
+        plan_strictness = int(plan.get("strictness", strictness))
+        plan["strictness"] = max(0, min(3, plan_strictness))
+
+        # Retrieval strategy
         async def get_pdf_chunks() -> List[Chunk]:
             if not list_pdfs():
                 return []
 
-            if precision == "broad":
-                collected = search_chunks(
-                    user_msg,
-                    top_k=max(TOP_K_CHUNKS, 10),
+            # use planner subqueries if any (broad coverage without drowning)
+            queries = [user_msg] + [q for q in (plan.get("subqueries") or []) if isinstance(q, str) and q.strip()]
+            collected: List[Chunk] = []
+
+            for q in queries[: max(1, min(6, len(queries)))]:
+                cands = search_chunks(
+                    q,
+                    top_k=max(TOP_K_CHUNKS, 10) if plan.get("precision") == "broad" else TOP_K_CHUNKS,
                     pinned_pdf=pinned,
                     page_hint=page_hint,
                 )
-                collected = dedupe_chunks_keep_order(collected)
-                if RERANK_ENABLED and collected:
-                    collected = await _rerank_candidates(
-                        user_msg, collected, max_keep=max(RERANK_TOPK, 10)
-                    )
-                return collected[: max(RERANK_TOPK, 10)]
+                collected.extend(cands)
 
-            cands = search_chunks(
-                user_msg,
-                top_k=TOP_K_CHUNKS,
-                pinned_pdf=pinned,
-                page_hint=page_hint,
-            )
-            if RERANK_ENABLED and cands:
-                cands = await _rerank_candidates(user_msg, cands, max_keep=RERANK_TOPK)
-            return cands[:RERANK_TOPK]
+            collected = dedupe_chunks_keep_order(collected)
+
+            # If broad, diversify docs a bit
+            if plan.get("precision") == "broad" and collected:
+                collected = diversify_chunks(collected, max_docs=BROAD_DOC_DIVERSITY_K, per_doc=3)
+
+            if RERANK_ENABLED and collected:
+                keep = max(RERANK_TOPK, 10) if plan.get("precision") == "broad" else RERANK_TOPK
+                collected = await _rerank_candidates(user_msg, collected, max_keep=keep)
+
+            keep2 = max(RERANK_TOPK, 10) if plan.get("precision") == "broad" else RERANK_TOPK
+            return collected[:keep2]
 
         async def get_docai_hits() -> List[Tuple[str, str]]:
             if not pinned:
                 return []
             if not _docai_chunk_files_for(pinned):
                 return []
-            return docai_search_text(pinned, user_msg, k=2 if precision != "broad" else 3)
+            if not bool(plan.get("needs_docai")):
+                return []
+            k = 3 if plan.get("precision") == "broad" else 2
+            return docai_search_text(pinned, user_msg, k=k)
 
         async def get_web_evidence() -> List[Dict[str, str]]:
             if not WEB_ENABLED:
                 return []
+            if not bool(plan.get("needs_web")):
+                return []
             serp = await web_search_serper(user_msg, k=TOP_K_WEB)
             return await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
 
-        # Web only when it makes sense (avoid noisy citations for numeric compliance)
-        do_web = bool(WEB_ENABLED and (not numeric_needed) and fam in ("planning", "general", "ber"))
-
+        # If strictness 3 + numeric compliance, we still allow web for context,
+        # but PDFs/DocAI must exist to state numbers confidently.
         pdf_chunks, docai_hits, web_pages = await asyncio.gather(
-            get_pdf_chunks(),
+            get_pdf_chunks() if plan.get("needs_docs") else asyncio.sleep(0, result=[]),
             get_docai_hits(),
-            get_web_evidence() if do_web else asyncio.sleep(0, result=[]),
+            get_web_evidence(),
         )
 
-        # Numeric compliance must have doc evidence
-        if numeric_needed and not pdf_chunks and not docai_hits:
+        # Guard: strictness 3 + numeric compliance must have doc evidence available
+        numeric_needed = is_numeric_compliance(user_msg) and fam == "building_regs"
+        if numeric_needed and plan["strictness"] >= 3 and not pdf_chunks and not docai_hits:
             msg = (
                 "I can’t confirm the exact numeric requirement yet because I don’t have the relevant TGD evidence loaded for this question.\n"
-                "Upload the correct TGD (or pin the PDF), and I’ll quote the exact line containing the number."
+                "If you upload/pin the correct TGD PDF, I’ll quote the exact line containing the number."
             )
             msg = normalize_model_output(msg)
             if chat_id:
@@ -2419,7 +2623,7 @@ async def _stream_answer_async(
             web_pages,
             docai_hits,
             user_query=user_msg,
-            precision=precision,
+            precision=plan.get("precision") or precision,
         )
 
         ensure_vertex_ready()
@@ -2429,49 +2633,37 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
-        system_prompt = SYSTEM_PROMPT_EVIDENCE if evidence_mode else SYSTEM_PROMPT_NORMAL
-        model_name = MODEL_COMPLIANCE if evidence_mode else MODEL_CHAT
-
-        model = get_model(model_name=model_name, system_prompt=system_prompt)
-        contents = build_contents(history_for_prompt, user_msg, evidence_pack, precision=precision)
+        # Writer model
+        model_name = MODEL_COMPLIANCE if plan["strictness"] >= 2 else MODEL_CHAT
+        model = get_model(model_name=model_name, system_prompt=SYSTEM_PROMPT_WRITER)
+        contents = build_writer_contents(history_for_prompt, user_msg, evidence_pack, plan)
 
         stream = model.generate_content(
             contents,
-            generation_config=get_generation_config(evidence_mode),
+            generation_config=get_generation_config(int(plan["strictness"])),
             stream=True,
         )
 
-        # Buffer tokens (do NOT stream messy deltas)
-        full: List[str] = []
-        for ch in stream:
-            delta = getattr(ch, "text", None)
-            if not delta:
-                continue
-            full.append(delta)
+        # Stream in readable chunks
+        full_text, frames = await stream_llm_text_as_sse(stream)
+        for fr in frames:
+            if fr:
+                yield fr
 
-        # Clean output
-        draft = normalize_model_output("".join(full).strip())
+        # Final pass: normalize + footer + numeric verify note (append-only)
+        draft = normalize_model_output(full_text)
 
-        # Ensure web citations exist if web evidence was used
-        draft = _enforce_web_citations(draft, web_pages)
-
-        # Add ONE sources footer (only if citations are present)
         footer = build_sources_footer(draft, evidence_pack)
         if footer:
-            draft = draft.rstrip() + "\n\n" + footer
+            yield sse_send("\n\n" + footer)
 
-        # Numeric verification guard (kept)
         sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
-        ok, final_text = _hard_verify_numeric(draft, sources_blob)
+        ok, note = _hard_verify_numeric(draft, sources_blob)
         if not ok:
-            final_text = normalize_model_output(final_text)
-            draft = (draft + "\n\n---\n\n" + final_text).strip()
-
-        # Send one clean response
-        yield sse_send(draft)
+            yield sse_send("\n\n---\n\n" + normalize_model_output(note))
 
         if chat_id:
-            remember(chat_id, "assistant", draft)
+            remember(chat_id, "assistant", (draft + ("\n\n" + footer if footer else "")).strip())
 
         yield "event: done\ndata: ok\n\n"
 
@@ -2481,7 +2673,3 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
-
-
-
-
