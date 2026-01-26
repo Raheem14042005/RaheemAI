@@ -214,6 +214,18 @@ def require_admin_key(x_api_key: Optional[str]) -> Optional[JSONResponse]:
     return None
 
 
+@app.get("/health", tags=["System"])
+async def health_check():
+    """Simple health check endpoint."""
+    return {"status": "ok", "vertex_ready": _VERTEX_READY, "vertex_error": _VERTEX_ERR}
+
+
+@app.get("/pdfs", tags=["System"])
+async def get_pdfs_list():
+    """Returns a list of available PDF documents."""
+    return {"pdfs": list_pdfs()}
+
+
 # ============================================================
 # FASTAPI APP + CORS
 # ============================================================
