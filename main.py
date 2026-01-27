@@ -609,20 +609,15 @@ def _pdf_fingerprint(pdf_path: Path) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()[:16]
 
 def get_pdf_display_name(pdf_path: Path) -> str:
-    try:
-        d = fitz.open(pdf_path)
-        meta = d.metadata or {}
-        title = (meta.get("title") or "").strip()
-        d.close()
-        if title and len(title) >= 5:
-            return title
-    except Exception:
-        pass
-
+    """
+    Returns a clean, human-readable name for a PDF, prioritizing the filename.
+    This avoids using potentially confusing metadata titles from inside the PDF.
+    """
+    # Use the filename (without extension) as the primary identifier.
+    # Replace dashes and underscores with spaces for readability.
     stem = pdf_path.stem
     stem = re.sub(r"[_\-]+", " ", stem).strip()
-    stem = re.sub(r"\s{2,}", " ", stem)
-    return stem or pdf_path.name
+    return re.sub(r"\s{2,}", " ", stem) or pdf_path.name
 
 def list_pdfs() -> List[str]:
     if R2_ENABLED:
@@ -1137,53 +1132,87 @@ def search_chunks(
     if not qt:
         return []
 
+    # Step 1: Broad Initial Retrieval (BM25 + Vector)
+    # Fetch a larger number of candidates to give the reranker more to work with.
+    initial_k = max(24, top_k * 4)
+    
     search_space = [pinned_pdf] if pinned_pdf and pinned_pdf in pdfs else pdfs
     if _question_family(question) == "planning":
         search_space = [p for p in search_space if is_planning_relevant_pdf(p)]
+    
     candidates: List[Tuple[float, Chunk]] = []
-
     for pdf_name in search_space:
         ensure_chunk_indexed(pdf_name)
         idx = CHUNK_INDEX.get(pdf_name)
         if not idx:
             continue
 
-        vector_ids: List[str] = []
-        if EMBED_ENABLED and _VERTEX_EMBEDDINGS_AVAILABLE:
-            vector_ids = _vector_candidates(question, pdf_name, top_k=EMBED_TOPK)
-        vector_set = set(vector_ids)
-
-        df = idx["df"]
-        N = idx["N"]
-        avgdl = idx["avgdl"]
-
+        vector_ids = set(_vector_candidates(question, pdf_name, top_k=initial_k))
+        df, N, avgdl = idx["df"], idx["N"], idx["avgdl"]
         doc_boost = 1.2 if (pinned_pdf and pdf_name == pinned_pdf) else 0.0
 
-        scored: List[Tuple[float, Chunk]] = []
         for ch in idx["chunks"]:
             s = bm25_score(qt, ch.tf, df, N, ch.length, avgdl)
             s += page_hint_boost(ch.page, page_hint)
             s += doc_boost
-            if vector_set and ch.chunk_id in vector_set:
-                s += 2.5
+            if vector_ids and ch.chunk_id in vector_ids:
+                s += 2.5  # Boost for hybrid retrieval match
             if s > 0:
-                scored.append((s, ch))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        take = max(24, top_k * 6)
-        candidates.extend(scored[:take])
+                candidates.append((s, ch))
 
     candidates.sort(key=lambda x: x[0], reverse=True)
+    
+    # Deduplicate before reranking
     seen = set()
-    out: List[Chunk] = []
+    initial_results = []
     for _, c in candidates:
-        if c.chunk_id in seen:
-            continue
-        seen.add(c.chunk_id)
-        out.append(c)
-        if len(out) >= max(24, top_k * 4):
-            break
-    return out
+        if c.chunk_id not in seen:
+            seen.add(c.chunk_id)
+            initial_results.append(c)
+            if len(initial_results) >= initial_k:
+                break
+
+    if not RERANK_ENABLED or len(initial_results) <= top_k:
+        return initial_results[:top_k]
+
+    # Step 2: LLM Reranking
+    try:
+        rerank_model = get_model(MODEL_CHAT, system_prompt="You are a helpful assistant.")
+        
+        # Prepare the text for the reranker
+        rerank_context = ""
+        for i, chunk in enumerate(initial_results):
+            rerank_context += f"[[{i}]] Document: {chunk.doc}, Page: {chunk.page}\\n{chunk.text}\\n\\n"
+            
+        rerank_prompt = f"""
+        Given the user's question and the following numbered list of text chunks, identify the single most relevant chunk.
+        Respond with only the number of the single best chunk.
+
+        User Question: "{question}"
+
+        Chunks:
+        {rerank_context}
+
+        Most Relevant Chunk Number:
+        """
+        
+        response = rerank_model.generate_content(rerank_prompt)
+        best_chunk_index_str = re.sub(r'[^0-9]', '', response.text)
+        
+        if best_chunk_index_str:
+            best_chunk_index = int(best_chunk_index_str)
+            if 0 <= best_chunk_index < len(initial_results):
+                best_chunk = initial_results.pop(best_chunk_index)
+                # Return the best chunk first, followed by the rest sorted by original score
+                final_results = [best_chunk] + initial_results
+                log.info(f"Rerank successful. Promoted chunk {best_chunk.chunk_id} to top.")
+                return final_results[:top_k]
+
+    except Exception as e:
+        log.warning(f"Reranker failed: {e}. Falling back to original ranking.")
+
+    # Fallback to original ranking if reranker fails
+    return initial_results[:top_k]
 
 def dedupe_chunks_keep_order(chunks: List[Chunk]) -> List[Chunk]:
     seen = set()
