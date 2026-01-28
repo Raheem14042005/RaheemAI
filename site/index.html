@@ -3009,6 +3009,20 @@
       }
     }
 
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
+    }
+
     function setChatTitleFromFirstUser(all, chatId){
       const c = all[chatId]; if(!c) return;
       const firstUser = (c.messages || []).find(m=>m.role==="user");
@@ -3633,3 +3647,4 @@
   </script>
 </body>
 </html>
+
