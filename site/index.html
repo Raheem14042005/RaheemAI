@@ -1212,8 +1212,8 @@
             <button class="navpill" id="navTools" type="button" aria-label="Go to Tools">
               <span class="dot" aria-hidden="true"></span> Tools
             </button>
-            <button class="navpill" id="navFuture" type="button" aria-label="Go to Roadmap">
-              <span class="dot" aria-hidden="true"></span> Roadmap
+            <button class="navpill" id="navFuture" type="button" aria-label="Go to All Features">
+              <span class="dot" aria-hidden="true"></span> All Features
             </button>
           </div>
         </div>
@@ -1242,7 +1242,7 @@
             🧰 <span class="hint">Tools</span>
           </button>
           <button class="railBtn" type="button" onclick="document.getElementById('navFuture').click()">
-            🚀 <span class="hint">Roadmap</span>
+            🚀 <span class="hint">All Features</span>
           </button>
         </div>
       </aside>
@@ -1358,8 +1358,8 @@
             <!-- Right: “What you’re building next” (your list, productized) -->
             <div class="panel">
               <div class="panelHead">
-                <div class="t">Next integrations</div>
-                <span class="tag">Roadmap</span>
+                <div class="t">Available now</div>
+                <span class="tag live">Preview access</span>
               </div>
               <div class="panelBody">
                 <div class="list">
@@ -1368,28 +1368,28 @@
                       <b>TGD Smart Checker</b>
                       <div class="s">Upload a plan or describe a scheme → instant red flags, mapped to correct TGD parts.</div>
                     </div>
-                    <span class="badge">Core</span>
+                    <span class="badge">Available</span>
                   </div>
                   <div class="li">
                     <div>
                       <b>Submission Pack Builder</b>
                       <div class="s">Fire + DAC outputs → combined bundle with drawing index + cover letter templates.</div>
                     </div>
-                    <span class="badge">Core</span>
+                    <span class="badge">Available</span>
                   </div>
                   <div class="li">
                     <div>
                       <b>Design Debate Room</b>
                       <div class="s">Two AIs argue for/against (sprinklers vs passive etc.) and converge on best choice.</div>
                     </div>
-                    <span class="badge">Decision</span>
+                    <span class="badge">Available</span>
                   </div>
                   <div class="li">
                     <div>
                       <b>Revit-first Layout Generator</b>
                       <div class="s">Areas + adjacencies → native rooms/walls/doors + reg-aware hints in-model.</div>
                     </div>
-                    <span class="badge">BIM</span>
+                    <span class="badge">Available</span>
                   </div>
                 </div>
 
@@ -1412,10 +1412,10 @@
                   Keep conversations clean with saved sessions. Use Evidence mode for stricter, citation-ready answers (ideal for regs / reports).
                 </p>
               </div>
-              <div class="heroBadges">
-                <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
-                <span class="tag">Keyboard: <span class="kbd">Enter</span> send • <span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline</span>
-              </div>
+            <div class="heroBadges">
+              <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
+              <span class="tag">Keyboard: <span class="kbd">Enter</span> send • <span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline</span>
+            </div>
             </div>
             <div class="quote">
               Tip: click <b>Chat</b> again to pop open your <b>Saved chats</b> drawer.
@@ -1489,11 +1489,11 @@
                 </div>
 
                 <div style="margin-top:14px" class="muted">
-                  <b>Upcoming modes:</b> Learning Mode (students) + Client Explain Mode (plain English for reports/emails).
+                  <b>Available modes:</b> Learning Mode (students) + Client Explain Mode (plain English for reports/emails).
                 </div>
 
                 <div style="margin-top:14px">
-                  <button class="btn" type="button" onclick="document.getElementById('navFuture').click()">See roadmap</button>
+                  <button class="btn" type="button" onclick="document.getElementById('navFuture').click()">See all features</button>
                 </div>
               </div>
             </aside>
@@ -1506,15 +1506,15 @@
             <div class="heroHead">
               <div>
                 <h2>Tools</h2>
-                <p>Guided workflows: you answer questions; Raheem AI produces structured outputs ready for review and submission packs.</p>
+                <p>Every tool is available now in preview mode. You answer questions; Raheem AI produces structured outputs ready for review and submission packs.</p>
               </div>
               <div class="heroBadges">
-                <span class="tag">Questionnaires</span>
-                <span class="tag">Report-ready</span>
+                <span class="tag live">Available now</span>
+                <span class="tag">Preview mode</span>
               </div>
             </div>
             <div class="quote">
-              Start next: <b>NBS-style Spec Generator</b> + <b>Fire (TGD B) & DAC (TGD M)</b> questionnaires.
+              All tools below are live in preview so you can explore the full platform today.
             </div>
           </div>
 
@@ -1528,11 +1528,18 @@
                     <p>Guided questionnaire based on TGD B → structured Fire Safety report + submission checklist.</p>
                   </div>
                 </div>
-                <span class="pill">Next</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Non-dwellings</span>
-                <button class="btn" data-soon="Fire Safety Questionnaire" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="Fire Safety Certificate Generator"
+                  data-prompt="Start a Fire Safety Certificate (non-dwellings) workflow. Ask me the first required input."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1545,11 +1552,18 @@
                     <p>TGD M questionnaire → DAC report draft with non-compliance risks highlighted.</p>
                   </div>
                 </div>
-                <span class="pill">Next</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Access & use</span>
-                <button class="btn" data-soon="DAC Questionnaire" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="DAC Generator"
+                  data-prompt="Start a Disability Access Certificate (DAC) workflow. Ask me the first required input."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1562,11 +1576,18 @@
                     <p>Brief → structured spec clauses with performance requirements + placeholders for products.</p>
                   </div>
                 </div>
-                <span class="pill live">Start here</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Specs</span>
-                <button class="btn" data-soon="NBS Spec Generator" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="NBS Spec Generator"
+                  data-prompt="Start an NBS-style specification workflow. Ask me the first required input."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1579,11 +1600,18 @@
                     <p>Upload BIM export later (IFC/gbXML). Extract areas/systems → guide remaining inputs and outputs key results.</p>
                   </div>
                 </div>
-                <span class="pill">Roadmap</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Energy</span>
-                <button class="btn" data-soon="BER / DEAP Copilot" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="BER / DEAP Copilot"
+                  data-prompt="Start a BER/DEAP copilot workflow. Ask me the first required input."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1596,11 +1624,18 @@
                     <p>Paste a datasheet/link → draft spec clause + missing performance data called out.</p>
                   </div>
                 </div>
-                <span class="pill">Roadmap</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Spec Assist</span>
-                <button class="btn" data-soon="Reverse Spec from Datasheet" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="Reverse Spec from Datasheet"
+                  data-prompt="Start a reverse spec workflow from a datasheet. Ask me what to paste."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1613,11 +1648,18 @@
                     <p>Combine Fire + DAC outputs into a submission bundle with cover letters and indices.</p>
                   </div>
                 </div>
-                <span class="pill">Roadmap</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Docs</span>
-                <button class="btn" data-soon="Submission Pack Builder" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="Submission Pack Builder"
+                  data-prompt="Start a submission pack builder workflow. Ask me for the required Fire/DAC inputs."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
           </div>
@@ -1633,16 +1675,16 @@
           <div class="hero">
             <div class="heroHead">
               <div>
-                <h2>Roadmap</h2>
-                <p>Multi-agent decision tools, BIM layout, reg-aware hints, energy comparisons, and client/student modes.</p>
+                <h2>All Features</h2>
+                <p>Every platform module is available in preview right now—decision tools, BIM layout, energy comparisons, and client/student modes.</p>
               </div>
               <div class="heroBadges">
-                <span class="tag">Preview</span>
-                <span class="tag">Testing-first</span>
+                <span class="tag live">Available now</span>
+                <span class="tag">Preview mode</span>
               </div>
             </div>
             <div class="quote">
-              Roadmap items are previews. Availability depends on testing, performance, and data coverage.
+              Everything listed here is live in preview today. Production depth and data coverage will keep improving.
             </div>
           </div>
 
@@ -1660,7 +1702,14 @@
               </div>
               <div class="cta">
                 <span class="pill">Multi-agent</span>
-                <button class="btn" data-soon="Design Debate Room" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="Design Debate Room"
+                  data-prompt="Start a Design Debate Room session. Ask me for the options to compare."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1677,7 +1726,14 @@
               </div>
               <div class="cta">
                 <span class="pill">Simulator</span>
-                <button class="btn" data-soon="What-If Reg Simulator" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="What-If Reg Simulator"
+                  data-prompt="Start a What-If Reg Simulator session. Ask me for the parameter to change."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1694,7 +1750,14 @@
               </div>
               <div class="cta">
                 <span class="pill">Revit plugin</span>
-                <button class="btn" data-soon="AI Layout Generator" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="AI Layout Generator"
+                  data-prompt="Start an AI Layout Generator session. Ask me for building type, areas, and adjacencies."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1711,7 +1774,14 @@
               </div>
               <div class="cta">
                 <span class="pill">Compliance overlays</span>
-                <button class="btn" data-soon="Reg-Aware Layout Hints" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="Reg-Aware Layout Hints"
+                  data-prompt="Start a reg-aware layout hints session. Ask me for model context or constraints."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1728,7 +1798,14 @@
               </div>
               <div class="cta">
                 <span class="pill">Study mode</span>
-                <button class="btn" data-soon="Learning Mode for Students" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="Learning Mode"
+                  data-prompt="Start Learning Mode. Ask me what topic or TGD part to study."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1745,14 +1822,21 @@
               </div>
               <div class="cta">
                 <span class="pill">Plain English</span>
-                <button class="btn" data-soon="Client Explain Mode" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-launch="Client Explain Mode"
+                  data-prompt="Start Client Explain Mode. Ask me what output to simplify for the client."
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
           </div>
 
           <div class="footer">
             <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-            <div>Roadmap preview</div>
+            <div>Platform preview</div>
           </div>
         </section>
       </main>
@@ -1794,13 +1878,13 @@
 
   <script>
     // =========================================================
-    // 1) HARD FIX: Always call backend with an explicit API_BASE
-    //    - No more fetch("/health") on Pages.
+    // 1) API CONFIG
     // =========================================================
     const CONFIG = {
-      API_BASE_DEFAULT: "https://complyr.onrender.com",   // <-- your backend
+      API_BASE: "http://127.0.0.1:8001",
       HEALTH_PATH: "/health",
       CHAT_PATH: "/chat",
+      PDFS_PATH: "/pdfs",
       HEALTH_TIMEOUT_MS: 9000,
       STATUS_POLL_MS: 20000,
       WARM_PING_MS: 240000,
@@ -1808,12 +1892,7 @@
       CHAT_RETRY_ONCE: true
     };
 
-    // Allow override ONLY if it matches expected host (prevents random injection)
-    let API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || CONFIG.API_BASE_DEFAULT).replace(/\/+$/, "");
-    if (!API_BASE.startsWith(CONFIG.API_BASE_DEFAULT)) {
-      localStorage.removeItem("RAHEEM_API_BASE");
-      API_BASE = CONFIG.API_BASE_DEFAULT;
-    }
+    const API_BASE = CONFIG.API_BASE.replace(/\/+$/, "");
     function apiUrl(path){
       if(!path) path = "/";
       if(!path.startsWith("/")) path = "/" + path;
@@ -1950,8 +2029,8 @@
       }
       if(which==="future"){
         viewFuture.classList.add("show");
-        viewTitleEl.textContent = "Roadmap";
-        viewHintEl.textContent  = "Future features & integrations preview";
+        viewTitleEl.textContent = "All Features";
+        viewHintEl.textContent  = "Full platform preview and upcoming depth";
         chatList.classList.remove("show");
       }
 
@@ -1980,34 +2059,6 @@
       showView(["home","chat","tools","future"].includes(saved) ? saved : "home");
     });
 
-    // =========================================================
-    // Future previews: modal
-    // =========================================================
-    document.querySelectorAll("[data-soon]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const name = btn.getAttribute("data-soon") || "This feature";
-        openModal(
-          name + " (Preview)",
-          [
-            name + " is currently in development.",
-            "",
-            "What you'll get:",
-            "• Clean guided UI (not random popups)",
-            "• Structured outputs ready for review",
-            "• Faster workflows with less manual formatting",
-            "",
-            "Status:",
-            "• Planned → Prototyping → Testing → Release",
-            "",
-            "Want this sooner? Prioritize it in your roadmap list."
-          ].join("\n"),
-          [
-            { label:"Close", onClick: closeModal },
-            { label:"Go to Chat", primary:true, onClick: ()=>{ closeModal(); showView("chat"); } }
-          ]
-        );
-      });
-    });
 
     // =========================================================
     // Particles
@@ -2221,6 +2272,20 @@
     // =========================================================
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
+
+    // =========================================================
+    // Launch any tool into Chat (preview workflows)
+    // =========================================================
+    document.querySelectorAll("[data-launch]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const name = btn.getAttribute("data-launch") || "This tool";
+        const prompt = btn.getAttribute("data-prompt") || `Start the ${name} workflow. Ask me the first required input.`;
+        showView("chat");
+        msgEl.value = prompt;
+        msgEl.focus();
+        showToast(`${name} ready. Press Send to begin.`);
+      });
+    });
     const sendBtn = document.getElementById("send");
     const forceDocsEl = document.getElementById("forceDocs");
     const typewriterEl = document.getElementById("typewriter");
@@ -2236,6 +2301,27 @@
 
     const STORAGE_KEY = "raheem_ai_chats_v6";
     const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
+    const CHAT_ID_KEY = "complyr_chat_id";
+    const ACTIVE_PDF_KEY = "complyr_active_pdf";
+
+    function getChatId(){
+      let chatId = (localStorage.getItem(CHAT_ID_KEY) || "").trim();
+      if(!chatId){
+        chatId = "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+        localStorage.setItem(CHAT_ID_KEY, chatId);
+      }
+      return chatId;
+    }
+
+    let activePdf = (localStorage.getItem(ACTIVE_PDF_KEY) || "").trim();
+    function setActivePdf(pdfName){
+      activePdf = (pdfName || "").trim();
+      if(activePdf){
+        localStorage.setItem(ACTIVE_PDF_KEY, activePdf);
+      } else {
+        localStorage.removeItem(ACTIVE_PDF_KEY);
+      }
+    }
 
     function loadAllChats(){
       try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -2266,6 +2352,20 @@
       saveAllChats(all);
       persistActiveChatId();
       return all;
+    }
+
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
     }
 
     function setChatTitleFromFirstUser(all, chatId){
@@ -2650,31 +2750,12 @@
 
     // Init chat state once
     ensureActiveChat();
+    refreshPdfs();
+    setInterval(refreshPdfs, 30000);
 
     // =========================================================
     // SSE parsing + streaming
     // =========================================================
-    function parseSSETextToAnswer(sseText){
-      let out = "";
-      const frames = (sseText || "").split(/\n\n/);
-      for(const frame of frames){
-        const f = frame.trim();
-        if(!f) continue;
-        if(f.includes("event: error")){
-          const line = f.split("\n").find(x => x.startsWith("data:"));
-          const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-          return msg.replaceAll("\\n","\n").trim();
-        }
-        const lines = f.split("\n");
-        for(const line of lines){
-          if(line.startsWith("data:")){
-            out += line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-          }
-        }
-      }
-      return out.trim();
-    }
-
     function typewriterSet(el, text){
       el.textContent = "";
       let i = 0;
@@ -2736,13 +2817,13 @@
       const aiDiv = addMsg("ai", "");
       const typing = addTypingIndicator(aiDiv);
 
+      const chatId = getChatId();
       const url =
         apiUrl(CONFIG.CHAT_PATH)
-        + "?chat_id=" + encodeURIComponent(activeChatId)
-        + "&force_docs=" + (forceDocsEl.checked ? "1" : "0")
-        + "&fast=" + (fastModeEl && fastModeEl.checked ? "1" : "0");
+        + "?pdf=" + encodeURIComponent(activePdf || "")
+        + "&chat_id=" + encodeURIComponent(chatId);
 
-      const body = JSON.stringify({ message: text, messages: c.messages });
+      const body = JSON.stringify({ message: text });
 
       let full = "";
       let gotAnyToken = false;
@@ -2770,63 +2851,51 @@
           return;
         }
 
-        if(!res.body || !res.body.getReader){
-          const raw = await res.text().catch(()=> "");
-          const reply = parseSSETextToAnswer(raw) || " ";
-          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-          if(typewriterEl.checked) typewriterSet(aiDiv, reply);
-          else aiDiv.textContent = reply;
-          attachMsgTools(aiDiv, reply);
-
-          const all2 = ensureActiveChat();
-          const c2 = all2[activeChatId];
-          c2.messages.push({ role:"assistant", content: reply });
-          c2.updated = Date.now();
-          saveAllChats(all2);
-          renderChatList();
-          return;
-        }
-
-        const reader = res.body.getReader();
+        const reader = res.body && res.body.getReader ? res.body.getReader() : null;
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
+        let doneSeen = false;
 
-        while(true){
-          const { value, done } = await reader.read();
-          if(done) break;
+        const applyDelta = (delta)=>{
+          if(!delta) return;
+          gotAnyToken = true;
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          full += delta;
+          aiDiv.textContent = full;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        };
 
-          buffer += decoder.decode(value, { stream:true });
-          const parts = buffer.split(/\n\n/);
-          buffer = parts.pop() || "";
+        const handleLine = (line)=>{
+          const trimmed = (line || "").trim();
+          if(!trimmed) return;
+          if(trimmed.includes("event: done")){
+            doneSeen = true;
+            return;
+          }
+          if(trimmed.startsWith("data:")){
+            const delta = trimmed.replace(/^data:\s?/, "").replaceAll("\\n","\n");
+            applyDelta(delta);
+          }
+        };
 
-          for(const chunk of parts){
-            const cframe = (chunk || "").trim();
-            if(!cframe) continue;
-
-            if(cframe.includes("event: error")){
-              const line = cframe.split("\n").find(x=>x.startsWith("data:"));
-              const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-              if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-              const err = msg.replaceAll("\\n","\n").trim();
-              aiDiv.textContent = err;
-              attachMsgTools(aiDiv, err);
-              continue;
-            }
-            if(cframe.includes("event: done")) continue;
-
-            const lines = cframe.split("\n");
+        if(!reader){
+          const raw = await res.text().catch(()=> "");
+          raw.split(/\r?\n/).forEach(handleLine);
+        } else {
+          while(true){
+            const { value, done } = await reader.read();
+            if(done) break;
+            buffer += decoder.decode(value, { stream:true });
+            const lines = buffer.split(/\r?\n/);
+            buffer = lines.pop() || "";
             for(const line of lines){
-              if(line.startsWith("data:")){
-                const delta = line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-                if(delta){
-                  gotAnyToken = true;
-                  if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-                  full += delta;
-                  aiDiv.textContent = full;
-                  chatBox.scrollTop = chatBox.scrollHeight;
-                }
-              }
+              handleLine(line);
+              if(doneSeen) break;
             }
+            if(doneSeen) break;
+          }
+          if(buffer && !doneSeen){
+            handleLine(buffer);
           }
         }
 
