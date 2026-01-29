@@ -1072,6 +1072,116 @@
     }
     .toastActions button:hover{ box-shadow: var(--neon1); border-color: rgba(101,183,255,.32); }
 
+    /* ====== NBS BUILD-UP WIZARD ====== */
+    .wizardLayout{
+      display:grid;
+      grid-template-columns: minmax(240px, 320px) 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    @media (max-width: 980px){
+      .wizardLayout{ grid-template-columns: 1fr; }
+    }
+    .wizardPanel{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      box-shadow: var(--shadow2);
+      padding: 14px;
+    }
+    .wizardPanel h3{
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .wizardList{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .wizardList .item{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+    }
+    .wizardMain h3{
+      margin-top:0;
+      font-size: 16px;
+    }
+    .wizardField{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .wizardField label{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .wizardField input,
+    .wizardField select,
+    .wizardField textarea{
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: var(--font);
+    }
+    .wizardField textarea{ min-height: 90px; resize: vertical; }
+    .wizardRow{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 700px){
+      .wizardRow{ grid-template-columns: 1fr; }
+    }
+    .wizardActions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .layerCard{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .layerCard header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size: 12px;
+      color: var(--muted2);
+      margin-bottom: 8px;
+    }
+    .layerControls{
+      display:flex;
+      gap: 6px;
+    }
+    .layerControls button{
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+    .reviewCard{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.2);
+      padding: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
     /* ====== MODAL ====== */
     .modalOverlay{
       position:fixed; inset:0;
@@ -1212,9 +1322,7 @@
             <button class="navpill" id="navTools" type="button" aria-label="Go to Tools">
               <span class="dot" aria-hidden="true"></span> Tools
             </button>
-            <button class="navpill" id="navFuture" type="button" aria-label="Go to Roadmap">
-              <span class="dot" aria-hidden="true"></span> Roadmap
-            </button>
+            <!-- All features now live on the main page -->
           </div>
         </div>
 
@@ -1241,9 +1349,7 @@
           <button class="railBtn" type="button" onclick="document.getElementById('navTools').click()">
             🧰 <span class="hint">Tools</span>
           </button>
-          <button class="railBtn" type="button" onclick="document.getElementById('navFuture').click()">
-            🚀 <span class="hint">Roadmap</span>
-          </button>
+          <!-- All features now live on the main page -->
         </div>
       </aside>
 
@@ -1358,8 +1464,8 @@
             <!-- Right: “What you’re building next” (your list, productized) -->
             <div class="panel">
               <div class="panelHead">
-                <div class="t">Next integrations</div>
-                <span class="tag">Roadmap</span>
+                <div class="t">Available now</div>
+                <span class="tag live">Preview access</span>
               </div>
               <div class="panelBody">
                 <div class="list">
@@ -1368,28 +1474,28 @@
                       <b>TGD Smart Checker</b>
                       <div class="s">Upload a plan or describe a scheme → instant red flags, mapped to correct TGD parts.</div>
                     </div>
-                    <span class="badge">Core</span>
+                    <span class="badge">Available</span>
                   </div>
                   <div class="li">
                     <div>
                       <b>Submission Pack Builder</b>
                       <div class="s">Fire + DAC outputs → combined bundle with drawing index + cover letter templates.</div>
                     </div>
-                    <span class="badge">Core</span>
+                    <span class="badge">Available</span>
                   </div>
                   <div class="li">
                     <div>
                       <b>Design Debate Room</b>
                       <div class="s">Two AIs argue for/against (sprinklers vs passive etc.) and converge on best choice.</div>
                     </div>
-                    <span class="badge">Decision</span>
+                    <span class="badge">Available</span>
                   </div>
                   <div class="li">
                     <div>
                       <b>Revit-first Layout Generator</b>
                       <div class="s">Areas + adjacencies → native rooms/walls/doors + reg-aware hints in-model.</div>
                     </div>
-                    <span class="badge">BIM</span>
+                    <span class="badge">Available</span>
                   </div>
                 </div>
 
@@ -1397,6 +1503,338 @@
                   <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
                   <div>Built by Abdulraheem Hayder Ahmed</div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Platform modules</div>
+              <span class="tag live">Main suite</span>
+            </div>
+            <div class="panelBody">
+              <div class="featureGrid">
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">SC</div>
+                      <div>
+                        <h4>TGD Smart Checker</h4>
+                        <p>Upload a plan or describe a scheme. Get red flags, likely non-compliances, and fix suggestions mapped to TGDs.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Compliance</span>
+                    <button
+                      class="btn primary"
+                      data-module="tgd-smart-checker"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">FCS</div>
+                      <div>
+                        <h4>Fire Safety Certificate Generator (Non-dwellings)</h4>
+                        <p>TGD B questionnaire that produces a structured Fire Safety Certificate report and submission checklist.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Fire</span>
+                    <button
+                      class="btn primary"
+                      data-module="fire-safety-cert"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">DAC</div>
+                      <div>
+                        <h4>Disability Access Certificate (DAC) Generator</h4>
+                        <p>TGD M questionnaire capturing access strategy details with risk highlights and a DAC report draft.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Access</span>
+                    <button
+                      class="btn primary"
+                      data-module="dac-generator"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">PK</div>
+                      <div>
+                        <h4>Submission Pack Builder</h4>
+                        <p>Combine Fire + DAC outputs into a ready-to-submit bundle with report, drawing index, and cover letters.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Docs</span>
+                    <button
+                      class="btn primary"
+                      data-module="submission-pack"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">DB</div>
+                      <div>
+                        <h4>Design Debate Room</h4>
+                        <p>Two AIs argue for/against design options, then converge on a recommended choice with reasoning.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Decision</span>
+                    <button
+                      class="btn primary"
+                      data-module="design-debate"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">SIM</div>
+                      <div>
+                        <h4>“What-If” Reg Simulator</h4>
+                        <p>Change height, area, occupancy, or use and see Fire, DAC, Planning, and energy impacts shift.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Simulator</span>
+                    <button
+                      class="btn primary"
+                      data-module="what-if-simulator"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">NBS</div>
+                      <div>
+                    <h4>NBS Build-up Wizard</h4>
+                    <p>Guided build-up wizard for specification-ready element data and structured export outputs.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Specs</span>
+                    <button
+                      class="btn primary"
+                      data-module="nbs-buildup"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">RS</div>
+                      <div>
+                        <h4>Reverse Spec from Datasheet</h4>
+                        <p>Paste a datasheet or link and get a draft spec clause with missing performance data flagged.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Spec Assist</span>
+                    <button
+                      class="btn primary"
+                      data-module="reverse-spec"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">LAY</div>
+                      <div>
+                        <h4>AI Layout Generator (Revit-first)</h4>
+                        <p>Send building type, areas, adjacencies, constraints — generate native layout options in Revit.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">BIM</span>
+                    <button
+                      class="btn primary"
+                      data-module="layout-generator"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">RH</div>
+                      <div>
+                        <h4>Reg-Aware Layout Hints</h4>
+                        <p>In-model warnings for escape distances, corridor widths, turning circles, and other TGD issues.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Compliance</span>
+                    <button
+                      class="btn primary"
+                      data-module="layout-hints"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">BER</div>
+                      <div>
+                        <h4>BER / DEAP Copilot</h4>
+                        <p>Upload BIM exports later. Extract systems and areas, pre-fill DEAP inputs, and guide the rest.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Energy</span>
+                    <button
+                      class="btn primary"
+                      data-module="ber-copilot"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">CMP</div>
+                      <div>
+                        <h4>Option-to-Option BER Comparison</h4>
+                        <p>Compare design variants and see how geometry and fabric changes impact BER and energy outputs.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Comparison</span>
+                    <button
+                      class="btn primary"
+                      data-module="ber-comparison"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">ED</div>
+                      <div>
+                        <h4>Learning Mode for Students</h4>
+                        <p>Hints, clause breakdowns, and quizzes to learn TGDs, spec logic, and energy rules.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Education</span>
+                    <button
+                      class="btn primary"
+                      data-module="learning-mode"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">CL</div>
+                      <div>
+                        <h4>Client Explain Mode</h4>
+                        <p>Convert technical outputs into plain English for client-facing reports and emails.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Client</span>
+                    <button
+                      class="btn primary"
+                      data-module="client-explain"
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
               </div>
             </div>
           </div>
@@ -1412,10 +1850,10 @@
                   Keep conversations clean with saved sessions. Use Evidence mode for stricter, citation-ready answers (ideal for regs / reports).
                 </p>
               </div>
-              <div class="heroBadges">
-                <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
-                <span class="tag">Keyboard: <span class="kbd">Enter</span> send • <span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline</span>
-              </div>
+            <div class="heroBadges">
+              <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
+              <span class="tag">Keyboard: <span class="kbd">Enter</span> send • <span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline</span>
+            </div>
             </div>
             <div class="quote">
               Tip: click <b>Chat</b> again to pop open your <b>Saved chats</b> drawer.
@@ -1489,11 +1927,11 @@
                 </div>
 
                 <div style="margin-top:14px" class="muted">
-                  <b>Upcoming modes:</b> Learning Mode (students) + Client Explain Mode (plain English for reports/emails).
+                  <b>Available modes:</b> Learning Mode (students) + Client Explain Mode (plain English for reports/emails).
                 </div>
 
                 <div style="margin-top:14px">
-                  <button class="btn" type="button" onclick="document.getElementById('navFuture').click()">See roadmap</button>
+                  <button class="btn" type="button" onclick="document.getElementById('navHome').click()">Browse modules</button>
                 </div>
               </div>
             </aside>
@@ -1506,15 +1944,15 @@
             <div class="heroHead">
               <div>
                 <h2>Tools</h2>
-                <p>Guided workflows: you answer questions; Raheem AI produces structured outputs ready for review and submission packs.</p>
+                <p>Every tool is available now in preview mode. You answer questions; Raheem AI produces structured outputs ready for review and submission packs.</p>
               </div>
               <div class="heroBadges">
-                <span class="tag">Questionnaires</span>
-                <span class="tag">Report-ready</span>
+                <span class="tag live">Available now</span>
+                <span class="tag">Preview mode</span>
               </div>
             </div>
             <div class="quote">
-              Start next: <b>NBS-style Spec Generator</b> + <b>Fire (TGD B) & DAC (TGD M)</b> questionnaires.
+              All tools below are live in preview so you can explore the full platform today.
             </div>
           </div>
 
@@ -1528,11 +1966,17 @@
                     <p>Guided questionnaire based on TGD B → structured Fire Safety report + submission checklist.</p>
                   </div>
                 </div>
-                <span class="pill">Next</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Non-dwellings</span>
-                <button class="btn" data-soon="Fire Safety Questionnaire" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-module="fire-safety-cert"
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1545,11 +1989,17 @@
                     <p>TGD M questionnaire → DAC report draft with non-compliance risks highlighted.</p>
                   </div>
                 </div>
-                <span class="pill">Next</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Access & use</span>
-                <button class="btn" data-soon="DAC Questionnaire" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-module="dac-generator"
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1558,15 +2008,21 @@
                 <div class="cardtitle">
                   <div class="icon">NBS</div>
                   <div>
-                    <h4>NBS-Style Specification Generator</h4>
-                    <p>Brief → structured spec clauses with performance requirements + placeholders for products.</p>
+                  <h4>NBS Build-up Wizard</h4>
+                  <p>Guided build-up wizard → spec-ready data + structured export outputs.</p>
                   </div>
                 </div>
-                <span class="pill live">Start here</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Specs</span>
-                <button class="btn" data-soon="NBS Spec Generator" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-module="nbs-buildup"
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1579,11 +2035,17 @@
                     <p>Upload BIM export later (IFC/gbXML). Extract areas/systems → guide remaining inputs and outputs key results.</p>
                   </div>
                 </div>
-                <span class="pill">Roadmap</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Energy</span>
-                <button class="btn" data-soon="BER / DEAP Copilot" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-module="ber-copilot"
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1596,11 +2058,17 @@
                     <p>Paste a datasheet/link → draft spec clause + missing performance data called out.</p>
                   </div>
                 </div>
-                <span class="pill">Roadmap</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Spec Assist</span>
-                <button class="btn" data-soon="Reverse Spec from Datasheet" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-module="reverse-spec"
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
 
@@ -1613,11 +2081,17 @@
                     <p>Combine Fire + DAC outputs into a submission bundle with cover letters and indices.</p>
                   </div>
                 </div>
-                <span class="pill">Roadmap</span>
+                <span class="pill live">Available</span>
               </div>
               <div class="cta">
                 <span class="pill">Docs</span>
-                <button class="btn" data-soon="Submission Pack Builder" type="button">Preview</button>
+                <button
+                  class="btn primary"
+                  data-module="submission-pack"
+                  type="button"
+                >
+                  Open
+                </button>
               </div>
             </article>
           </div>
@@ -1628,133 +2102,482 @@
           </div>
         </section>
 
-        <!-- ====== ROADMAP ====== -->
-        <section class="view" id="viewFuture">
+        <!-- ====== MODULE PAGES ====== -->
+        <section class="view moduleView" id="module-tgd-smart-checker" data-title="TGD Smart Checker" data-hint="Instant compliance triage for early-stage schemes">
           <div class="hero">
             <div class="heroHead">
               <div>
-                <h2>Roadmap</h2>
-                <p>Multi-agent decision tools, BIM layout, reg-aware hints, energy comparisons, and client/student modes.</p>
+                <h2>TGD Smart Checker</h2>
+                <p>Upload a plan or describe a scheme and get red flags, likely non-compliances, and suggested design fixes mapped to the correct TGD parts.</p>
               </div>
               <div class="heroBadges">
-                <span class="tag">Preview</span>
-                <span class="tag">Testing-first</span>
+                <span class="tag live">Available</span>
+                <span class="tag">Compliance</span>
               </div>
             </div>
-            <div class="quote">
-              Roadmap items are previews. Availability depends on testing, performance, and data coverage.
+            <div class="quote">Best for early checks, pre-planning reviews, and fast sanity passes before deep design work.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
             </div>
           </div>
 
-          <div style="margin-top:14px" class="featureGrid">
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">DB</div>
-                  <div>
-                    <h4>Design Debate Room</h4>
-                    <p>Two AIs argue for/against an option (sprinklers vs passive, timber vs block) then converge on a recommendation.</p>
-                  </div>
-                </div>
-                <span class="pill">Decision</span>
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">What it covers</div>
+              <span class="tag">Preview workflow</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Scheme summary, key constraints, occupancy, height/area, and any drawings or notes.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Non-compliance risks with clause references, fixes, and design notes for follow-up.</div></div></div>
+                <div class="li"><div><b>Deliverables</b><div class="s">Structured red-flag list ready to drop into early design reports.</div></div></div>
               </div>
-              <div class="cta">
-                <span class="pill">Multi-agent</span>
-                <button class="btn" data-soon="Design Debate Room" type="button">Preview</button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">SIM</div>
-                  <div>
-                    <h4>“What-If” Reg Simulator</h4>
-                    <p>Change height/area/occupancy and see Fire, DAC, Planning and energy implications shift instantly.</p>
-                  </div>
-                </div>
-                <span class="pill">Decision</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Simulator</span>
-                <button class="btn" data-soon="What-If Reg Simulator" type="button">Preview</button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">LAY</div>
-                  <div>
-                    <h4>AI Layout Generator (Revit-first)</h4>
-                    <p>Send areas/adjacencies/constraints → generate native Revit rooms/walls/doors + reg-aware hints.</p>
-                  </div>
-                </div>
-                <span class="pill">BIM</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Revit plugin</span>
-                <button class="btn" data-soon="AI Layout Generator" type="button">Preview</button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">RH</div>
-                  <div>
-                    <h4>Reg-Aware Layout Hints</h4>
-                    <p>In-model warnings for escape distances, corridor widths, turning circles, and other TGD issues.</p>
-                  </div>
-                </div>
-                <span class="pill">BIM</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Compliance overlays</span>
-                <button class="btn" data-soon="Reg-Aware Layout Hints" type="button">Preview</button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">ED</div>
-                  <div>
-                    <h4>Learning Mode for Students</h4>
-                    <p>Hints, clause breakdowns, quizzes — learn TGDs, spec logic and energy rules while using the tool.</p>
-                  </div>
-                </div>
-                <span class="pill">Education</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Study mode</span>
-                <button class="btn" data-soon="Learning Mode for Students" type="button">Preview</button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">CL</div>
-                  <div>
-                    <h4>Client Explain Mode</h4>
-                    <p>Convert technical outputs (Fire, DAC, BER, planning issues) into simple client-friendly text for reports/emails.</p>
-                  </div>
-                </div>
-                <span class="pill">Client</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Plain English</span>
-                <button class="btn" data-soon="Client Explain Mode" type="button">Preview</button>
-              </div>
-            </article>
-          </div>
-
-          <div class="footer">
-            <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-            <div>Roadmap preview</div>
+            </div>
           </div>
         </section>
+
+        <section class="view moduleView" id="module-fire-safety-cert" data-title="Fire Safety Certificate Generator" data-hint="TGD B-driven fire certification workflow">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Fire Safety Certificate Generator (Non-dwellings)</h2>
+                <p>Guided questionnaire based on TGD B that produces a structured Fire Safety Certificate report and a submission checklist.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Fire</span>
+              </div>
+            </div>
+            <div class="quote">Collects the right inputs in the right order to reduce revisions during certification.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Workflow highlights</div>
+              <span class="tag">Report-ready</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Occupancy, compartmentation, fire strategy, detection, suppression, and escape routes.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Fire Safety Certificate report draft with structured sections and compliance notes.</div></div></div>
+                <div class="li"><div><b>Checklist</b><div class="s">Submission checklist tailored for non-dwellings to reduce missing items.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-dac-generator" data-title="Disability Access Certificate Generator" data-hint="TGD M-driven DAC reporting">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Disability Access Certificate (DAC) Generator</h2>
+                <p>TGD M questionnaire capturing access strategy details and outputting a professional DAC report with risk highlights.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Access</span>
+              </div>
+            </div>
+            <div class="quote">Designed for consistent, compliant access narratives that are easy for reviewers to follow.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">What you get</div>
+              <span class="tag">DAC-ready</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Access routes, parking, entrances, vertical circulation, and sanitary provisions.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">DAC report draft with sectioned compliance statements and risk flags.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Ideal for early design reviews and certification submissions.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-submission-pack" data-title="Submission Pack Builder" data-hint="Bundle Fire + DAC into ready-to-submit packs">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Submission Pack Builder</h2>
+                <p>Combines Fire and DAC outputs into ready-to-use submission bundles with reports, drawing indices, and cover letter templates.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Docs</span>
+              </div>
+            </div>
+            <div class="quote">Keeps submissions consistent and avoids missing attachments.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Bundle contents</div>
+              <span class="tag">Pack builder</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Fire report, DAC report, drawing list, and project metadata.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Combined submission pack with cover letter and indexed drawings.</div></div></div>
+                <div class="li"><div><b>Export</b><div class="s">Structured pack ready for PDF packaging or client handoff.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-design-debate" data-title="Design Debate Room" data-hint="Multi-agent design tradeoff analysis">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Design Debate Room</h2>
+                <p>Two AIs argue for and against an option (sprinklers vs passive, timber vs block), then converge on a recommended choice.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Decision</span>
+              </div>
+            </div>
+            <div class="quote">Use for design reviews, value engineering, or option comparison workshops.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Decision workflow</div>
+              <span class="tag">Reasoned outputs</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Two or more design options with constraints and priorities.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Argument summary, risks, and a recommended path with rationale.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Internal design choices, client-facing justification, or consultant review.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-what-if-simulator" data-title="What-If Reg Simulator" data-hint="Instant compliance impact of design changes">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>“What-If” Reg Simulator</h2>
+                <p>Change height, area, occupancy, or use and see Fire, DAC, Planning, and energy implications shift instantly.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Simulator</span>
+              </div>
+            </div>
+            <div class="quote">Great for early feasibility testing and quick compliance sensitivity checks.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Scenario checks</div>
+              <span class="tag">Preview workflow</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Baseline scheme parameters and the change you want to test.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Impact summary across Fire, DAC, Planning, and BER with risks flagged.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Feasibility workshops, client comparisons, and design iterations.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-nbs-buildup" data-title="NBS Build-up Wizard" data-hint="Guided element build-up with spec-ready export">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>NBS Build-up Wizard</h2>
+                <p>Build element specifications with a guided wizard, validate required inputs, and export spec-ready JSON plus an original clause-style specification document.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Specs</span>
+              </div>
+            </div>
+            <div class="quote">No proprietary clause libraries used — all output is generated from your inputs in original language.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="wizardLayout" id="nbsWizard">
+            <aside class="wizardPanel" aria-label="Progress and missing items">
+              <h3>Progress</h3>
+              <div class="wizardList" id="nbsProgressList"></div>
+              <h3 style="margin-top:16px;">Missing items</h3>
+              <div class="wizardList" id="nbsMissingList"></div>
+              <h3 style="margin-top:16px;">Warnings</h3>
+              <div class="wizardList" id="nbsWarningList"></div>
+            </aside>
+
+            <div class="wizardPanel wizardMain" id="nbsWizardMain"></div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-reverse-spec" data-title="Reverse Spec from Datasheet" data-hint="Draft specs from product data">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Reverse Spec from Datasheet</h2>
+                <p>Paste a manufacturer datasheet or link and get a draft spec clause with gaps and missing performance data called out.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Spec Assist</span>
+              </div>
+            </div>
+            <div class="quote">Fast way to translate product data into spec language and catch missing details.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Spec extraction</div>
+              <span class="tag">Product-focused</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Datasheet text or URL, and required performance criteria.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Draft clause plus missing data checklist for procurement follow-up.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Product evaluation and specification QA.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-layout-generator" data-title="AI Layout Generator" data-hint="Revit-first layout generation">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>AI Layout Generator (Revit-first)</h2>
+                <p>Provide building type, areas, adjacencies, and constraints to generate layout options as native Revit rooms, walls, and doors.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">BIM</span>
+              </div>
+            </div>
+            <div class="quote">Turns planning constraints into layout concepts while keeping geometry editable.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Layout inputs</div>
+              <span class="tag">Revit-first</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Program areas, adjacency rules, core requirements, and constraints.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Layout options and room schedules ready for Revit iteration.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Early concept planning and quick option studies.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-layout-hints" data-title="Reg-Aware Layout Hints" data-hint="In-model compliance warnings">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Reg-Aware Layout Hints</h2>
+                <p>In-model warnings for escape distances, corridor widths, turning circles, and other TGD-related issues.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Compliance overlays</span>
+              </div>
+            </div>
+            <div class="quote">Surface compliance hints directly on the layout to reduce back-and-forth QA.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Hint types</div>
+              <span class="tag">BIM overlays</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Checks</b><div class="s">Escape routes, corridor widths, turning circles, and access clearances.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Visual warnings and a list of flagged items to address.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Realtime guidance during layout edits.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-ber-copilot" data-title="BER / DEAP Copilot" data-hint="Energy performance inputs and guidance">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>BER / DEAP Copilot</h2>
+                <p>Upload a BIM export (IFC/gbXML) to extract areas and systems, pre-fill DEAP-style data, and guide remaining inputs.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Energy</span>
+              </div>
+            </div>
+            <div class="quote">Streamlines BER preparation and highlights the biggest performance levers.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Energy workflow</div>
+              <span class="tag">BER-ready</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">BIM exports, fabric specs, HVAC systems, and renewables data.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Pre-filled BER dataset, energy summary, and sensitivity notes.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">BER submissions and quick energy option reviews.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-ber-comparison" data-title="Option-to-Option BER Comparison" data-hint="Compare two design energy variants">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Option-to-Option BER Comparison</h2>
+                <p>Compare two design variants and see how geometry and fabric changes affect BER, primary energy, and CO₂ outputs.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Comparison</span>
+              </div>
+            </div>
+            <div class="quote">Provides decision-ready energy comparisons for design reviews.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Comparison outputs</div>
+              <span class="tag">Option review</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Baseline and proposed variants with fabric, systems, and geometry data.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Delta summaries for BER, primary energy, and CO₂ emissions.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Option selection and client-facing energy tradeoffs.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-learning-mode" data-title="Learning Mode" data-hint="Student-friendly guidance and quizzes">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Learning Mode for Students</h2>
+                <p>Explanatory mode with hints, clause breakdowns, and quizzes to learn TGDs, spec logic, and energy rules.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Education</span>
+              </div>
+            </div>
+            <div class="quote">Guided learning that still keeps compliance context accurate and structured.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Learning tools</div>
+              <span class="tag">Explain mode</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Topic, TGD part, or practice question set.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Explanations, quizzes, and examples tied back to regulations.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Teaching, onboarding, and junior staff training.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view moduleView" id="module-client-explain" data-title="Client Explain Mode" data-hint="Plain-English outputs for clients">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Client Explain Mode</h2>
+                <p>Convert technical outputs (Fire, DAC, BER, planning issues) into clear client-friendly explanations for reports and emails.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Available</span>
+                <span class="tag">Client</span>
+              </div>
+            </div>
+            <div class="quote">Ideal for simplifying compliance outputs without losing essential meaning.</div>
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
+              <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Client-ready outputs</div>
+              <span class="tag">Plain English</span>
+            </div>
+            <div class="panelBody">
+              <div class="list">
+                <div class="li"><div><b>Inputs</b><div class="s">Compliance output or draft report sections to translate.</div></div></div>
+                <div class="li"><div><b>Outputs</b><div class="s">Clear summaries, action lists, and suggested next steps.</div></div></div>
+                <div class="li"><div><b>Use case</b><div class="s">Client emails, reports, and stakeholder updates.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
 
       <!-- Saved chats drawer -->
@@ -1794,13 +2617,13 @@
 
   <script>
     // =========================================================
-    // 1) HARD FIX: Always call backend with an explicit API_BASE
-    //    - No more fetch("/health") on Pages.
+    // 1) API CONFIG
     // =========================================================
     const CONFIG = {
-      API_BASE_DEFAULT: "https://complyr.onrender.com",   // <-- your backend
+      API_BASE_DEFAULT: "http://127.0.0.1:8001",
       HEALTH_PATH: "/health",
       CHAT_PATH: "/chat",
+      PDFS_PATH: "/pdfs",
       HEALTH_TIMEOUT_MS: 9000,
       STATUS_POLL_MS: 20000,
       WARM_PING_MS: 240000,
@@ -1808,11 +2631,30 @@
       CHAT_RETRY_ONCE: true
     };
 
-    // Allow override ONLY if it matches expected host (prevents random injection)
-    let API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || CONFIG.API_BASE_DEFAULT).replace(/\/+$/, "");
-    if (!API_BASE.startsWith(CONFIG.API_BASE_DEFAULT)) {
-      localStorage.removeItem("RAHEEM_API_BASE");
-      API_BASE = CONFIG.API_BASE_DEFAULT;
+    const API_BASE_STORAGE_KEY = "RAHEEM_API_BASE";
+    const API_BASE_LAST_OK_KEY = "RAHEEM_API_BASE_LAST_OK";
+    const apiParam = new URLSearchParams(window.location.search).get("api") || new URLSearchParams(window.location.search).get("api_base");
+    if(apiParam){
+      localStorage.setItem(API_BASE_STORAGE_KEY, apiParam);
+    }
+    const apiBaseOverride = (localStorage.getItem(API_BASE_STORAGE_KEY) || "").trim();
+    const lastKnownGoodBase = (localStorage.getItem(API_BASE_LAST_OK_KEY) || "").trim();
+    const inferredApiBase = (() => {
+      if(apiBaseOverride) return apiBaseOverride;
+      if(lastKnownGoodBase) return lastKnownGoodBase;
+      const host = window.location.hostname;
+      const isLocal = host === "127.0.0.1" || host === "localhost";
+      if(!isLocal && window.location.origin){
+        return window.location.origin;
+      }
+      return CONFIG.API_BASE_DEFAULT;
+    })();
+    const API_BASE = inferredApiBase.replace(/\/+$/, "");
+    function setApiBase(nextBase){
+      const trimmed = (nextBase || "").trim();
+      if(!trimmed) return;
+      localStorage.setItem(API_BASE_STORAGE_KEY, trimmed);
+      window.location.reload();
     }
     function apiUrl(path){
       if(!path) path = "/";
@@ -1896,21 +2738,20 @@
     const viewHome    = document.getElementById("viewHome");
     const viewChat    = document.getElementById("viewChat");
     const viewTools   = document.getElementById("viewTools");
-    const viewFuture  = document.getElementById("viewFuture");
+    const moduleViews = Array.from(document.querySelectorAll(".moduleView"));
     const chatList    = document.getElementById("chatList");
 
     const navHome   = document.getElementById("navHome");
     const navChat   = document.getElementById("navChat");
     const navTools  = document.getElementById("navTools");
-    const navFuture = document.getElementById("navFuture");
+    const navFuture = null;
 
     function setNavActive(which){
       // header pills
-      [navHome, navChat, navTools, navFuture].forEach(b=>b.classList.remove("active"));
+      [navHome, navChat, navTools].forEach(b=>b.classList.remove("active"));
       if(which==="home") navHome.classList.add("active");
       if(which==="chat") navChat.classList.add("active");
       if(which==="tools") navTools.classList.add("active");
-      if(which==="future") navFuture.classList.add("active");
 
       // rail buttons
       const railBtns = document.querySelectorAll(".railBtn");
@@ -1918,11 +2759,14 @@
       if(which==="home") railBtns[0]?.classList.add("active");
       if(which==="chat") railBtns[1]?.classList.add("active");
       if(which==="tools") railBtns[2]?.classList.add("active");
-      if(which==="future") railBtns[3]?.classList.add("active");
+    }
+
+    function hideAllViews(){
+      [viewHome, viewChat, viewTools, ...moduleViews].forEach(v=>v.classList.remove("show"));
     }
 
     function showView(which){
-      [viewHome, viewChat, viewTools, viewFuture].forEach(v=>v.classList.remove("show"));
+      hideAllViews();
 
       if(which==="home"){
         viewHome.classList.add("show");
@@ -1948,15 +2792,25 @@
         viewHintEl.textContent  = "Generators, specs, compliance workflows";
         chatList.classList.remove("show");
       }
-      if(which==="future"){
-        viewFuture.classList.add("show");
-        viewTitleEl.textContent = "Roadmap";
-        viewHintEl.textContent  = "Future features & integrations preview";
-        chatList.classList.remove("show");
-      }
 
       setNavActive(which);
       localStorage.setItem("RAHEEM_VIEW", which);
+    }
+
+    function showModule(moduleId){
+      const target = document.getElementById(`module-${moduleId}`);
+      if(!target) return;
+      hideAllViews();
+      target.classList.add("show");
+      viewTitleEl.textContent = target.dataset.title || "Module";
+      viewHintEl.textContent = target.dataset.hint || "Module overview";
+      chatList.classList.remove("show");
+      setNavActive(null);
+      localStorage.setItem("RAHEEM_VIEW", `module:${moduleId}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if(moduleId === "nbs-buildup"){
+        renderNbsWizard();
+      }
     }
 
     // Toggle drawer when clicking Chat pill repeatedly
@@ -1970,44 +2824,668 @@
     };
     navHome.onclick = ()=>showView("home");
     navTools.onclick = ()=>showView("tools");
-    navFuture.onclick = ()=>showView("future");
 
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenTools").onclick = ()=>showView("tools");
 
     window.addEventListener("DOMContentLoaded", () => {
-      const saved = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
-      showView(["home","chat","tools","future"].includes(saved) ? saved : "home");
+      const saved = (localStorage.getItem("RAHEEM_VIEW") || "home");
+      if(saved.startsWith("module:")){
+        const moduleId = saved.replace("module:", "").trim();
+        if(moduleId){
+          showModule(moduleId);
+          return;
+        }
+      }
+      showView(["home","chat","tools"].includes(saved) ? saved : "home");
     });
 
     // =========================================================
-    // Future previews: modal
+    // NBS Build-up Wizard
     // =========================================================
-    document.querySelectorAll("[data-soon]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const name = btn.getAttribute("data-soon") || "This feature";
-        openModal(
-          name + " (Preview)",
-          [
-            name + " is currently in development.",
-            "",
-            "What you'll get:",
-            "• Clean guided UI (not random popups)",
-            "• Structured outputs ready for review",
-            "• Faster workflows with less manual formatting",
-            "",
-            "Status:",
-            "• Planned → Prototyping → Testing → Release",
-            "",
-            "Want this sooner? Prioritize it in your roadmap list."
-          ].join("\n"),
-          [
-            { label:"Close", onClick: closeModal },
-            { label:"Go to Chat", primary:true, onClick: ()=>{ closeModal(); showView("chat"); } }
-          ]
-        );
+    const nbsWizardState = {
+      stepIndex: 0,
+      project: {
+        projectName: "",
+        projectType: "",
+        location: "",
+        stage: "",
+        performanceTargets: ""
+      },
+      elementsSelected: [],
+      externalWall: {
+        summary: {
+          wallSystemType: "",
+          totalThicknessMm: "",
+          externalFinish: "",
+          internalFinish: ""
+        },
+        layers: [],
+        performance: {
+          targetUValue: "",
+          fireRating: "None/Unknown",
+          acousticRequirement: "",
+          airtightnessNotes: "",
+          moistureStrategy: "Unknown"
+        },
+        standards: {
+          standardsNotes: ""
+        },
+        attachments: []
+      }
+    };
+
+    const nbsSteps = [
+      { key: "project", title: "Project basics" },
+      { key: "elements", title: "Choose elements" },
+      { key: "externalWall", title: "External wall module" },
+      { key: "review", title: "Review & export" }
+    ];
+
+    function renderNbsWizard(){
+      const progressList = document.getElementById("nbsProgressList");
+      const missingList = document.getElementById("nbsMissingList");
+      const warningList = document.getElementById("nbsWarningList");
+      const main = document.getElementById("nbsWizardMain");
+      if(!progressList || !missingList || !warningList || !main) return;
+
+      progressList.innerHTML = "";
+      nbsSteps.forEach((step, idx) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.textContent = `${idx + 1}. ${step.title}`;
+        if(idx === nbsWizardState.stepIndex){
+          item.style.borderColor = "rgba(80,255,215,.4)";
+          item.style.color = "rgba(244,247,255,.95)";
+        }
+        progressList.appendChild(item);
       });
-    });
+
+      const { blocking, warnings } = getNbsIssues();
+      missingList.innerHTML = blocking.length
+        ? blocking.map(text => `<div class="item">${text}</div>`).join("")
+        : `<div class="item">All required items complete.</div>`;
+      warningList.innerHTML = warnings.length
+        ? warnings.map(text => `<div class="item">${text}</div>`).join("")
+        : `<div class="item">No warnings.</div>`;
+
+      const stepKey = nbsSteps[nbsWizardState.stepIndex]?.key;
+      if(stepKey === "project") renderNbsProjectStep(main);
+      if(stepKey === "elements") renderNbsElementsStep(main);
+      if(stepKey === "externalWall") renderNbsExternalWallStep(main);
+      if(stepKey === "review") renderNbsReviewStep(main);
+    }
+
+    function renderNbsProjectStep(main){
+      main.innerHTML = `
+        <h3>Step 1: Project basics</h3>
+        <div class="wizardRow">
+          <div class="wizardField">
+            <label>Project name (required)</label>
+            <input data-field="projectName" value="${escapeHtml(nbsWizardState.project.projectName)}" />
+          </div>
+          <div class="wizardField">
+            <label>Project type (required)</label>
+            <select data-field="projectType">
+              ${renderOptions(["", "House", "Apartments", "Office", "School", "Other"], nbsWizardState.project.projectType)}
+            </select>
+          </div>
+        </div>
+        <div class="wizardRow">
+          <div class="wizardField">
+            <label>Location (required)</label>
+            <input data-field="location" value="${escapeHtml(nbsWizardState.project.location)}" />
+          </div>
+          <div class="wizardField">
+            <label>Stage (required)</label>
+            <select data-field="stage">
+              ${renderOptions(["", "Concept", "Planning", "Tender", "Construction"], nbsWizardState.project.stage)}
+            </select>
+          </div>
+        </div>
+        <div class="wizardField">
+          <label>Performance targets (optional)</label>
+          <textarea data-field="performanceTargets">${escapeHtml(nbsWizardState.project.performanceTargets)}</textarea>
+        </div>
+        <div class="wizardActions">
+          <button class="btn primary" id="nbsNextProject">Next</button>
+        </div>
+      `;
+      main.querySelectorAll("[data-field]").forEach(el => {
+        el.addEventListener("input", () => {
+          const key = el.getAttribute("data-field");
+          nbsWizardState.project[key] = el.value;
+          renderNbsWizard();
+        });
+      });
+      const nextBtn = document.getElementById("nbsNextProject");
+      nextBtn.disabled = !isProjectValid();
+      nextBtn.onclick = () => {
+        nbsWizardState.stepIndex = 1;
+        renderNbsWizard();
+      };
+    }
+
+    function renderNbsElementsStep(main){
+      const elementOptions = [
+        "External Wall",
+        "Internal Partition",
+        "Ground Floor",
+        "Upper Floor",
+        "Roof",
+        "Windows",
+        "Doors"
+      ];
+      main.innerHTML = `
+        <h3>Step 2: Choose elements</h3>
+        <div class="wizardField">
+          <label>Select at least one element</label>
+          <div class="wizardList">
+            ${elementOptions.map(opt => `
+              <label class="item" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" value="${opt}" ${nbsWizardState.elementsSelected.includes(opt) ? "checked" : ""}/>
+                <span>${opt}</span>
+              </label>
+            `).join("")}
+          </div>
+        </div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsPrevElements">Back</button>
+          <button class="btn primary" id="nbsNextElements">Next</button>
+        </div>
+      `;
+      main.querySelectorAll("input[type='checkbox']").forEach(el => {
+        el.addEventListener("change", () => {
+          const value = el.value;
+          if(el.checked){
+            if(!nbsWizardState.elementsSelected.includes(value)) nbsWizardState.elementsSelected.push(value);
+          } else {
+            nbsWizardState.elementsSelected = nbsWizardState.elementsSelected.filter(item => item !== value);
+          }
+          renderNbsWizard();
+        });
+      });
+      document.getElementById("nbsPrevElements").onclick = () => {
+        nbsWizardState.stepIndex = 0;
+        renderNbsWizard();
+      };
+      const nextBtn = document.getElementById("nbsNextElements");
+      nextBtn.disabled = nbsWizardState.elementsSelected.length === 0;
+      nextBtn.onclick = () => {
+        nbsWizardState.stepIndex = 2;
+        renderNbsWizard();
+      };
+    }
+
+    function renderNbsExternalWallStep(main){
+      if(!nbsWizardState.elementsSelected.includes("External Wall")){
+        const nextElement = nbsWizardState.elementsSelected[0] || "Element";
+        main.innerHTML = `
+          <h3>Step 3: ${escapeHtml(nextElement)} module</h3>
+          <p class="muted">This module is coming next. The data structure is reserved in the export.</p>
+          <div class="wizardActions">
+            <button class="btn" id="nbsPrevWall">Back</button>
+            <button class="btn primary" id="nbsNextWall">Next</button>
+          </div>
+        `;
+        document.getElementById("nbsPrevWall").onclick = () => {
+          nbsWizardState.stepIndex = 1;
+          renderNbsWizard();
+        };
+        document.getElementById("nbsNextWall").onclick = () => {
+          nbsWizardState.stepIndex = 3;
+          renderNbsWizard();
+        };
+        return;
+      }
+      const summary = nbsWizardState.externalWall.summary;
+      const performance = nbsWizardState.externalWall.performance;
+      const standards = nbsWizardState.externalWall.standards;
+      const layers = nbsWizardState.externalWall.layers;
+      main.innerHTML = `
+        <h3>Step 3: External wall module</h3>
+        <p class="muted">Other element modules are coming next, but their data structure will follow this pattern.</p>
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Element summary</h3>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>Wall system type (required)</label>
+              <select data-summary="wallSystemType">
+                ${renderOptions(["", "Cavity Masonry", "Timber Frame", "SFS", "Solid Masonry", "Rainscreen over Backup Wall", "Other"], summary.wallSystemType)}
+              </select>
+            </div>
+            <div class="wizardField">
+              <label>Total thickness (mm) (required)</label>
+              <input type="number" data-summary="totalThicknessMm" value="${escapeHtml(summary.totalThicknessMm)}" />
+            </div>
+          </div>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>External finish (required)</label>
+              <select data-summary="externalFinish">
+                ${renderOptions(["", "Brick", "Render", "Rainscreen", "Stone", "Other"], summary.externalFinish)}
+              </select>
+            </div>
+            <div class="wizardField">
+              <label>Internal finish (required)</label>
+              <select data-summary="internalFinish">
+                ${renderOptions(["", "Plasterboard", "Plaster", "Exposed", "Other"], summary.internalFinish)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Build-up layers</h3>
+          ${layers.length ? layers.map((layer, idx) => `
+            <div class="layerCard">
+              <header>
+                <span>Layer ${idx + 1}</span>
+                <div class="layerControls">
+                  <button class="btn" data-layer-action="up" data-layer-index="${idx}">↑</button>
+                  <button class="btn" data-layer-action="down" data-layer-index="${idx}">↓</button>
+                  <button class="btn" data-layer-action="remove" data-layer-index="${idx}">Remove</button>
+                </div>
+              </header>
+              <div class="wizardRow">
+                <div class="wizardField">
+                  <label>Layer name (required)</label>
+                  <input data-layer-field="layerName" data-layer-index="${idx}" value="${escapeHtml(layer.layerName)}" />
+                </div>
+                <div class="wizardField">
+                  <label>Material (required)</label>
+                  <input data-layer-field="material" data-layer-index="${idx}" value="${escapeHtml(layer.material)}" />
+                </div>
+              </div>
+              <div class="wizardRow">
+                <div class="wizardField">
+                  <label>Thickness (mm) (required)</label>
+                  <input type="number" data-layer-field="thicknessMm" data-layer-index="${idx}" value="${escapeHtml(layer.thicknessMm)}" />
+                </div>
+                <div class="wizardField">
+                  <label>Function (required)</label>
+                  <select data-layer-field="function" data-layer-index="${idx}">
+                    ${renderOptions(["", "Structural", "Insulation", "Vapour Control", "Air Barrier", "Sheathing", "Cavity", "Finish", "Other"], layer.function)}
+                  </select>
+                </div>
+              </div>
+              <div class="wizardRow">
+                <div class="wizardField">
+                  <label>Manufacturer (optional)</label>
+                  <input data-layer-field="manufacturer" data-layer-index="${idx}" value="${escapeHtml(layer.manufacturer || "")}" />
+                </div>
+                <div class="wizardField">
+                  <label>Product reference (optional)</label>
+                  <input data-layer-field="productRef" data-layer-index="${idx}" value="${escapeHtml(layer.productRef || "")}" />
+                </div>
+              </div>
+            </div>
+          `).join("") : `<div class="item">No layers added yet.</div>`}
+          <div class="wizardActions">
+            <button class="btn" id="nbsAddLayer">Add layer</button>
+          </div>
+        </div>
+
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Performance</h3>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>Target U-value (optional)</label>
+              <input type="number" data-performance="targetUValue" value="${escapeHtml(performance.targetUValue)}" />
+            </div>
+            <div class="wizardField">
+              <label>Fire rating (required)</label>
+              <select data-performance="fireRating">
+                ${renderOptions(["None/Unknown", "30", "60", "90", "120"], performance.fireRating)}
+              </select>
+            </div>
+          </div>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>Acoustic requirement (optional)</label>
+              <input data-performance="acousticRequirement" value="${escapeHtml(performance.acousticRequirement)}" placeholder="e.g. 45 dB Rw" />
+            </div>
+            <div class="wizardField">
+              <label>Moisture strategy (optional)</label>
+              <select data-performance="moistureStrategy">
+                ${renderOptions(["Unknown", "VCL internal", "VCL external", "Breathable", "Other"], performance.moistureStrategy)}
+              </select>
+            </div>
+          </div>
+          <div class="wizardField">
+            <label>Airtightness notes (optional)</label>
+            <textarea data-performance="airtightnessNotes">${escapeHtml(performance.airtightnessNotes)}</textarea>
+          </div>
+        </div>
+
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Compliance & standards</h3>
+          <div class="wizardField">
+            <label>Standards notes (optional)</label>
+            <textarea data-standards="standardsNotes">${escapeHtml(standards.standardsNotes)}</textarea>
+          </div>
+        </div>
+
+        <div class="wizardPanel">
+          <h3>Attachments</h3>
+          <div class="wizardField">
+            <label>Add note (optional)</label>
+            <textarea id="nbsAttachmentNote" placeholder="Paste notes or references here..."></textarea>
+          </div>
+          <div class="wizardActions">
+            <button class="btn" id="nbsAddNote">Add note</button>
+          </div>
+          ${renderAttachmentsList()}
+        </div>
+
+        <div class="wizardActions">
+          <button class="btn" id="nbsPrevWall">Back</button>
+          <button class="btn primary" id="nbsNextWall">Next</button>
+        </div>
+      `;
+
+      main.querySelectorAll("[data-summary]").forEach(el => {
+        el.addEventListener("input", () => {
+          summary[el.getAttribute("data-summary")] = el.value;
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-layer-field]").forEach(el => {
+        el.addEventListener("input", () => {
+          const idx = Number(el.getAttribute("data-layer-index"));
+          const key = el.getAttribute("data-layer-field");
+          layers[idx][key] = el.value;
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-layer-action]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.getAttribute("data-layer-index"));
+          const action = btn.getAttribute("data-layer-action");
+          if(action === "remove") layers.splice(idx, 1);
+          if(action === "up" && idx > 0) layers.splice(idx - 1, 0, layers.splice(idx, 1)[0]);
+          if(action === "down" && idx < layers.length - 1) layers.splice(idx + 1, 0, layers.splice(idx, 1)[0]);
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-performance]").forEach(el => {
+        el.addEventListener("input", () => {
+          performance[el.getAttribute("data-performance")] = el.value;
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-standards]").forEach(el => {
+        el.addEventListener("input", () => {
+          standards[el.getAttribute("data-standards")] = el.value;
+          renderNbsWizard();
+        });
+      });
+      document.getElementById("nbsAddLayer").onclick = () => {
+        layers.push({
+          layerName: "",
+          material: "",
+          thicknessMm: "",
+          function: "",
+          manufacturer: "",
+          productRef: ""
+        });
+        renderNbsWizard();
+      };
+      document.getElementById("nbsAddNote").onclick = () => {
+        const note = document.getElementById("nbsAttachmentNote").value.trim();
+        if(!note) return;
+        nbsWizardState.externalWall.attachments.push({
+          type: "note",
+          name: `Note ${nbsWizardState.externalWall.attachments.length + 1}`,
+          contentOrUrl: note
+        });
+        renderNbsWizard();
+      };
+      document.getElementById("nbsPrevWall").onclick = () => {
+        nbsWizardState.stepIndex = 1;
+        renderNbsWizard();
+      };
+      const nextBtn = document.getElementById("nbsNextWall");
+      nextBtn.disabled = !isExternalWallValid();
+      nextBtn.onclick = () => {
+        nbsWizardState.stepIndex = 3;
+        renderNbsWizard();
+      };
+    }
+
+    function renderNbsReviewStep(main){
+      const payload = buildNbsPayload();
+      const specMarkdown = buildNbsSpecMarkdown(payload);
+      main.innerHTML = `
+        <h3>Step 4: Review & export</h3>
+        <div class="reviewCard">${escapeHtml(JSON.stringify(payload, null, 2))}</div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsCopyJson">Copy JSON</button>
+          <button class="btn" id="nbsDownloadJson">Download JSON</button>
+        </div>
+        <h3 style="margin-top:16px;">Specification document (preview)</h3>
+        <div class="reviewCard">${escapeHtml(specMarkdown)}</div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsCopySpec">Copy Spec (Markdown)</button>
+          <button class="btn" id="nbsDownloadSpecHtml">Download Spec (HTML)</button>
+          <button class="btn" id="nbsDownloadSpecPdf">Download Spec (PDF)</button>
+        </div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsPrevReview">Back</button>
+        </div>
+      `;
+      document.getElementById("nbsCopyJson").onclick = () => copyToClipboard(JSON.stringify(payload, null, 2));
+      document.getElementById("nbsDownloadJson").onclick = () => downloadBlob(JSON.stringify(payload, null, 2), "nbs-spec.json", "application/json");
+      document.getElementById("nbsCopySpec").onclick = () => copyToClipboard(specMarkdown);
+      document.getElementById("nbsDownloadSpecHtml").onclick = () => {
+        const html = buildNbsSpecHtml(payload);
+        downloadBlob(html, "nbs-spec.html", "text/html");
+      };
+      document.getElementById("nbsDownloadSpecPdf").onclick = () => {
+        const html = buildNbsSpecHtml(payload);
+        const printWindow = window.open("", "_blank");
+        if(!printWindow) return;
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+      };
+      document.getElementById("nbsPrevReview").onclick = () => {
+        nbsWizardState.stepIndex = 2;
+        renderNbsWizard();
+      };
+    }
+
+    function renderAttachmentsList(){
+      const attachments = nbsWizardState.externalWall.attachments;
+      if(!attachments.length) return `<div class="item">No attachments added.</div>`;
+      return `
+        <div class="wizardList">
+          ${attachments.map((att, idx) => `
+            <div class="item">
+              <div><b>${escapeHtml(att.name || `Attachment ${idx + 1}`)}</b></div>
+              <div class="muted">${escapeHtml(att.type)} - ${escapeHtml(att.contentOrUrl || "")}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderOptions(options, selected){
+      return options.map(opt => {
+        const value = opt;
+        const label = opt || "Select…";
+        return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      }).join("");
+    }
+
+    function isProjectValid(){
+      const p = nbsWizardState.project;
+      return p.projectName.trim() && p.projectType.trim() && p.location.trim() && p.stage.trim();
+    }
+
+    function isExternalWallValid(){
+      const summary = nbsWizardState.externalWall.summary;
+      const requiredSummary = summary.wallSystemType && summary.totalThicknessMm && summary.externalFinish && summary.internalFinish;
+      const layersOk = nbsWizardState.externalWall.layers.length > 0 && nbsWizardState.externalWall.layers.every(layer =>
+        layer.layerName && layer.material && layer.thicknessMm && layer.function
+      );
+      return requiredSummary && layersOk && nbsWizardState.externalWall.performance.fireRating;
+    }
+
+    function getNbsIssues(){
+      const blocking = [];
+      const warnings = [];
+      if(!isProjectValid()){
+        if(!nbsWizardState.project.projectName.trim()) blocking.push("Project name is required.");
+        if(!nbsWizardState.project.projectType.trim()) blocking.push("Project type is required.");
+        if(!nbsWizardState.project.location.trim()) blocking.push("Location is required.");
+        if(!nbsWizardState.project.stage.trim()) blocking.push("Stage is required.");
+      }
+      if(nbsWizardState.elementsSelected.length === 0){
+        blocking.push("Select at least one element.");
+      }
+      const summary = nbsWizardState.externalWall.summary;
+      if(nbsWizardState.elementsSelected.includes("External Wall")){
+        if(!summary.wallSystemType) blocking.push("External wall system type is required.");
+        if(!summary.totalThicknessMm) blocking.push("External wall total thickness is required.");
+        if(!summary.externalFinish) blocking.push("External wall external finish is required.");
+        if(!summary.internalFinish) blocking.push("External wall internal finish is required.");
+        if(nbsWizardState.externalWall.layers.length === 0){
+          blocking.push("Add at least one build-up layer.");
+        }
+      }
+      if(nbsWizardState.externalWall.performance.fireRating === "None/Unknown"){
+        warnings.push("Fire rating is set to None/Unknown.");
+      }
+      const thicknessMismatch = getThicknessMismatch();
+      if(thicknessMismatch > 5){
+        warnings.push(`Total thickness differs from sum of layers by ${thicknessMismatch} mm.`);
+      }
+      return { blocking, warnings };
+    }
+
+    function getThicknessMismatch(){
+      const total = Number(nbsWizardState.externalWall.summary.totalThicknessMm || 0);
+      const sum = nbsWizardState.externalWall.layers.reduce((acc, layer) => acc + Number(layer.thicknessMm || 0), 0);
+      return Math.abs(total - sum);
+    }
+
+    function buildNbsPayload(){
+      const elements = [];
+      if(nbsWizardState.elementsSelected.includes("External Wall")){
+        elements.push({
+          elementType: "ExternalWall",
+          summary: { ...nbsWizardState.externalWall.summary },
+          layers: nbsWizardState.externalWall.layers.map(layer => ({ ...layer })),
+          performance: { ...nbsWizardState.externalWall.performance },
+          standards: { ...nbsWizardState.externalWall.standards },
+          attachments: nbsWizardState.externalWall.attachments.map(att => ({ ...att }))
+        });
+      }
+      nbsWizardState.elementsSelected.forEach(element => {
+        if(element !== "External Wall"){
+          elements.push({
+            elementType: element.replace(/\s+/g, ""),
+            summary: {},
+            layers: [],
+            performance: {},
+            standards: {},
+            attachments: []
+          });
+        }
+      });
+      return {
+        project: { ...nbsWizardState.project },
+        elements
+      };
+    }
+
+    function buildNbsSpecMarkdown(payload){
+      const lines = [];
+      lines.push(`# Specification Document`);
+      lines.push(`Project: ${payload.project.projectName}`);
+      lines.push(`Location: ${payload.project.location}`);
+      lines.push(`Stage: ${payload.project.stage}`);
+      if(payload.project.performanceTargets){
+        lines.push(`Performance targets: ${payload.project.performanceTargets}`);
+      }
+      lines.push("");
+      payload.elements.forEach(element => {
+        if(element.elementType === "ExternalWall"){
+          lines.push(`## External walls`);
+          lines.push(`- System type: ${element.summary.wallSystemType || "Not specified"}`);
+          lines.push(`- Total thickness: ${element.summary.totalThicknessMm || "Not specified"} mm`);
+          lines.push(`- External finish: ${element.summary.externalFinish || "Not specified"}`);
+          lines.push(`- Internal finish: ${element.summary.internalFinish || "Not specified"}`);
+          lines.push(`- Fire rating: ${element.performance.fireRating || "None/Unknown"} minutes`);
+          if(element.performance.targetUValue) lines.push(`- Target U-value: ${element.performance.targetUValue} W/m²K`);
+          if(element.performance.acousticRequirement) lines.push(`- Acoustic requirement: ${element.performance.acousticRequirement}`);
+          if(element.performance.moistureStrategy) lines.push(`- Moisture strategy: ${element.performance.moistureStrategy}`);
+          if(element.performance.airtightnessNotes) lines.push(`- Airtightness notes: ${element.performance.airtightnessNotes}`);
+          lines.push(`- Build-up layers:`);
+          element.layers.forEach((layer, idx) => {
+            lines.push(`  - Layer ${idx + 1}: ${layer.layerName} | ${layer.material} | ${layer.thicknessMm} mm | ${layer.function}`);
+          });
+          if(element.standards.standardsNotes){
+            lines.push(`- Standards notes: ${element.standards.standardsNotes}`);
+          }
+          lines.push("");
+          return;
+        }
+        const heading = element.elementType
+          .replace(/([A-Z])/g, " $1")
+          .replace(/\s+/g, " ")
+          .trim();
+        lines.push(`## ${heading}`);
+        lines.push(`- Module stub: details to be completed.`);
+        lines.push("");
+      });
+      return lines.join("\n");
+    }
+
+    function buildNbsSpecHtml(payload){
+      const markdown = buildNbsSpecMarkdown(payload);
+      const htmlLines = markdown.split("\n").map(line => {
+        if(line.startsWith("## ")){ return `<h2>${escapeHtml(line.replace("## ", ""))}</h2>`; }
+        if(line.startsWith("# ")){ return `<h1>${escapeHtml(line.replace("# ", ""))}</h1>`; }
+        if(line.startsWith("- ")){ return `<li>${escapeHtml(line.replace("- ", ""))}</li>`; }
+        if(line.trim() === "") return "<br/>";
+        return `<p>${escapeHtml(line)}</p>`;
+      }).join("\n");
+      return `
+        <html>
+          <head>
+            <meta charset="utf-8"/>
+            <title>Specification Document</title>
+            <style>
+              body{ font-family: Arial, sans-serif; padding: 24px; line-height: 1.6; }
+              h1{ margin-bottom: 8px; }
+              h2{ margin-top: 18px; }
+              ul{ margin-left: 18px; }
+            </style>
+          </head>
+          <body>${htmlLines}</body>
+        </html>
+      `;
+    }
+
+    function copyToClipboard(text){
+      navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard."), () => showToast("Copy failed."));
+    }
+
+    function downloadBlob(content, filename, type){
+      const blob = new Blob([content], { type: type || "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
 
     // =========================================================
     // Particles
@@ -2100,6 +3578,7 @@
           STATUS.lastOkTs = Date.now();
           STATUS.lastErr = "";
           STATUS.lastJson = json;
+          localStorage.setItem(API_BASE_LAST_OK_KEY, API_BASE);
           return { ok:true, json };
         }
         STATUS.lastErr = "HTTP " + res.status + " " + txt.slice(0,300);
@@ -2169,26 +3648,57 @@
         );
         showToast("Online.");
       } else {
-        openModal(
-          "Backend status",
-          [
-            "API Base: " + API_BASE,
-            "State: " + STATUS.state,
-            "",
-            "Error:",
-            STATUS.lastErr || "Unknown error",
-            "",
-            "Tip:",
-            "If you're on Render free-tier, cold starts are normal.",
-            "Turn on 'Keep warm' in Chat to reduce cold starts."
-          ].join("\n"),
-          [
-            { label:"Close", onClick: closeModal },
-            { label:"Retry now", primary:true, onClick: async ()=>{ closeModal(); await refreshStatusPill(); } }
-          ]
-        );
+        openApiBaseSettings([
+          `API Base: ${API_BASE}`,
+          `State: ${STATUS.state}`,
+          "",
+          "Error:",
+          STATUS.lastErr || "Unknown error",
+          "",
+          "Tip:",
+          "If you're on Render free-tier, cold starts are normal.",
+          "Turn on 'Keep warm' in Chat to reduce cold starts."
+        ].join("\n"));
       }
     };
+
+    function openApiBaseSettings(statusText){
+      modalTitle.textContent = "API base settings";
+      modalFoot.innerHTML = "";
+      modalFoot.style.display = "flex";
+      modalBody.innerHTML = `
+        <div style="white-space:pre-wrap; font-size:12px; color: rgba(244,247,255,.7); margin-bottom:12px;">
+          ${escapeHtml(statusText || "")}
+        </div>
+        <div style="margin-bottom:10px; color: rgba(244,247,255,.8);">
+          Chat requests must reach your FastAPI backend. Set the API base to the backend origin (e.g. https://your-backend.onrender.com).
+        </div>
+        <input id="__apiBaseInput" type="text" value="${escapeHtml(apiBaseOverride || API_BASE)}"
+          style="width:100%; padding: 12px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14);
+          background: rgba(0,0,0,.20); color: rgba(244,247,255,.95); outline:none;"
+        />
+        <div style="margin-top:8px; font-size:12px; color: rgba(244,247,255,.6);">
+          Tip: you can also pass ?api=https://your-backend.onrender.com in the URL to set this automatically.
+        </div>
+      `;
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.className = "btn primary";
+      saveBtn.textContent = "Save API base";
+      saveBtn.onclick = () => {
+        const value = document.getElementById("__apiBaseInput")?.value || "";
+        setApiBase(value);
+      };
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "btn";
+      closeBtn.textContent = "Close";
+      closeBtn.onclick = closeModal;
+      modalFoot.appendChild(closeBtn);
+      modalFoot.appendChild(saveBtn);
+      modalOverlay.classList.add("show");
+      setTimeout(()=> document.getElementById("__apiBaseInput")?.focus(), 50);
+    }
 
     // Start status polling
     refreshStatusPill();
@@ -2221,6 +3731,16 @@
     // =========================================================
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
+
+    // =========================================================
+    // Module navigation
+    // =========================================================
+    document.querySelectorAll("[data-module]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const moduleId = btn.getAttribute("data-module");
+        if(moduleId) showModule(moduleId);
+      });
+    });
     const sendBtn = document.getElementById("send");
     const forceDocsEl = document.getElementById("forceDocs");
     const typewriterEl = document.getElementById("typewriter");
@@ -2236,6 +3756,27 @@
 
     const STORAGE_KEY = "raheem_ai_chats_v6";
     const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
+    const CHAT_ID_KEY = "complyr_chat_id";
+    const ACTIVE_PDF_KEY = "complyr_active_pdf";
+
+    function getChatId(){
+      let chatId = (localStorage.getItem(CHAT_ID_KEY) || "").trim();
+      if(!chatId){
+        chatId = "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+        localStorage.setItem(CHAT_ID_KEY, chatId);
+      }
+      return chatId;
+    }
+
+    let activePdf = (localStorage.getItem(ACTIVE_PDF_KEY) || "").trim();
+    function setActivePdf(pdfName){
+      activePdf = (pdfName || "").trim();
+      if(activePdf){
+        localStorage.setItem(ACTIVE_PDF_KEY, activePdf);
+      } else {
+        localStorage.removeItem(ACTIVE_PDF_KEY);
+      }
+    }
 
     function loadAllChats(){
       try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -2266,6 +3807,20 @@
       saveAllChats(all);
       persistActiveChatId();
       return all;
+    }
+
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
     }
 
     function setChatTitleFromFirstUser(all, chatId){
@@ -2650,31 +4205,12 @@
 
     // Init chat state once
     ensureActiveChat();
+    refreshPdfs();
+    setInterval(refreshPdfs, 30000);
 
     // =========================================================
     // SSE parsing + streaming
     // =========================================================
-    function parseSSETextToAnswer(sseText){
-      let out = "";
-      const frames = (sseText || "").split(/\n\n/);
-      for(const frame of frames){
-        const f = frame.trim();
-        if(!f) continue;
-        if(f.includes("event: error")){
-          const line = f.split("\n").find(x => x.startsWith("data:"));
-          const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-          return msg.replaceAll("\\n","\n").trim();
-        }
-        const lines = f.split("\n");
-        for(const line of lines){
-          if(line.startsWith("data:")){
-            out += line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-          }
-        }
-      }
-      return out.trim();
-    }
-
     function typewriterSet(el, text){
       el.textContent = "";
       let i = 0;
@@ -2718,11 +4254,11 @@
         setPill("waking", "Waking server…");
         const r = await pingHealth();
         if(!r.ok){
-          showToast("Backend is still waking. Try again in a moment.");
-          return;
+          showToast("Backend status check failed. Attempting chat anyway.");
+        } else {
+          STATUS.state = "online";
+          setPill("online", "Online");
         }
-        STATUS.state = "online";
-        setPill("online", "Online");
       }
 
       const all = ensureActiveChat();
@@ -2736,13 +4272,13 @@
       const aiDiv = addMsg("ai", "");
       const typing = addTypingIndicator(aiDiv);
 
+      const chatId = getChatId();
       const url =
         apiUrl(CONFIG.CHAT_PATH)
-        + "?chat_id=" + encodeURIComponent(activeChatId)
-        + "&force_docs=" + (forceDocsEl.checked ? "1" : "0")
-        + "&fast=" + (fastModeEl && fastModeEl.checked ? "1" : "0");
+        + "?pdf=" + encodeURIComponent(activePdf || "")
+        + "&chat_id=" + encodeURIComponent(chatId);
 
-      const body = JSON.stringify({ message: text, messages: c.messages });
+      const body = JSON.stringify({ message: text });
 
       let full = "";
       let gotAnyToken = false;
@@ -2765,68 +4301,64 @@
           const msg = "Server error " + res.status + ": " + (errText || "").slice(0, 1600);
           aiDiv.textContent = msg;
           attachMsgTools(aiDiv, msg);
+          if(res.status === 405){
+            openApiBaseSettings([
+              "Chat returned 405 Method Not Allowed.",
+              "This usually means the API base points at the frontend host instead of the FastAPI backend.",
+              "",
+              `Current API base: ${API_BASE}`
+            ].join("\n"));
+          }
           STATUS.state = "offline";
           setPill("offline", "Offline");
           return;
         }
 
-        if(!res.body || !res.body.getReader){
-          const raw = await res.text().catch(()=> "");
-          const reply = parseSSETextToAnswer(raw) || " ";
-          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-          if(typewriterEl.checked) typewriterSet(aiDiv, reply);
-          else aiDiv.textContent = reply;
-          attachMsgTools(aiDiv, reply);
-
-          const all2 = ensureActiveChat();
-          const c2 = all2[activeChatId];
-          c2.messages.push({ role:"assistant", content: reply });
-          c2.updated = Date.now();
-          saveAllChats(all2);
-          renderChatList();
-          return;
-        }
-
-        const reader = res.body.getReader();
+        const reader = res.body && res.body.getReader ? res.body.getReader() : null;
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
+        let doneSeen = false;
 
-        while(true){
-          const { value, done } = await reader.read();
-          if(done) break;
+        const applyDelta = (delta)=>{
+          if(!delta) return;
+          gotAnyToken = true;
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          full += delta;
+          aiDiv.textContent = full;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        };
 
-          buffer += decoder.decode(value, { stream:true });
-          const parts = buffer.split(/\n\n/);
-          buffer = parts.pop() || "";
+        const handleLine = (line)=>{
+          const trimmed = (line || "").trim();
+          if(!trimmed) return;
+          if(trimmed.includes("event: done")){
+            doneSeen = true;
+            return;
+          }
+          if(trimmed.startsWith("data:")){
+            const delta = trimmed.replace(/^data:\s?/, "").replaceAll("\\n","\n");
+            applyDelta(delta);
+          }
+        };
 
-          for(const chunk of parts){
-            const cframe = (chunk || "").trim();
-            if(!cframe) continue;
-
-            if(cframe.includes("event: error")){
-              const line = cframe.split("\n").find(x=>x.startsWith("data:"));
-              const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-              if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-              const err = msg.replaceAll("\\n","\n").trim();
-              aiDiv.textContent = err;
-              attachMsgTools(aiDiv, err);
-              continue;
-            }
-            if(cframe.includes("event: done")) continue;
-
-            const lines = cframe.split("\n");
+        if(!reader){
+          const raw = await res.text().catch(()=> "");
+          raw.split(/\r?\n/).forEach(handleLine);
+        } else {
+          while(true){
+            const { value, done } = await reader.read();
+            if(done) break;
+            buffer += decoder.decode(value, { stream:true });
+            const lines = buffer.split(/\r?\n/);
+            buffer = lines.pop() || "";
             for(const line of lines){
-              if(line.startsWith("data:")){
-                const delta = line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-                if(delta){
-                  gotAnyToken = true;
-                  if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-                  full += delta;
-                  aiDiv.textContent = full;
-                  chatBox.scrollTop = chatBox.scrollHeight;
-                }
-              }
+              handleLine(line);
+              if(doneSeen) break;
             }
+            if(doneSeen) break;
+          }
+          if(buffer && !doneSeen){
+            handleLine(buffer);
           }
         }
 
